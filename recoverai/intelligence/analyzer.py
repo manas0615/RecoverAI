@@ -12,7 +12,7 @@ from recoverai.domain.plan import (
     InterventionCandidate,
     InterventionPlan,
 )
-from recoverai.intelligence.gateway import LLMGateway
+from recoverai.intelligence.gateway import GatewayError, LLMGateway
 
 
 class RevenueIntelligenceAnalyzer:
@@ -44,7 +44,7 @@ class RevenueIntelligenceAnalyzer:
                 cause = self.llm_gateway.synthesize_cause(case, events, ctx)
                 if cause:
                     self._sanitize_cause_evidence(cause, events)
-            except Exception:
+            except (ValueError, GatewayError):
                 cause = None  # Fallback
 
         if not cause:
@@ -60,7 +60,7 @@ class RevenueIntelligenceAnalyzer:
                 if candidates:
                     self._sanitize_candidates_evidence(candidates, events)
                     plan = self._build_plan_from_candidates(case, candidates, "LLM_1.0")
-            except Exception:
+            except (ValueError, GatewayError):
                 plan = None
 
         if not plan:

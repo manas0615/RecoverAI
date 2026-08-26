@@ -7,6 +7,10 @@ from recoverai.domain.event import RevenueEvent
 from recoverai.domain.plan import InterventionCandidate
 
 
+class GatewayError(Exception):
+    """Base exception for LLM provider or gateway failures."""
+
+
 class LLMGateway(ABC):
     """
     Abstract boundary for provider-agnostic AI capabilities (P10 implementation later).

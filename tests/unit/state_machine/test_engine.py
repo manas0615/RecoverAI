@@ -173,8 +173,9 @@ def test_transaction_rollback(tm):
     """
     case_id = setup_dummy_merchant_and_case(tm)
     dt = datetime.now(UTC)
+    import sqlite3
 
-    with pytest.raises(Exception), tm.transaction() as conn:
+    with pytest.raises(sqlite3.IntegrityError), tm.transaction() as conn:
         repo = RecoveryCaseRepository(conn)
         case = repo.get(case_id)
 
