@@ -133,6 +133,7 @@ WAITING_APPROVAL
 EXECUTING
 VERIFYING
 UNKNOWN
+CLOSED
 ```
 
 ## 3.2 Terminal Outcomes (`outcome_type`)
