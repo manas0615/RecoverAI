@@ -46,7 +46,7 @@ A `TransactionManager` exposes a context manager `transaction()` that yields a r
 
 ## Concurrency Strategy
 
-Optimistic execution via database-level `UNIQUE` constraints. 
+Duplicate prevention and concurrency safety are provided through database uniqueness constraints, SQLite transaction semantics, and conditional writes where applicable.
 The system does not build its own state machine; it relies on foreign keys and compound unique keys (e.g., `(case_id, action_type, attempt_number)`) and `(idempotency_key)` to deterministically fail stale or duplicate workflows with `DuplicateEntityError`.
 
 ## Uniqueness Constraints
