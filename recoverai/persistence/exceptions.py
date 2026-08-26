@@ -12,3 +12,7 @@ class EntityNotFoundError(PersistenceError):
 
 class DuplicateEntityError(PersistenceError):
     """Raised when a unique constraint is violated."""
+
+
+class StaleStateTransitionError(ConcurrencyError):
+    """Raised when an optimistic locking check fails on RecoveryCase update."""

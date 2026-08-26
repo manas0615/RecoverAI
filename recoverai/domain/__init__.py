@@ -1,6 +1,6 @@
 from .action import ActionStatus, ActionType, RecoveryAction
 from .assessment import AnalysisType, CauseAssessment, RiskAssessment
-from .case import RecoveryCase, RecoveryCaseStatus, RecoveryOutcomeValue, RevenueSource
+from .case import RecoveryCase, RecoveryCaseStatus, CaseWorkflowState, RecoveryOutcomeValue, RevenueSource
 from .customer import Customer
 from .event import EventSource, EventSourceType, RevenueEvent, RevenueEventType
 from .evidence import EvidenceReference, EvidenceSourceType, Probability
@@ -25,6 +25,7 @@ __all__ = [
     "ActionType",
     "AnalysisType",
     "CandidateStatus",
+    "CaseWorkflowState",
     "CauseAssessment",
     "CurrencyCode",
     "Customer",

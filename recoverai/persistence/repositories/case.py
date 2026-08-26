@@ -6,11 +6,12 @@ from recoverai.domain import (
     RecoveryCase,
     RecoveryCaseId,
     RecoveryCaseStatus,
+    CaseWorkflowState,
     RecoveryOutcomeValue,
     RevenueEventId,
     RevenueSource,
 )
-from recoverai.persistence.exceptions import DuplicateEntityError
+from recoverai.persistence.exceptions import DuplicateEntityError, StaleStateTransitionError
 from recoverai.persistence.mappers import dt_to_str, row_to_revenue_amount, str_to_dt
 
 
@@ -42,30 +43,47 @@ class RecoveryCaseRepository:
 
         try:
             if exists:
-                # Update (could use optimistic concurrency if we tracked a version, but here we just update)
-                self.conn.execute(
+                # Update with optimistic concurrency
+                old_version = case.version
+                new_version = old_version + 1
+                
+                cur = self.conn.execute(
                     """
                     UPDATE recovery_cases SET
                         customer_id = ?,
                         status = ?,
+                        workflow_state = ?,
                         outcome_type = ?,
+                        version = ?,
                         recovered_amount_minor = ?,
                         recovered_amount_currency = ?,
                         updated_at = ?,
                         closed_at = ?
-                    WHERE case_id = ?
+                    WHERE case_id = ? AND version = ?
                 """,
                     (
                         case.customer_id.value if case.customer_id else None,
                         case.status.value,
+                        case.workflow_state.value,
                         case.outcome_type.value if case.outcome_type else None,
+                        new_version,
                         rec_amt_minor,
                         rec_currency,
                         dt_to_str(case.updated_at),
                         dt_to_str(case.closed_at),
                         case.case_id.value,
+                        old_version,
                     ),
                 )
+                
+                if cur.rowcount == 0:
+                    raise StaleStateTransitionError(
+                        f"Stale update for RecoveryCase {case.case_id.value}. Expected version {old_version}."
+                    )
+                
+                # Update the domain object's version on successful save
+                case.version = new_version
+                
             else:
                 # Insert
                 self.conn.execute(
@@ -73,9 +91,10 @@ class RecoveryCaseRepository:
                     INSERT INTO recovery_cases (
                         case_id, merchant_id, customer_id, revenue_source,
                         amount_at_risk_minor, amount_at_risk_currency,
-                        status, outcome_type, recovered_amount_minor, recovered_amount_currency,
+                        status, workflow_state, outcome_type, version,
+                        recovered_amount_minor, recovered_amount_currency,
                         opened_at, updated_at, closed_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         case.case_id.value,
@@ -85,7 +104,9 @@ class RecoveryCaseRepository:
                         case.amount_at_risk.amount_minor,
                         case.amount_at_risk.currency.value,
                         case.status.value,
+                        case.workflow_state.value,
                         case.outcome_type.value if case.outcome_type else None,
+                        case.version,
                         rec_amt_minor,
                         rec_currency,
                         dt_to_str(case.opened_at),
@@ -139,9 +160,11 @@ class RecoveryCaseRepository:
             opened_at=str_to_dt(row["opened_at"]),  # type: ignore
             source_event_ids=event_ids,
             status=RecoveryCaseStatus(row["status"]),
+            workflow_state=CaseWorkflowState(row["workflow_state"]),
             outcome_type=RecoveryOutcomeValue(row["outcome_type"])
             if row["outcome_type"]
             else None,
+            version=row["version"],
             recovered_amount=row_to_revenue_amount(
                 row["recovered_amount_minor"], row["recovered_amount_currency"]
             ),

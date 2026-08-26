@@ -16,6 +16,19 @@ class RecoveryCaseStatus(Enum):
     CLOSED = "CLOSED"
 
 
+class CaseWorkflowState(Enum):
+    DETECTED = "DETECTED"
+    ENRICHING = "ENRICHING"
+    ASSESSED = "ASSESSED"
+    PLANNING = "PLANNING"
+    POLICY_REVIEW = "POLICY_REVIEW"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
+    EXECUTING = "EXECUTING"
+    VERIFYING = "VERIFYING"
+    UNKNOWN = "UNKNOWN"
+    CLOSED = "CLOSED"
+
+
 class RevenueSource(Enum):
     PAYMENT = "PAYMENT"
     CHECKOUT = "CHECKOUT"
@@ -53,7 +66,9 @@ class RecoveryCase:
 
     # Outcome fields
     status: RecoveryCaseStatus = field(default=RecoveryCaseStatus.OPEN)
+    workflow_state: CaseWorkflowState = field(default=CaseWorkflowState.DETECTED)
     outcome_type: RecoveryOutcomeValue | None = None
+    version: int = 0
     recovered_amount: RevenueAmount | None = None
     updated_at: datetime | None = None
     closed_at: datetime | None = None
@@ -74,6 +89,24 @@ class RecoveryCase:
         for eid in self.source_event_ids:
             if not isinstance(eid, RevenueEventId):
                 raise TypeError("source_event_ids must contain only RevenueEventId")
+        if not isinstance(self.workflow_state, CaseWorkflowState):
+            raise TypeError("workflow_state must be a CaseWorkflowState")
+        if not isinstance(self.version, int) or self.version < 0:
+            raise ValueError("version must be a non-negative integer")
+
+        self._validate_state_invariants()
+
+    def _validate_state_invariants(self) -> None:
+        if self.status == RecoveryCaseStatus.CLOSED:
+            if self.workflow_state != CaseWorkflowState.CLOSED:
+                raise ValueError("A CLOSED case must have workflow_state=CLOSED")
+            if self.outcome_type is None:
+                raise ValueError("A CLOSED case must have an outcome_type")
+        else:
+            if self.workflow_state == CaseWorkflowState.CLOSED:
+                raise ValueError("An OPEN case cannot have workflow_state=CLOSED")
+            if self.outcome_type is not None:
+                raise ValueError("An OPEN case cannot have an outcome_type")
 
     def add_source_event(self, event_id: RevenueEventId, timestamp: datetime) -> None:
         if self.status == RecoveryCaseStatus.CLOSED:
@@ -83,6 +116,24 @@ class RecoveryCase:
         self.source_event_ids.add(event_id)
         self.updated_at = timestamp
 
+    def advance_workflow(
+        self, new_state: CaseWorkflowState, timestamp: datetime
+    ) -> None:
+        """
+        Advances the granular workflow state while the case is OPEN.
+        """
+        if self.status == RecoveryCaseStatus.CLOSED:
+            raise ValueError("Cannot advance workflow of a CLOSED case")
+        if new_state == CaseWorkflowState.CLOSED:
+            raise ValueError("Cannot transition to CLOSED via advance_workflow; use close()")
+        if not isinstance(new_state, CaseWorkflowState):
+            raise TypeError("new_state must be a CaseWorkflowState")
+        if not timestamp.tzinfo:
+            raise ValueError("Timestamp must be timezone-aware")
+
+        self.workflow_state = new_state
+        self.updated_at = timestamp
+
     def close(
         self,
         outcome: RecoveryOutcomeValue,
@@ -90,8 +141,7 @@ class RecoveryCase:
         recovered_amount: RevenueAmount | None = None,
     ) -> None:
         """
-        Terminal state transition. The exact conditions (e.g. requiring verification)
-        will be enforced by the State Machine in P05, but we enforce basic intrinsic rules here.
+        Terminal state transition.
         """
         if self.status == RecoveryCaseStatus.CLOSED:
             raise ValueError("RecoveryCase is already closed")
@@ -100,14 +150,11 @@ class RecoveryCase:
         if not isinstance(outcome, RecoveryOutcomeValue):
             raise TypeError("outcome must be a RecoveryOutcomeValue")
 
-        # Intrinsic rule: RECOVERED must have a recovered_amount (verified amount).
-        # The architecture says: "recovered_amount is determined from verified financial state."
-        # The full requirement that verification exists is a P05 workflow rule,
-        # but intrinsically RECOVERED implies a recovered amount.
         if outcome == RecoveryOutcomeValue.RECOVERED and recovered_amount is None:
             raise ValueError("RECOVERED outcome requires a recovered_amount")
 
         self.status = RecoveryCaseStatus.CLOSED
+        self.workflow_state = CaseWorkflowState.CLOSED
         self.outcome_type = outcome
         self.recovered_amount = recovered_amount
         self.closed_at = timestamp
