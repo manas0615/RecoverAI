@@ -57,7 +57,10 @@ The orchestrator gracefully falls back to deterministic/baseline assessments if 
 Without AI, the system maps Razorpay error strings natively to cause categories, and falls back to a deterministic `WAIT` or `CREATE_PAYMENT_LINK` based on simple thresholds.
 
 ## Persistence
-P06 is a pure intelligence generation boundary and does NOT persist these artifacts. While the P03 schema explicitly defines tables for intelligence outcomes (e.g., `risk_assessments`, `cause_assessments`, `intervention_plans`), P06 simply returns the populated domain objects. The future application orchestration layer (e.g., P12 Workflow) holds the responsibility of invoking P06 and subsequently saving the results using the P03 persistence layer.
+Persistence responsibilities are strictly separated:
+- **P06**: Generates and returns typed intelligence artifacts in memory.
+- **Application/Orchestration layer (e.g., P12 Workflow)**: Coordinates *when* those artifacts are persisted. n8n/P12 may orchestrate workflow timing and steps, but it is NOT the authoritative persistence owner.
+- **P03**: Owns the persistence contracts and the authoritative SQLite persistence implementation for intelligence outcomes (e.g., `risk_assessments`, `cause_assessments`, `intervention_plans`).
 
 ## Security
 No arbitrary API execution, SQL injection paths, or unvalidated prompts. Customer metadata is explicitly isolated from intelligence instruction logic in the interfaces.

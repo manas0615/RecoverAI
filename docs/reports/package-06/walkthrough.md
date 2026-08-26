@@ -31,7 +31,10 @@ The `LLMGateway` abstraction enforces returning strongly-typed `CauseAssessment`
 A `try/except` block wraps the gateway calls. If the AI component throws an error, times out, or returns `None`, the orchestrator natively catches it and falls back to `_deterministic_cause_assessment` and `_deterministic_intervention_plan` without exposing the failure to the caller or authorizing actions.
 
 ## 11. Persistence
-P06 is a pure intelligence boundary and does NOT persist the generated artifacts. While P03 defined tables for intelligence outcomes, P06 only returns domain objects. Persistence is deferred to the future workflow orchestration layer which will coordinate saving the results.
+Persistence responsibilities are strictly separated:
+- **P06**: Generates and returns typed intelligence artifacts in memory.
+- **Application/Orchestration layer**: Coordinates when those artifacts are persisted. (n8n orchestrates timing but is NOT the persistence owner).
+- **P03**: Owns the persistence contracts and authoritative SQLite implementation.
 
 ## 12. Policy Boundary
 The analyzer explicitly returns `InterventionPlan` objects containing a `selected_action_type`. It does NOT interact with `RecoveryStateMachine` or authorize the action. P07 Policy Engine will consume this plan later.

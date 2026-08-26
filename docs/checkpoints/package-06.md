@@ -27,7 +27,7 @@ None. Conforms completely to frozen P02/P05.
 Known Limitations:
 - `LLMGateway` is fully abstract; P10 will inject the concrete implementation.
 - Expected Value scoring uses a simple `probability * value` heuristic rather than calibrated ML.
-- Persistence of `RiskAssessment`, `CauseAssessment`, and `InterventionPlan` is explicitly deferred to the calling application/orchestration layer using the P03 schema. P06 generates them in memory only.
+- Persistence boundaries are explicit: P06 generates artifacts in memory. The application/orchestration layer coordinates *when* they are persisted. P03 owns the authoritative SQLite persistence implementation. n8n is NOT the authoritative persistence owner.
 
 Next:
 Package 07 — Policy Engine

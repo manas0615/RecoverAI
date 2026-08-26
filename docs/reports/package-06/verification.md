@@ -64,12 +64,8 @@ $ uv run ruff format --check .
 
 ```text
 $ uv run ruff check .
-BLE001 Do not catch blind exception: `Exception`
-  --> recoverai\intelligence\analyzer.py:47:20
-...
-Found 3 errors.
+All checks passed!
 ```
-*(Note: Remaining Ruff errors are intentional bare exception catches for the boundary fallback logic.)*
 
 ```text
 $ uv run mypy recoverai/ tests/
