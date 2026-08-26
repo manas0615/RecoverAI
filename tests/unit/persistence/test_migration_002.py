@@ -65,22 +65,28 @@ def setup_data_for_v1(conn: sqlite3.Connection):
 
     # 1. Terminal / Closed Outcomes
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_rec', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'RECOVERED', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_rec', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'RECOVERED', ?)",
+        (dt,),
     )
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_not', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'NOT_RECOVERED', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_not', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'NOT_RECOVERED', ?)",
+        (dt,),
     )
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_sup', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'SUPPRESSED', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_sup', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'SUPPRESSED', ?)",
+        (dt,),
     )
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_esc', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'ESCALATED', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_esc', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'ESCALATED', ?)",
+        (dt,),
     )
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_exp', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'EXPIRED', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_exp', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'EXPIRED', ?)",
+        (dt,),
     )
     conn.execute(
-        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_unk', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'UNKNOWN', ?)", (dt,)
+        "INSERT INTO recovery_cases (case_id, merchant_id, revenue_source, amount_at_risk_minor, amount_at_risk_currency, status, outcome_type, opened_at) VALUES ('c1_unk', 'm1', 'PAYMENT', 100, 'INR', 'CLOSED', 'UNKNOWN', ?)",
+        (dt,),
     )
 
     # 2. Execution Unknown
