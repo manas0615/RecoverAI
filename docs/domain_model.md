@@ -535,6 +535,9 @@ amount_at_risk
 currency
 
 status
+workflow_state
+outcome_type
+version
 
 opened_at
 updated_at
@@ -1599,6 +1602,7 @@ For example:
 
 ```text
 RecoveryCase.status
+RecoveryCase.workflow_state
 RecoveryAction.status
 VerificationRecord.verified_state
 ```

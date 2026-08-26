@@ -111,11 +111,17 @@ CLOSED
 
 ---
 
-# 3. RecoveryCase State Machine
+# 3. RecoveryCase State Model
 
-## 3.1 State List
+The state of a `RecoveryCase` is defined by three distinct fields, rather than a single collapsed enum:
 
-Initial states:
+1. `status` (OPEN / CLOSED)
+2. `workflow_state` (granular lifecycle)
+3. `outcome_type` (terminal outcome)
+
+## 3.1 Workflow State List
+
+Initial workflow states:
 
 ```text
 DETECTED
@@ -126,13 +132,20 @@ POLICY_REVIEW
 WAITING_APPROVAL
 EXECUTING
 VERIFYING
+UNKNOWN
+```
+
+## 3.2 Terminal Outcomes (`outcome_type`)
+
+Terminal outcomes when `status` is CLOSED:
+
+```text
 RECOVERED
 NOT_RECOVERED
 UNKNOWN
 SUPPRESSED
 ESCALATED
 EXPIRED
-CLOSED
 ```
 
 ---
