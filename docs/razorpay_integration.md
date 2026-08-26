@@ -1104,30 +1104,36 @@ Conceptually:
 
 ```python
 class RazorpayGateway:
-    def get_payment(self, payment_id: str) -> PaymentSnapshot: ...
+    def get_payment(self, payment_id: str) -> PaymentSnapshot:
+        ...
 
-    def get_order(self, order_id: str) -> OrderSnapshot: ...
+    def get_order(self, order_id: str) -> OrderSnapshot:
+        ...
 
     def create_payment_link(
         self,
         request: CreatePaymentLinkRequest,
-    ) -> PaymentLinkSnapshot: ...
+    ) -> PaymentLinkSnapshot:
+        ...
 
     def get_payment_link(
         self,
         payment_link_id: str,
-    ) -> PaymentLinkSnapshot: ...
+    ) -> PaymentLinkSnapshot:
+        ...
 
     def send_payment_link_notification(
         self,
         payment_link_id: str,
         medium: NotificationMedium,
-    ) -> NotificationResult: ...
+    ) -> NotificationResult:
+        ...
 
     def cancel_payment_link(
         self,
         payment_link_id: str,
-    ) -> PaymentLinkSnapshot: ...
+    ) -> PaymentLinkSnapshot:
+        ...
 ```
 
 This is a **conceptual contract**, not final implementation code.
@@ -1201,17 +1207,20 @@ class RazorpayWebhookProcessor:
         raw_body: bytes,
         signature: str,
         secret: str,
-    ) -> None: ...
+    ) -> None:
+        ...
 
     def extract_event_id(
         self,
         headers: Mapping[str, str],
-    ) -> str: ...
+    ) -> str:
+        ...
 
     def normalize(
         self,
         raw_event: Mapping[str, Any],
-    ) -> CanonicalRevenueEvent: ...
+    ) -> CanonicalRevenueEvent:
+        ...
 ```
 
 The final implementation must use the actual Razorpay webhook headers and raw-body signature behavior documented by Razorpay. ([https://razorpay.com/docs/webhooks/validate-test/](https://razorpay.com/docs/webhooks/validate-test/))

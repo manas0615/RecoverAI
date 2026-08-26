@@ -1756,7 +1756,8 @@ class LLMProvider(Protocol):
     def generate(
         self,
         request: NormalizedLLMRequest,
-    ) -> ProviderResponse: ...
+    ) -> ProviderResponse:
+        ...
 ```
 
 Each provider implementation conforms to the same contract.
