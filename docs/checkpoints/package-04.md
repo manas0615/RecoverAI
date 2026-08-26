@@ -7,10 +7,10 @@ Implementation Commit:
 7634fec
 
 Documentation Commit:
-(See latest)
+8942d3c
 
 Implemented:
-Established the strict Razorpay webhook ingestion boundary, enforcing HMAC-SHA256 signature validation against raw HTTP payload bytes. Built a pure domain normalizer that decouples Razorpay's nested JSON payload constraints from the `RevenueEvent` models. Handled deduplication seamlessly through P03 transactional capabilities, swallowing safe duplicates to ensure 200 OK webhook acknowledgments, protecting the external provider reliability window.
+Established the strict Razorpay webhook ingestion boundary, enforcing HMAC-SHA256 signature validation against raw HTTP payload bytes. Built a pure domain normalizer that decouples Razorpay's nested JSON payload constraints from the `RevenueEvent` models. Handled deduplication seamlessly through P03 transactional capabilities, converting safe duplicates into specific `DuplicateWebhookEvent` exceptions for the future HTTP router to acknowledge safely as a 200 OK, protecting the external provider reliability window.
 
 Tests:
 49 total unit tests successfully passed, including signature mutation, byte-equivalent bypass testing, duplicate ingestion via db constraints, and parsing validations.

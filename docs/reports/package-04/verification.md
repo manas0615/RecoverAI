@@ -75,3 +75,14 @@ Command: `git diff --stat`
 Output:
 *(Empty output, working tree is clean from existing commits)*
 *Status: PASS*
+
+## Supported Event Type Verification
+
+| Razorpay Event | Internal Type | Test |
+| --- | --- | --- |
+| `payment.authorized` | `PAYMENT_AUTHORIZED` | `test_normalize_supported_events` |
+| `payment.captured` | `PAYMENT_CAPTURED` | `test_normalize_supported_events` |
+| `payment.failed` | `PAYMENT_FAILED` | `test_normalize_payment_failed` / `test_normalize_supported_events` |
+| `payment_link.paid` | `PAYMENT_LINK_PAID` | `test_normalize_supported_events` |
+| `payment.downtime.started` | `PAYMENT_DEGRADATION_SIGNAL` | `test_normalize_supported_events` |
+| `payment.downtime.updated` | `PAYMENT_DEGRADATION_SIGNAL` | `test_normalize_supported_events` |

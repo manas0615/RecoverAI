@@ -31,7 +31,7 @@ Normalizer checks for dictionary structure, explicitly requires an `event` key, 
 
 ## Event ID / Deduplication
 
-Uses the provided header `x-razorpay-event-id` (passed into `process_webhook`) as the `source_event_id`. P03's SQL `UNIQUE(source_type, source_event_id)` acts as the authoritative deduplication gate. Duplicates are logged and swallowed (returning `None`) to facilitate fast external 2xx acknowledgment without raising unhandled HTTP 500s.
+Uses the provided header `x-razorpay-event-id` (passed into `process_webhook`) as the `source_event_id`. P03's SQL `UNIQUE(source_type, source_event_id)` acts as the authoritative deduplication gate. Duplicates trigger a `DuplicateEntityError` which the `WebhookIngestionService` converts into a `DuplicateWebhookEvent` exception. The future HTTP layer is expected to catch this and safely map it to a successful duplicate 200 OK acknowledgement to satisfy Razorpay's delivery requirements without raising unhandled HTTP 500s.
 
 ## Event Normalization
 

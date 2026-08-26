@@ -59,3 +59,25 @@ def test_normalize_malformed_payload():
     normalizer = RazorpayNormalizer()
     with pytest.raises(MalformedWebhookPayload):
         normalizer.normalize(MerchantId("m_1"), payload, "evt_123", now)
+
+
+@pytest.mark.parametrize(
+    "razorpay_event,expected_type",
+    [
+        ("payment.authorized", RevenueEventType.PAYMENT_AUTHORIZED),
+        ("payment.captured", RevenueEventType.PAYMENT_CAPTURED),
+        ("payment_link.paid", RevenueEventType.PAYMENT_LINK_PAID),
+        ("payment.downtime.started", RevenueEventType.PAYMENT_DEGRADATION_SIGNAL),
+        ("payment.downtime.updated", RevenueEventType.PAYMENT_DEGRADATION_SIGNAL),
+    ],
+)
+def test_normalize_supported_events(razorpay_event, expected_type):
+    now = datetime.now(UTC)
+    payload = {
+        "event": razorpay_event,
+        "contains": ["payment"],
+        "payload": {"payment": {"entity": {"id": "pay_123", "created_at": 1600000000}}},
+    }
+    normalizer = RazorpayNormalizer()
+    ev = normalizer.normalize(MerchantId("m_1"), payload, "evt_123", now)
+    assert ev.event_type == expected_type
