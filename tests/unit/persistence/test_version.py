@@ -126,13 +126,15 @@ def test_stale_update_fails(tm):
     # Worker A attempts to save stale data
     worker_a_case.workflow_state = CaseWorkflowState.VERIFYING
 
-    with pytest.raises(
-        StaleStateTransitionError,
-        match="Stale update for RecoveryCase case_v3. Expected version 0.",
+    with (
+        pytest.raises(
+            StaleStateTransitionError,
+            match="Stale update for RecoveryCase case_v3. Expected version 0.",
+        ),
+        tm.transaction() as conn,
     ):
-        with tm.transaction() as conn:
-            repo = RecoveryCaseRepository(conn)
-            repo.save(worker_a_case)
+        repo = RecoveryCaseRepository(conn)
+        repo.save(worker_a_case)
 
     # Ensure no data was partially written by Worker A
     with tm.transaction() as conn:

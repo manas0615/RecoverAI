@@ -174,19 +174,18 @@ def test_transaction_rollback(tm):
     case_id = setup_dummy_merchant_and_case(tm)
     dt = datetime.now(UTC)
 
-    with pytest.raises(Exception):
-        with tm.transaction() as conn:
-            repo = RecoveryCaseRepository(conn)
-            case = repo.get(case_id)
+    with pytest.raises(Exception), tm.transaction() as conn:
+        repo = RecoveryCaseRepository(conn)
+        case = repo.get(case_id)
 
-            # State mutation A
-            case.advance_workflow(CaseWorkflowState.ENRICHING, dt)
-            repo.save(case)
+        # State mutation A
+        case.advance_workflow(CaseWorkflowState.ENRICHING, dt)
+        repo.save(case)
 
-            # Related persistence mutation B fails
-            conn.execute(
-                "INSERT INTO recovery_cases (case_id) VALUES ('invalid')"
-            )  # Violates NOT NULL constraints
+        # Related persistence mutation B fails
+        conn.execute(
+            "INSERT INTO recovery_cases (case_id) VALUES ('invalid')"
+        )  # Violates NOT NULL constraints
 
     # Assert A rolled back
     with tm.transaction() as conn:

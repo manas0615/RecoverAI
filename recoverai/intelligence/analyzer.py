@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from recoverai.domain.action import ActionType
@@ -42,6 +42,8 @@ class RevenueIntelligenceAnalyzer:
         if self.llm_gateway:
             try:
                 cause = self.llm_gateway.synthesize_cause(case, events, ctx)
+                if cause:
+                    self._sanitize_cause_evidence(cause, events)
             except Exception:
                 cause = None  # Fallback
 
@@ -56,6 +58,7 @@ class RevenueIntelligenceAnalyzer:
                     case, events, ctx, cause
                 )
                 if candidates:
+                    self._sanitize_candidates_evidence(candidates, events)
                     plan = self._build_plan_from_candidates(case, candidates, "LLM_1.0")
             except Exception:
                 plan = None
@@ -64,6 +67,25 @@ class RevenueIntelligenceAnalyzer:
             plan = self._deterministic_intervention_plan(case, risk, cause, events)
 
         return risk, cause, plan
+
+    def _sanitize_cause_evidence(
+        self, cause: CauseAssessment, events: list[RevenueEvent]
+    ) -> None:
+        valid_ids = {e.event_id.value for e in events}
+        valid_evidence = [
+            ev for ev in cause.evidence_references if ev.source_id in valid_ids
+        ]
+        object.__setattr__(cause, "evidence_references", valid_evidence)
+
+    def _sanitize_candidates_evidence(
+        self, candidates: list[InterventionCandidate], events: list[RevenueEvent]
+    ) -> None:
+        valid_ids = {e.event_id.value for e in events}
+        for cand in candidates:
+            valid_evidence = [
+                ev for ev in cand.evidence_references if ev.source_id in valid_ids
+            ]
+            object.__setattr__(cand, "evidence_references", valid_evidence)
 
     def _extract_features(
         self, events: list[RevenueEvent], context: dict[str, Any]
@@ -100,7 +122,7 @@ class RevenueIntelligenceAnalyzer:
     def _deterministic_cause_assessment(
         self, case: RecoveryCase, features: dict[str, Any], events: list[RevenueEvent]
     ) -> CauseAssessment:
-        from recoverai.domain.evidence import EvidenceReference, EvidenceSourceType
+        from recoverai.domain.evidence import EvidenceSourceType
 
         cat = "CUSTOMER_SPECIFIC"
         if features.get("has_systemic_signal"):
@@ -163,7 +185,7 @@ class RevenueIntelligenceAnalyzer:
         cause: CauseAssessment,
         events: list[RevenueEvent],
     ) -> InterventionPlan:
-        from recoverai.domain.evidence import EvidenceReference, EvidenceSourceType
+        from recoverai.domain.evidence import EvidenceSourceType
 
         evidence = []
         for e in events:

@@ -26,22 +26,26 @@ The `RevenueIntelligenceAnalyzer` acts as the primary orchestrator mapping `Reco
 Extracts raw context and event metadata (e.g. error source, step, reason from Razorpay) into normalized feature maps passed to the downstream assessment engines.
 
 ## Risk Assessment
-Implemented via a deterministic fallback that scores baseline recoverability based on event metadata (e.g. temporary insufficient funds vs terminal fraud closures). Uses the frozen P02 `Probability` and `RiskAssessment` objects.
+Implemented via a deterministic fallback that scores baseline recoverability based on event metadata (e.g. temporary insufficient funds vs terminal fraud closures). These are baseline heuristic outputs (e.g., 0.8 or 0.1), NOT calibrated probabilities. They serve as deterministic baselines until a calibrated ML model is integrated. Uses the frozen P02 `Probability` and `RiskAssessment` objects.
 
 ## Cause Assessment
 Implemented to output a structured `CauseAssessment` with a defined categorical taxonomy (e.g., `CUSTOMER_SPECIFIC`, `SYSTEMIC_DEGRADATION`). Integrates with `LLMGateway.synthesize_cause` when injected, falling back to deterministic mappings if omitted.
 
 ## Intervention Candidates
-Generates multiple `InterventionCandidate` objects based on the P02 `ActionType` enum. Ranks options using expected recovery arithmetic: `probability * value - cost`.
+Generates multiple `InterventionCandidate` objects based on the P02 `ActionType` enum. 
 
 ## Intervention Plan
-Packages the valid candidates into an `InterventionPlan`. Ensures the selected candidate exists in the evaluated set and is eligible.
+Packages the valid candidates into an `InterventionPlan`. Candidates are ranked using a simple heuristic formula: `probability * expected_recovery_value`. 
+- `probability` comes from the candidate's estimated success rate.
+- `expected_recovery_value` comes from the `RecoveryCase` amount at risk.
+This score is a ranking heuristic, not an empirical financial guarantee. 
+**Critically:** `selected_action_type` represents a pure recommendation, NOT an authorization to execute.
 
 ## Evidence Grounding
 Generates `EvidenceReference` objects linking `event_id` directly to each assessment and plan.
 
 ## AI Boundary
-Abstracted entirely behind the `LLMGateway` interface in `gateway.py`. Structured outputs are strictly typed to domain objects.
+AI integration boundary implemented; concrete providers deferred to P10. Abstracted entirely behind the `LLMGateway` interface in `gateway.py`. Structured outputs are strictly typed to domain objects.
 
 ## LLM Gateway Boundary
 `recoverai.intelligence.gateway.LLMGateway` provides abstract methods for cause synthesis and intervention ranking. No specific provider SDKs (Gemini/Groq) are imported or used.
@@ -53,13 +57,14 @@ The orchestrator gracefully falls back to deterministic/baseline assessments if 
 Without AI, the system maps Razorpay error strings natively to cause categories, and falls back to a deterministic `WAIT` or `CREATE_PAYMENT_LINK` based on simple thresholds.
 
 ## Persistence
-All generated domain objects (`RiskAssessment`, `CauseAssessment`, `InterventionPlan`) are returned cleanly to the caller. Persistence logic sits externally or defers to future packages (as P03 did not define tables for these beyond what exists). Note: P03 actually *did* define `risk_assessments` and `intervention_plans` tables. We will defer saving to the caller or standard repository pattern.
+P06 is a pure intelligence generation boundary and does NOT persist these artifacts. While the P03 schema explicitly defines tables for intelligence outcomes (e.g., `risk_assessments`, `cause_assessments`, `intervention_plans`), P06 simply returns the populated domain objects. The future application orchestration layer (e.g., P12 Workflow) holds the responsibility of invoking P06 and subsequently saving the results using the P03 persistence layer.
 
 ## Security
 No arbitrary API execution, SQL injection paths, or unvalidated prompts. Customer metadata is explicitly isolated from intelligence instruction logic in the interfaces.
 
 ## Testing
-68+ comprehensive unit tests covering deterministic extraction, feature boundaries, AI gateway injection/fallback, validation logic, and regression over P01-P05.
+73 comprehensive unit tests covering deterministic extraction, feature boundaries, AI gateway injection/fallback, validation logic, prompt data boundary isolation, and regression over P01-P05.
+Type-checking via mypy: Success: no issues found in 73 source files.
 
 ## Exact Git Commit SHAs
 Implementation Commit: 3ec3f3c

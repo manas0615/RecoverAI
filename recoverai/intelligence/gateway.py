@@ -24,7 +24,6 @@ class LLMGateway(ABC):
         Synthesizes a root cause assessment from heterogeneous context.
         Returns None if synthesis fails or is inconclusive.
         """
-        pass
 
     @abstractmethod
     def generate_intervention_candidates(
@@ -37,4 +36,3 @@ class LLMGateway(ABC):
         """
         Evaluates potential actions and returns ranked/scored candidates.
         """
-        pass

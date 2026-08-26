@@ -10,19 +10,19 @@ The analyzer consumes the `RecoveryCase`, a list of `RevenueEvent` objects, and 
 Inside `_extract_features()`, raw events and context are mapped into simple signals like `has_systemic_signal` and `customer_failure_count`. This isolates the rest of the engine from needing to parse arbitrary JSON payloads repeatedly.
 
 ## 4. Risk Analysis
-The `_assess_risk()` function applies a deterministic baseline model (since P06 contains no external AI inference for risk). It assigns a base probability of 0.8, degraded to 0.1 if a systemic signal is active, returning a strictly validated `RiskAssessment` object containing the `Probability` and expected value.
+The `_assess_risk()` function applies a deterministic baseline model. It assigns a baseline heuristic output of 0.8, degraded to 0.1 if a systemic signal is active. These are explicitly baseline heuristics, NOT calibrated probabilities, serving as a placeholder until a calibrated ML model is integrated. It returns a strictly validated `RiskAssessment` object containing the `Probability` and expected value.
 
 ## 5. Cause Analysis
 Cause analysis checks for an injected `LLMGateway` (abstract boundary in `gateway.py`). If the gateway fails, or is missing, `_deterministic_cause_assessment()` maps the extracted features to a simple taxonomy (`CUSTOMER_SPECIFIC` or `SYSTEMIC_DEGRADATION`). The result is a `CauseAssessment` explicitly grounded to the incoming event IDs.
 
 ## 6. Intervention Generation
-Similar to Cause Analysis, `LLMGateway.generate_intervention_candidates()` is called to evaluate advanced plans. In fallback mode, `_deterministic_intervention_plan()` generates a `WAIT` candidate for systemic degradation and `CREATE_PAYMENT_LINK` for customer failures. It evaluates expected value (`expected_recovery_value * probability`) to rank and select the best candidate.
+Similar to Cause Analysis, `LLMGateway.generate_intervention_candidates()` is called to evaluate advanced plans. In fallback mode, `_deterministic_intervention_plan()` generates a `WAIT` candidate for systemic degradation and `CREATE_PAYMENT_LINK` for customer failures. It evaluates candidates using a ranking heuristic formula: `probability * expected_recovery_value` to select the best candidate. The result is returned as a recommendation, not an authorization.
 
 ## 7. Evidence Grounding
 Every deterministic assessment iterates over the `RevenueEvent` inputs to build `EvidenceReference` objects (mapping `source_id` to `event_id.value`). This proves provenance for the recommendations.
 
 ## 8. AI / Deterministic Boundary
-P06 defines an abstract `LLMGateway` for AI tasks (cause synthesis, intervention generation) while strictly using mathematical/rule-based heuristics for risk, eligibility, and expected value. 
+P06 defines an abstract `LLMGateway` for AI tasks (cause synthesis, intervention generation). This establishes the AI integration boundary, with concrete providers deferred to P10. It strictly uses mathematical/rule-based heuristics for risk, eligibility, and expected value.
 
 ## 9. Structured Model Output
 The `LLMGateway` abstraction enforces returning strongly-typed `CauseAssessment` and `InterventionCandidate` objects. Provider-specific JSON parsing will live strictly in P10.
@@ -31,7 +31,7 @@ The `LLMGateway` abstraction enforces returning strongly-typed `CauseAssessment`
 A `try/except` block wraps the gateway calls. If the AI component throws an error, times out, or returns `None`, the orchestrator natively catches it and falls back to `_deterministic_cause_assessment` and `_deterministic_intervention_plan` without exposing the failure to the caller or authorizing actions.
 
 ## 11. Persistence
-Persistence is deferred to the caller, leveraging the P03 schema (`recovery_cases`, `recovery_actions`, etc.). Future workflows will write these assessments to the database after generation.
+P06 is a pure intelligence boundary and does NOT persist the generated artifacts. While P03 defined tables for intelligence outcomes, P06 only returns domain objects. Persistence is deferred to the future workflow orchestration layer which will coordinate saving the results.
 
 ## 12. Policy Boundary
 The analyzer explicitly returns `InterventionPlan` objects containing a `selected_action_type`. It does NOT interact with `RecoveryStateMachine` or authorize the action. P07 Policy Engine will consume this plan later.

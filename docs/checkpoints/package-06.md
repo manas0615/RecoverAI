@@ -19,13 +19,15 @@ Policy Boundary:
 The engine stops precisely at `InterventionPlan.selected_action_type`. It does not execute actions, does not modify case workflow states, and does not authorize external payments.
 
 Tests:
-71 tests passed (5 specific to intelligence analyzer). 100% type-safety in `mypy`.
+73 tests passed (7 specific to intelligence analyzer). mypy: Success: no issues found in 73 source files.
 
 Architecture Changes:
 None. Conforms completely to frozen P02/P05.
 
 Known Limitations:
-`LLMGateway` is fully abstract; P10 will inject the concrete implementation.
+- `LLMGateway` is fully abstract; P10 will inject the concrete implementation.
+- Expected Value scoring uses a simple `probability * value` heuristic rather than calibrated ML.
+- Persistence of `RiskAssessment`, `CauseAssessment`, and `InterventionPlan` is explicitly deferred to the calling application/orchestration layer using the P03 schema. P06 generates them in memory only.
 
 Next:
 Package 07 — Policy Engine
