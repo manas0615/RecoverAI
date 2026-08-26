@@ -1,17 +1,20 @@
 import sqlite3
 
 from recoverai.domain import (
+    CaseWorkflowState,
     CustomerId,
     MerchantId,
     RecoveryCase,
     RecoveryCaseId,
     RecoveryCaseStatus,
-    CaseWorkflowState,
     RecoveryOutcomeValue,
     RevenueEventId,
     RevenueSource,
 )
-from recoverai.persistence.exceptions import DuplicateEntityError, StaleStateTransitionError
+from recoverai.persistence.exceptions import (
+    DuplicateEntityError,
+    StaleStateTransitionError,
+)
 from recoverai.persistence.mappers import dt_to_str, row_to_revenue_amount, str_to_dt
 
 
@@ -46,7 +49,7 @@ class RecoveryCaseRepository:
                 # Update with optimistic concurrency
                 old_version = case.version
                 new_version = old_version + 1
-                
+
                 cur = self.conn.execute(
                     """
                     UPDATE recovery_cases SET
@@ -75,15 +78,15 @@ class RecoveryCaseRepository:
                         old_version,
                     ),
                 )
-                
+
                 if cur.rowcount == 0:
                     raise StaleStateTransitionError(
                         f"Stale update for RecoveryCase {case.case_id.value}. Expected version {old_version}."
                     )
-                
+
                 # Update the domain object's version on successful save
                 case.version = new_version
-                
+
             else:
                 # Insert
                 self.conn.execute(

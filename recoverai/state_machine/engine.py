@@ -1,14 +1,14 @@
 import logging
 from datetime import datetime
-from typing import Any
 
-from recoverai.domain.case import CaseWorkflowState, RecoveryCaseStatus, RecoveryOutcomeValue
+from recoverai.domain.case import (
+    CaseWorkflowState,
+    RecoveryCaseStatus,
+)
 from recoverai.persistence.connection import TransactionManager
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
 from recoverai.state_machine.commands import (
     CloseCaseCommand,
-    Command,
-    ExecuteActionCommand,
 )
 from recoverai.state_machine.exceptions import (
     IdempotentEventError,
@@ -75,12 +75,16 @@ class RecoveryStateMachine:
     def __init__(self, tm: TransactionManager):
         self.tm = tm
 
-    def _validate_transition(self, current: CaseWorkflowState, next_state: CaseWorkflowState) -> None:
+    def _validate_transition(
+        self, current: CaseWorkflowState, next_state: CaseWorkflowState
+    ) -> None:
         """Validates if transitioning from `current` to `next_state` is allowed."""
         if current == next_state:
             # Idempotent state transition (e.g. out of order duplicate event for the exact same state)
-            raise IdempotentEventError(f"Idempotent transition to same state: {current.name}")
-        
+            raise IdempotentEventError(
+                f"Idempotent transition to same state: {current.name}"
+            )
+
         allowed = ALLOWED_TRANSITIONS.get(current, set())
         if next_state not in allowed:
             raise InvalidTransitionError(
@@ -96,17 +100,23 @@ class RecoveryStateMachine:
         with self.tm.transaction() as conn:
             repo = RecoveryCaseRepository(conn)
             from recoverai.domain.identifiers import RecoveryCaseId
+
             case = repo.get(RecoveryCaseId(case_id_str))
-            
+
             if not case:
                 raise ValueError(f"Case {case_id_str} not found")
 
             if case.status == RecoveryCaseStatus.CLOSED:
                 raise TerminalStateError(f"Case {case_id_str} is already CLOSED.")
-                
+
             # If attempting to execute from an UNKNOWN state blindly
-            if case.workflow_state == CaseWorkflowState.UNKNOWN and next_state == CaseWorkflowState.EXECUTING:
-                raise UnknownStateError(f"Cannot blindly retry from UNKNOWN state for case {case_id_str}")
+            if (
+                case.workflow_state == CaseWorkflowState.UNKNOWN
+                and next_state == CaseWorkflowState.EXECUTING
+            ):
+                raise UnknownStateError(
+                    f"Cannot blindly retry from UNKNOWN state for case {case_id_str}"
+                )
 
             try:
                 self._validate_transition(case.workflow_state, next_state)
@@ -116,7 +126,6 @@ class RecoveryStateMachine:
 
             case.advance_workflow(next_state, timestamp)
             repo.save(case)
-
 
     def close_case(self, cmd: CloseCaseCommand) -> None:
         """
@@ -133,7 +142,9 @@ class RecoveryStateMachine:
                 if case.outcome_type == cmd.outcome:
                     logger.info(f"Idempotent close ignored for {cmd.case_id.value}")
                     return
-                raise TerminalStateError(f"Case {cmd.case_id.value} is already CLOSED with a different outcome.")
+                raise TerminalStateError(
+                    f"Case {cmd.case_id.value} is already CLOSED with a different outcome."
+                )
 
             try:
                 self._validate_transition(case.workflow_state, CaseWorkflowState.CLOSED)
@@ -143,4 +154,3 @@ class RecoveryStateMachine:
 
             case.close(cmd.outcome, cmd.timestamp, cmd.recovered_amount)
             repo.save(case)
-

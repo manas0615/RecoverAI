@@ -125,7 +125,9 @@ class RecoveryCase:
         if self.status == RecoveryCaseStatus.CLOSED:
             raise ValueError("Cannot advance workflow of a CLOSED case")
         if new_state == CaseWorkflowState.CLOSED:
-            raise ValueError("Cannot transition to CLOSED via advance_workflow; use close()")
+            raise ValueError(
+                "Cannot transition to CLOSED via advance_workflow; use close()"
+            )
         if not isinstance(new_state, CaseWorkflowState):
             raise TypeError("new_state must be a CaseWorkflowState")
         if not timestamp.tzinfo:
