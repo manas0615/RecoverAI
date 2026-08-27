@@ -9,11 +9,12 @@ tests/unit/llm_gateway/test_config.py ..
 `
 
 ### Coverage (10 Tests)
-- **	est_config_from_env**: Asserts env var loading for models and API keys.
-- **	est_successful_structured_response**: Confirms JSON payloads are safely transformed to P06 models.
-- **	est_fallback_behavior_on_provider_error**: Proves a provider failure cascades to the secondary provider seamlessly.
-- **	est_all_providers_fail**: Confirms GatewayError is explicitly raised.
-- **	est_invalid_schema_triggers_fallback**: A missing field causes a validation error which safely triggers fallback.
-- **	est_malformed_json**: Triggers a fallback rather than crashing.
-- **	est_invalid_enum_fails_safely**: LLM hallucinated action types fail Pydantic enum validation, skipping the provider.
-- **	est_invalid_probability_fails_safely**: Probabilities > 1.0 are rejected.
+- **Configuration Defaults**: Asserts env var loading for models (gemini-2.5-pro).
+- **Domain Object Mapping**: Confirms JSON payloads are safely transformed to P06 models.
+- **Fallback Cascading**: Proves transient provider failures seamlessly cascade.
+- **Invalid Schema / Malformed JSON**: Pydantic failures trigger fallback correctly.
+- **Invalid Enums / Metrics**: Out-of-bounds probabilities and fake Enums are rejected and fall back.
+
+## 2. Security Non-Leakage
+- Headers are utilized strictly (x-goog-api-key, Authorization: Bearer). No keys inside URLs.
+- Exceptions thrown by native urllib are caught and mapped to string-safe ProviderError("... API failed: Generic Error") or ConfigurationError, ensuring that URLs, traces, and headers cannot leak into the console.

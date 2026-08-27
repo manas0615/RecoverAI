@@ -96,7 +96,7 @@ class GeminiAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Gemini API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError(f"Gemini API failed: Generic Error") from e
+            raise ProviderError("Gemini API failed: Generic Error") from e
 
 
 class GroqAdapter(ProviderAdapter):
@@ -138,7 +138,7 @@ class GroqAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Groq API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError(f"Groq API failed: Generic Error") from e
+            raise ProviderError("Groq API failed: Generic Error") from e
 
 
 class HuggingFaceAdapter(ProviderAdapter):
@@ -182,4 +182,4 @@ class HuggingFaceAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Hugging Face API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError(f"Hugging Face API failed: Generic Error") from e
+            raise ProviderError("Hugging Face API failed: Generic Error") from e

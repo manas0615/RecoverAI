@@ -1,27 +1,23 @@
 # Package 10: LLM Gateway Implementation Report
 
 ## Overview
-Package 10 introduces the ConcreteLLMGateway which implements the provider-agnostic LLMGateway boundary defined in Package 06. It ensures P06 operates completely insulated from specific LLM models, provider APIs, and HTTP transport layers.
+Package 10 implements the provider-agnostic LLMGateway boundary defined in Package 06.
 
-## Core Implementation Details
+## Provider Configurations
+- **Gemini**: gemini-2.5-pro (Provides Structured Outputs via responseSchema)
+- **Groq**: llama3-70b-8192 (Provides JSON Object Mode)
+- **Hugging Face**: meta-llama/Meta-Llama-3-70B-Instruct (Provides JSON Object Mode)
 
-### 1. Provider-Neutral Architecture
-The engine (
-ecoverai/llm_gateway/engine.py) orchestrates a fallback chain of providers via the ProviderAdapter Protocol. Models/providers supported:
-- **Gemini** (Primary for complex reasoning)
-- **Groq** (Low-latency/fallback)
-- **Hugging Face** (Alternate provider)
+## Structured Output Guarantees
+Only Gemini currently supports strictly enforced JSON Schema Structured Outputs natively at the provider API level via 
+esponseSchema.
+Groq and Hugging Face are configured using {"type": "json_object"} which guarantees a JSON object, but does NOT enforce the schema.
+Regardless of provider guarantees, the application enforces absolute schema safety through rigorous **Pydantic validation** on all responses. Raw provider text never reaches P06 as a domain object.
 
-### 2. Structured Output & Safety
-- **Schema Validation**: Uses Pydantic to emit explicit JSON Schemas to the providers, then rigorously validates the JSON payload (CauseAssessmentModel, InterventionCandidateModel).
-- **Domain Translation**: Validated Pydantic models are mapped to the strict dataclass types required by P06 (e.g., CauseAssessment, InterventionCandidate). 
-- **Invalid Output Handling**: If an LLM hallucinates an invalid enum, negative probability, or unparseable JSON, the engine catches it and moves to the next fallback provider.
+## Fallback Behavior
+- Configuration/Authentication Errors (401, 403, missing keys) raise ConfigurationError and **do not** trigger fallback, stopping unbounded retries and surfacing immediately.
+- Network Timeouts, Rate Limits (429), and Validation Errors (malformed JSON or Pydantic schema violations) are treated as transient and gracefully cascade to the next provider.
 
-### 3. Fallback and Routing
-The engine attempts providers in the exact order configured. If all providers fail (or emit persistently malformed outputs), it raises GatewayError. P06 catches this and safely routes to deterministic fallback reasoning, guaranteeing that an LLM failure never produces unsafe execution outcomes.
-
-### 4. Configuration Security
-No API keys or secrets are logged or hardcoded. The configuration strictly uses environment variables loaded into GatewayConfig.
-
-### 5. Evidence Referencing
-LLMs emit source_id keys in their JSON response, which the gateway safely correlates against the known RevenueEvent instances passed from the application, synthesizing accurate and safe EvidenceReference objects.
+## Security Guarantees
+- API keys are injected via headers (e.g. x-goog-api-key), **never** in URL query strings.
+- Exception strings are explicitly sanitized (e.g., Gemini API failed: Generic Error) preventing upstream URLs, headers, or keys from leaking into application logs or domain error objects.
