@@ -355,3 +355,94 @@ def test_terminal_case_behavior(connection, engine, repos):
     # Reconciler should ignore closed cases
     engine.reconcile_case(case, datetime.now(UTC))
     # It just returns without error
+
+
+def test_duplicate_evidence_handled_deterministically(connection, engine, repos):
+    action_repo, case_repo, event_repo, vr_repo = repos
+    case = setup_case_and_merchant(connection, event_repo, case_repo)
+
+    action = RecoveryAction(
+        action_id=RecoveryActionId("a1"),
+        case_id=case.case_id,
+        action_type=ActionType.CREATE_PAYMENT_LINK,
+        status=ActionStatus.VERIFICATION_PENDING,
+        external_reference="plink_123",
+        requested_at=datetime.now(UTC),
+        attempt_number=1,
+    )
+    action_repo.save(action)
+
+    event = RevenueEvent(
+        event_id=RevenueEventId("evt1"),
+        event_type=RevenueEventType.PAYMENT_LINK_PAID,
+        source=EventSource(EventSourceType.RAZORPAY_WEBHOOK, "wh1"),
+        merchant_id=case.merchant_id,
+        occurred_at=datetime.now(UTC),
+        received_at=datetime.now(UTC),
+        amount=Money(1000, CurrencyCode.INR),
+        external_reference="plink_123",
+    )
+    event_repo.save(event)
+
+    # Reconcile first time
+    engine.reconcile_case(case, datetime.now(UTC))
+    assert case.workflow_state == CaseWorkflowState.CLOSED
+    assert action_repo.get(action.action_id).status == ActionStatus.VERIFIED_SUCCESS
+
+    # Attempt second time with the exact same case and state
+    engine.reconcile_case(case, datetime.now(UTC))
+
+    # Assert no exceptions, and state remains the same (idempotent)
+    updated_action = action_repo.get(action.action_id)
+    assert updated_action.status == ActionStatus.VERIFIED_SUCCESS
+    updated_case = case_repo.get(case.case_id)
+    assert updated_case.workflow_state == CaseWorkflowState.CLOSED
+
+
+def test_conflicting_evidence_success_overrides_failure(connection, engine, repos):
+    action_repo, case_repo, event_repo, vr_repo = repos
+    case = setup_case_and_merchant(connection, event_repo, case_repo)
+
+    action = RecoveryAction(
+        action_id=RecoveryActionId("a1"),
+        case_id=case.case_id,
+        action_type=ActionType.CREATE_PAYMENT_LINK,
+        status=ActionStatus.VERIFICATION_PENDING,
+        external_reference="plink_123",
+        requested_at=datetime.now(UTC),
+        attempt_number=1,
+    )
+    action_repo.save(action)
+
+    # Insert a failure event
+    event_fail = RevenueEvent(
+        event_id=RevenueEventId("evt_fail"),
+        event_type=RevenueEventType.PAYMENT_FAILED,
+        source=EventSource(EventSourceType.RAZORPAY_WEBHOOK, "wh1"),
+        merchant_id=case.merchant_id,
+        occurred_at=datetime.now(UTC),
+        received_at=datetime.now(UTC),
+        external_reference="plink_123",
+    )
+    event_repo.save(event_fail)
+
+    # Insert a success event
+    event_success = RevenueEvent(
+        event_id=RevenueEventId("evt_success"),
+        event_type=RevenueEventType.PAYMENT_LINK_PAID,
+        source=EventSource(EventSourceType.RAZORPAY_WEBHOOK, "wh2"),
+        merchant_id=case.merchant_id,
+        occurred_at=datetime.now(UTC),
+        received_at=datetime.now(UTC),
+        amount=Money(1000, CurrencyCode.INR),
+        external_reference="plink_123",
+    )
+    event_repo.save(event_success)
+
+    # Reconcile should find success
+    engine.reconcile_case(case, datetime.now(UTC))
+
+    updated_action = action_repo.get(action.action_id)
+    assert updated_action.status == ActionStatus.VERIFIED_SUCCESS
+    updated_case = case_repo.get(case.case_id)
+    assert updated_case.workflow_state == CaseWorkflowState.CLOSED
