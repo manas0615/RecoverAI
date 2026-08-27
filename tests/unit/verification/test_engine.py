@@ -41,7 +41,7 @@ def tm():
     yield manager
     try:
         os.remove(path)
-    except:
+    except OSError:
         pass
 
 
@@ -102,7 +102,7 @@ def setup_case_and_merchant(connection, event_repo, case_repo):
 
 
 def test_execution_unknown_no_events_remains_unknown(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -127,7 +127,7 @@ def test_execution_unknown_no_events_remains_unknown(connection, engine, repos):
 def test_verified_failure_when_provider_rejects_synchronously(
     connection, engine, repos
 ):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -151,7 +151,7 @@ def test_verified_failure_when_provider_rejects_synchronously(
 
 
 def test_verified_success_when_payment_link_paid(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -189,7 +189,7 @@ def test_verified_success_when_payment_link_paid(connection, engine, repos):
 
 
 def test_verified_success_from_execution_unknown(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -225,7 +225,7 @@ def test_verified_success_from_execution_unknown(connection, engine, repos):
 
 
 def test_amount_mismatch_fails_safely(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -258,7 +258,7 @@ def test_amount_mismatch_fails_safely(connection, engine, repos):
 
 
 def test_currency_mismatch_fails_safely(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -291,7 +291,7 @@ def test_currency_mismatch_fails_safely(connection, engine, repos):
 
 
 def test_provider_reference_mismatch_remains_unknown(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -326,7 +326,7 @@ def test_provider_reference_mismatch_remains_unknown(connection, engine, repos):
 
 
 def test_unpaid_created_payment_link_remains_pending(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -347,7 +347,7 @@ def test_unpaid_created_payment_link_remains_pending(connection, engine, repos):
 
 
 def test_terminal_case_behavior(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    _action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
     case.close(RecoveryOutcomeValue.EXPIRED, datetime.now(UTC))
     case_repo.save(case)
@@ -358,7 +358,7 @@ def test_terminal_case_behavior(connection, engine, repos):
 
 
 def test_duplicate_evidence_handled_deterministically(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
@@ -400,7 +400,7 @@ def test_duplicate_evidence_handled_deterministically(connection, engine, repos)
 
 
 def test_conflicting_evidence_success_overrides_failure(connection, engine, repos):
-    action_repo, case_repo, event_repo, vr_repo = repos
+    action_repo, case_repo, event_repo, _vr_repo = repos
     case = setup_case_and_merchant(connection, event_repo, case_repo)
 
     action = RecoveryAction(
