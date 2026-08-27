@@ -23,4 +23,4 @@ def test_config_missing_credentials(monkeypatch):
     config = GatewayConfig.from_env()
     assert config.gemini_api_key is None
     # defaults
-    assert config.gemini_model == "gemini-2.5-pro"
+    assert config.gemini_model == "gemini-1.5-pro"

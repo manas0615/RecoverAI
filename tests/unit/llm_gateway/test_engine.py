@@ -2,20 +2,17 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
 from recoverai.domain.action import ActionType
-from recoverai.domain.assessment import AnalysisType
 from recoverai.domain.case import RecoveryCase, RevenueSource
-from recoverai.domain.identifiers import MerchantId, RecoveryCaseId, RevenueEventId
-from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
 from recoverai.domain.event import (
-    RevenueEvent,
-    RevenueEventType,
     EventSource,
     EventSourceType,
+    RevenueEvent,
+    RevenueEventType,
 )
-from recoverai.domain.evidence import EvidenceSourceType, Probability
+from recoverai.domain.identifiers import MerchantId, RecoveryCaseId, RevenueEventId
+from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
 from recoverai.intelligence.gateway import GatewayError
 from recoverai.llm_gateway.config import GatewayConfig
 from recoverai.llm_gateway.engine import ConcreteLLMGateway

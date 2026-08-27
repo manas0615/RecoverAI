@@ -4,6 +4,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from recoverai.domain.action import ActionType
 from recoverai.domain.assessment import AnalysisType, CauseAssessment
 from recoverai.domain.case import RecoveryCase
@@ -14,7 +16,14 @@ from recoverai.domain.plan import CandidateStatus, InterventionCandidate
 from recoverai.intelligence.gateway import GatewayError, LLMGateway
 
 from .config import GatewayConfig
-from .providers import GeminiAdapter, GroqAdapter, HuggingFaceAdapter, ProviderAdapter
+from .providers import (
+    ConfigurationError,
+    GeminiAdapter,
+    GroqAdapter,
+    HuggingFaceAdapter,
+    ProviderAdapter,
+    ProviderError,
+)
 from .schemas import CauseAssessmentModel, InterventionCandidateModel
 
 logger = logging.getLogger(__name__)
@@ -79,7 +88,17 @@ class ConcreteLLMGateway(LLMGateway):
                     created_at=datetime.now(UTC),
                     evidence_references=evidence,
                 )
-            except Exception as e:
+            except ConfigurationError as e:
+                logger.error(f"Provider {provider.name} configuration failed: {e}")
+                raise
+            except (
+                json.JSONDecodeError,
+                ValidationError,
+                ProviderError,
+                TypeError,
+                ValueError,
+                KeyError,
+            ) as e:
                 logger.warning(f"Provider {provider.name} failed: {e}")
                 continue
 
@@ -132,7 +151,17 @@ class ConcreteLLMGateway(LLMGateway):
                         )
                     )
                 return candidates
-            except Exception as e:
+            except ConfigurationError as e:
+                logger.error(f"Provider {provider.name} configuration failed: {e}")
+                raise
+            except (
+                json.JSONDecodeError,
+                ValidationError,
+                ProviderError,
+                TypeError,
+                ValueError,
+                KeyError,
+            ) as e:
                 logger.warning(f"Provider {provider.name} failed: {e}")
                 continue
 

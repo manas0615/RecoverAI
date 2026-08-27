@@ -3,10 +3,16 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
+from recoverai.intelligence.gateway import GatewayError
+
 logger = logging.getLogger(__name__)
 
 
-class ProviderError(Exception):
+class ProviderError(GatewayError):
+    pass
+
+
+class ConfigurationError(ProviderError):
     pass
 
 
@@ -55,7 +61,7 @@ class GeminiAdapter(ProviderAdapter):
 
     def generate_json(self, prompt: str, schema: dict[str, Any]) -> str:
         if not self.api_key:
-            raise ProviderError("Missing Gemini API Key")
+            raise ConfigurationError("Missing Gemini API Key")
         # In a real implementation, we would make a urllib request to api.gemini.com
         # For the buildathon/MVP, real SDKs are banned/mocked in tests.
         # So we just raise unimplemented if this is actually hit in non-mock env without an intercept.
@@ -64,7 +70,7 @@ class GeminiAdapter(ProviderAdapter):
 
         # Minimal skeleton for HTTP to prove architecture
         req = urllib.request.Request(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
             data=json.dumps(
                 {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -74,12 +80,21 @@ class GeminiAdapter(ProviderAdapter):
                     },
                 }
             ).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.api_key,
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=10) as response:
                 result = json.loads(response.read().decode())
                 return result["candidates"][0]["content"]["parts"][0]["text"]
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise ConfigurationError(
+                    f"Gemini Authentication/Configuration failed: {e.code}"
+                ) from e
+            raise ProviderError(f"Gemini API failed: {e.code}") from e
         except Exception as e:
             raise ProviderError(f"Gemini API failed: {e}") from e
 
@@ -95,7 +110,7 @@ class GroqAdapter(ProviderAdapter):
 
     def generate_json(self, prompt: str, schema: dict[str, Any]) -> str:
         if not self.api_key:
-            raise ProviderError("Missing Groq API Key")
+            raise ConfigurationError("Missing Groq API Key")
         import urllib.request
 
         req = urllib.request.Request(
@@ -116,6 +131,12 @@ class GroqAdapter(ProviderAdapter):
             with urllib.request.urlopen(req, timeout=10) as response:
                 result = json.loads(response.read().decode())
                 return result["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise ConfigurationError(
+                    f"Groq Authentication/Configuration failed: {e.code}"
+                ) from e
+            raise ProviderError(f"Groq API failed: {e.code}") from e
         except Exception as e:
             raise ProviderError(f"Groq API failed: {e}") from e
 
@@ -131,7 +152,7 @@ class HuggingFaceAdapter(ProviderAdapter):
 
     def generate_json(self, prompt: str, schema: dict[str, Any]) -> str:
         if not self.api_key:
-            raise ProviderError("Missing Hugging Face API Key")
+            raise ConfigurationError("Missing Hugging Face API Key")
         import urllib.request
 
         req = urllib.request.Request(
@@ -154,5 +175,11 @@ class HuggingFaceAdapter(ProviderAdapter):
             with urllib.request.urlopen(req, timeout=10) as response:
                 result = json.loads(response.read().decode())
                 return result["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise ConfigurationError(
+                    f"Hugging Face Authentication/Configuration failed: {e.code}"
+                ) from e
+            raise ProviderError(f"Hugging Face API failed: {e.code}") from e
         except Exception as e:
             raise ProviderError(f"Hugging Face API failed: {e}") from e
