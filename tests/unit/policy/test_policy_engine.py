@@ -1,20 +1,18 @@
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 
 from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction
-from recoverai.domain.assessment import AnalysisType, CauseAssessment, RiskAssessment
+from recoverai.domain.assessment import AnalysisType, CauseAssessment
 from recoverai.domain.case import (
     CaseWorkflowState,
     RecoveryCase,
-    RecoveryCaseStatus,
     RevenueSource,
 )
 from recoverai.domain.evidence import Probability
 from recoverai.domain.identifiers import (
     MerchantId,
-    PolicyDecisionId,
     RecoveryActionId,
     RecoveryCaseId,
     RevenueEventId,
@@ -26,7 +24,6 @@ from recoverai.domain.plan import (
     InterventionPlan,
 )
 from recoverai.domain.policy import PolicyDecisionValue
-from recoverai.persistence.connection import TransactionManager
 from recoverai.persistence.repositories.policy import PolicyDecisionRepository
 from recoverai.policy.engine import PolicyContext, PolicyEngine
 
@@ -40,7 +37,7 @@ def policy_engine() -> PolicyEngine:
 def default_context() -> PolicyContext:
     return PolicyContext(
         policy_version="1.0",
-        current_time=datetime.now(timezone.utc),
+        current_time=datetime.now(UTC),
         max_attempts_per_case=3,
         high_value_threshold=RevenueAmount(Money(100000, CurrencyCode.INR)),
     )
@@ -53,7 +50,7 @@ def base_case() -> RecoveryCase:
         merchant_id=MerchantId("merch_1"),
         revenue_source=RevenueSource.PAYMENT,
         amount_at_risk=RevenueAmount(Money(5000, CurrencyCode.INR)),
-        opened_at=datetime.now(timezone.utc),
+        opened_at=datetime.now(UTC),
         source_event_ids={RevenueEventId("evt_1")},
         workflow_state=CaseWorkflowState.PLANNING,
     )
@@ -75,7 +72,7 @@ def build_plan(case_id: RecoveryCaseId, action_type: ActionType) -> Intervention
         selected_action_type=action_type,
         selection_reason="Test plan",
         selection_model_version="1.0",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -279,10 +276,8 @@ def test_policy_decision_persistence(
     decision = policy_engine.evaluate(default_context, base_case, plan, [])
 
     # The case needs to exist in the database for foreign key constraint
-    from recoverai.persistence.repositories.case import RecoveryCaseRepository
 
     with tm.transaction() as conn:
-        case_repo = RecoveryCaseRepository(conn)
         base_case.merchant_id = MerchantId("m_1")  # use existing merchant
         # Actually it's easier just to insert case directly for test
         conn.execute(

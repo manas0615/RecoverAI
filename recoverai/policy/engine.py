@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, List, Optional
 
 from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction
 from recoverai.domain.assessment import CauseAssessment
@@ -22,7 +22,7 @@ class PolicyContext:
     current_time: datetime
     # Merchant-configurable policies
     max_attempts_per_case: int = 3
-    high_value_threshold: Optional[RevenueAmount] = None
+    high_value_threshold: RevenueAmount | None = None
 
 
 class PolicyEngine:
@@ -39,8 +39,8 @@ class PolicyEngine:
         context: PolicyContext,
         case: RecoveryCase,
         plan: InterventionPlan,
-        action_history: List[RecoveryAction],
-        cause: Optional[CauseAssessment] = None,
+        action_history: list[RecoveryAction],
+        cause: CauseAssessment | None = None,
     ) -> PolicyDecision:
         """
         Evaluates the proposed action in the plan against policy rules.
@@ -110,20 +110,23 @@ class PolicyEngine:
         # ---------------------------------------------------------------------
         # 2. SYSTEMIC DEGRADATION (Contextual Safety Rule)
         # ---------------------------------------------------------------------
-        if cause and cause.category == "SYSTEMIC_DEGRADATION":
-            # Suppress active financial mutating actions during systemic degradation
-            if proposed_action_type not in {
+        if (
+            cause
+            and cause.category == "SYSTEMIC_DEGRADATION"
+            and proposed_action_type
+            not in {
                 ActionType.WAIT,
                 ActionType.SUPPRESS,
                 ActionType.ESCALATE,
-            }:
-                return self._build_decision(
-                    context,
-                    case,
-                    plan,
-                    PolicyDecisionValue.SUPPRESS,
-                    "SYSTEMIC_DEGRADATION",
-                )
+            }
+        ):
+            return self._build_decision(
+                context,
+                case,
+                plan,
+                PolicyDecisionValue.SUPPRESS,
+                "SYSTEMIC_DEGRADATION",
+            )
 
         # ---------------------------------------------------------------------
         # 3. MERCHANT CONFIGURABLE POLICY
@@ -161,20 +164,18 @@ class PolicyEngine:
             if (
                 case.amount_at_risk.amount_minor
                 > context.high_value_threshold.amount_minor
-            ):
-                # If proposed action isn't already an escalation/wait, escalate it
-                if proposed_action_type not in {
-                    ActionType.ESCALATE,
-                    ActionType.WAIT,
-                    ActionType.SUPPRESS,
-                }:
-                    return self._build_decision(
-                        context,
-                        case,
-                        plan,
-                        PolicyDecisionValue.ESCALATE,
-                        "HIGH_VALUE_ACTION",
-                    )
+            ) and proposed_action_type not in {
+                ActionType.ESCALATE,
+                ActionType.WAIT,
+                ActionType.SUPPRESS,
+            }:
+                return self._build_decision(
+                    context,
+                    case,
+                    plan,
+                    PolicyDecisionValue.ESCALATE,
+                    "HIGH_VALUE_ACTION",
+                )
 
         # ---------------------------------------------------------------------
         # 4. DEFAULT APPROVAL

@@ -1,9 +1,7 @@
 import json
-from typing import Optional
 
 from recoverai.domain.identifiers import PolicyDecisionId, RecoveryCaseId
 from recoverai.domain.policy import PolicyDecision, PolicyDecisionValue
-from recoverai.persistence.connection import TransactionManager
 
 
 class PolicyDecisionRepository:
@@ -40,7 +38,7 @@ class PolicyDecisionRepository:
             ),
         )
 
-    def get(self, policy_decision_id: PolicyDecisionId) -> Optional[PolicyDecision]:
+    def get(self, policy_decision_id: PolicyDecisionId) -> PolicyDecision | None:
         row = self._conn.execute(
             "SELECT * FROM policy_decisions WHERE policy_decision_id = ?",
             (policy_decision_id.value,),

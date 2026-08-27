@@ -1,1 +1,1 @@
-from .policy import PolicyDecisionRepository
+from .policy import PolicyDecisionRepository as PolicyDecisionRepository
