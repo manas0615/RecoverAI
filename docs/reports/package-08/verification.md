@@ -11,8 +11,8 @@
 - [x] **Money/Minor Limits**: Converts `INR` safely mapping values precisely, with `5000` asserting purely inside payloads without float risks.
 
 ## Provider Error & Classification Map
-- **Pre-send failures**: `FAILED_BEFORE_SEND` (no network interaction, auth missing).
-- **HTTP 4xx**: `PROVIDER_REJECTED` -> translates to `VERIFIED_FAILURE`. 
+- **Pre-send failures (Auth/Config)**: `FAILED_BEFORE_SEND` -> safely translates to `ESCALATED` to require human intervention and prevent unsafe automatic execution.
+- **HTTP 4xx / Provider Rejection**: `PROVIDER_REJECTED` -> translates to `VERIFICATION_PENDING`. P08 explicitly avoids usurping P09's role. It simply asserts the provider rejected it; P09 will perform the financial verification and translate this into `VERIFIED_FAILURE`.
 - **Timeouts / 5xx Network Errors**: `TIMEOUT_UNKNOWN` / `NETWORK_UNKNOWN` -> explicitly forces `EXECUTION_UNKNOWN` bypassing blind retries directly.
 *Note: P08 has explicitly chosen NOT to provide retry support.*
 
