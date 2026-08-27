@@ -49,7 +49,7 @@ def valid_action(valid_case: RecoveryCase) -> RecoveryAction:
         case_id=valid_case.case_id,
         action_type=ActionType.CREATE_PAYMENT_LINK,
         requested_at=datetime.now(UTC),
-        status=ActionStatus.VERIFICATION_PENDING,
+        status=ActionStatus.AUTHORIZED,
         attempt_number=1,
     )
 

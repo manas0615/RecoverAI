@@ -77,8 +77,12 @@ class RazorpayAdapter:
                 error_message="Action type is not CREATE_PAYMENT_LINK",
             )
 
-        # Truncate reference ID to 40 characters as per provider limits
-        reference_id = action.action_id.value[:40]
+        reference_id = action.action_id.value
+        if len(reference_id) > 40:
+            import hashlib
+
+            h = hashlib.sha256(reference_id.encode("utf-8")).hexdigest()[:8]
+            reference_id = reference_id[:31] + "_" + h
 
         payload = {
             "amount": case.amount_at_risk.amount_minor,

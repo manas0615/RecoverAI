@@ -144,6 +144,7 @@ def test_provider_rejected(
 ):
     # Simulate a 400 Bad Request
     from email.message import Message
+
     msg = Message()
     mock_urlopen.side_effect = urllib.error.HTTPError(
         "url", 400, "Bad Request", msg, io.BytesIO(b"")
@@ -165,11 +166,13 @@ def test_timeout_unknown(
     mock_urlopen.side_effect = TimeoutError("socket timeout")
     result = adapter.execute_payment_link(valid_action, base_case, valid_decision)
     assert result.result_type == RazorpayExecutionResultType.TIMEOUT_UNKNOWN
+    assert mock_urlopen.call_count == 1
 
     # Simulate URLError with timed out
     mock_urlopen.side_effect = urllib.error.URLError("timed out")
     result2 = adapter.execute_payment_link(valid_action, base_case, valid_decision)
     assert result2.result_type == RazorpayExecutionResultType.TIMEOUT_UNKNOWN
+    assert mock_urlopen.call_count == 2
 
 
 @patch("urllib.request.urlopen")
@@ -184,3 +187,48 @@ def test_network_unknown(
     mock_urlopen.side_effect = urllib.error.URLError("Connection refused")
     result = adapter.execute_payment_link(valid_action, base_case, valid_decision)
     assert result.result_type == RazorpayExecutionResultType.NETWORK_UNKNOWN
+
+
+@patch("urllib.request.urlopen")
+def test_long_reference_id_truncation(
+    mock_urlopen: MagicMock,
+    adapter: RazorpayAdapter,
+    valid_action: RecoveryAction,
+    base_case: RecoveryCase,
+    valid_decision: PolicyDecision,
+):
+    import json
+
+    long_id_a = "act_1234567890123456789012345678901234567890_A"
+    long_id_b = "act_1234567890123456789012345678901234567890_B"
+
+    from dataclasses import replace
+
+    action_a = replace(valid_action, action_id=RecoveryActionId(long_id_a))
+    action_b = replace(valid_action, action_id=RecoveryActionId(long_id_b))
+
+    # Needs matching policy decisions
+    decision_a = replace(valid_decision, action_id_or_proposal_id=long_id_a)
+    decision_b = replace(valid_decision, action_id_or_proposal_id=long_id_b)
+
+    mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+        b'{"id": "plink_1"}'
+    )
+
+    adapter.execute_payment_link(action_a, base_case, decision_a)
+    req_a = mock_urlopen.call_args_list[0][0][0]
+    ref_a = json.loads(req_a.data.decode("utf-8"))["reference_id"]
+
+    adapter.execute_payment_link(action_b, base_case, decision_b)
+    req_b = mock_urlopen.call_args_list[1][0][0]
+    ref_b = json.loads(req_b.data.decode("utf-8"))["reference_id"]
+
+    assert len(ref_a) == 40
+    assert len(ref_b) == 40
+    assert ref_a != ref_b
+
+    # Same action repeated produces same reference
+    adapter.execute_payment_link(action_a, base_case, decision_a)
+    req_a2 = mock_urlopen.call_args_list[2][0][0]
+    ref_a2 = json.loads(req_a2.data.decode("utf-8"))["reference_id"]
+    assert ref_a == ref_a2
