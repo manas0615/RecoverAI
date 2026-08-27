@@ -312,3 +312,114 @@ def test_policy_decision_persistence(
     assert saved.decision == PolicyDecisionValue.APPROVE
     assert saved.policy_version == "1.0"
     assert "POLICY_APPROVED" in saved.reason_codes
+
+
+def test_unknown_external_state_different_safe_action(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    plan = build_plan(base_case.case_id, ActionType.WAIT)
+    unknown_action = RecoveryAction(
+        action_id=RecoveryActionId("act_1"),
+        case_id=base_case.case_id,
+        action_type=ActionType.CREATE_PAYMENT_LINK,
+        requested_at=default_context.current_time,
+        status=ActionStatus.EXECUTION_UNKNOWN,
+    )
+    decision = policy_engine.evaluate(
+        default_context, base_case, plan, [unknown_action]
+    )
+    assert decision.decision == PolicyDecisionValue.APPROVE
+
+
+def test_duplicate_active_action_different_type(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    plan = build_plan(base_case.case_id, ActionType.SEND_PAYMENT_LINK_NOTIFICATION)
+    active_action = RecoveryAction(
+        action_id=RecoveryActionId("act_2"),
+        case_id=base_case.case_id,
+        action_type=ActionType.CREATE_PAYMENT_LINK,
+        requested_at=default_context.current_time,
+        status=ActionStatus.VERIFICATION_PENDING,
+    )
+    decision = policy_engine.evaluate(default_context, base_case, plan, [active_action])
+    assert decision.decision == PolicyDecisionValue.APPROVE
+
+
+def test_systemic_degradation_over_attempt_limit(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    plan = build_plan(base_case.case_id, ActionType.CREATE_PAYMENT_LINK)
+    cause = CauseAssessment(
+        cause_assessment_id="cause_1",
+        case_id=base_case.case_id,
+        category="SYSTEMIC_DEGRADATION",
+        confidence=Probability(0.9, "confidence"),
+        analysis_type=AnalysisType.RULE_BASED,
+        model_version="1.0",
+        created_at=default_context.current_time,
+    )
+    history = [
+        RecoveryAction(
+            action_id=RecoveryActionId(f"act_{i}"),
+            case_id=base_case.case_id,
+            action_type=ActionType.CREATE_PAYMENT_LINK,
+            requested_at=default_context.current_time,
+            status=ActionStatus.VERIFIED_FAILURE,
+        )
+        for i in range(3)
+    ]
+    decision = policy_engine.evaluate(
+        default_context, base_case, plan, history, cause=cause
+    )
+    assert decision.decision == PolicyDecisionValue.SUPPRESS
+    assert decision.reason_codes == ["SYSTEMIC_DEGRADATION"]
+
+
+def test_merchant_config_cannot_override_hard_safety(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    from dataclasses import replace
+
+    high_limit_context = replace(default_context, max_attempts_per_case=100)
+    plan = build_plan(base_case.case_id, ActionType.CREATE_PAYMENT_LINK)
+    unknown_action = RecoveryAction(
+        action_id=RecoveryActionId("act_1"),
+        case_id=base_case.case_id,
+        action_type=ActionType.CREATE_PAYMENT_LINK,
+        requested_at=default_context.current_time,
+        status=ActionStatus.EXECUTION_UNKNOWN,
+    )
+    decision = policy_engine.evaluate(
+        high_limit_context, base_case, plan, [unknown_action]
+    )
+    assert decision.decision == PolicyDecisionValue.DENY
+    assert "UNCERTAIN_EXTERNAL_STATE" in decision.reason_codes
+
+
+def test_caller_bypass_not_possible(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    from recoverai.domain.case import RecoveryOutcomeValue
+
+    base_case.close(
+        RecoveryOutcomeValue.RECOVERED,
+        default_context.current_time,
+        RevenueAmount(Money(5000, CurrencyCode.INR)),
+    )
+    plan = build_plan(base_case.case_id, ActionType.CREATE_PAYMENT_LINK)
+    decision = policy_engine.evaluate(default_context, base_case, plan, [])
+    assert decision.decision == PolicyDecisionValue.DENY
+
+
+def test_policy_version_snapshot(
+    policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
+):
+    plan = build_plan(base_case.case_id, ActionType.WAIT)
+    decision1 = policy_engine.evaluate(default_context, base_case, plan, [])
+    assert decision1.policy_version == "1.0"
+    from dataclasses import replace
+
+    new_context = replace(default_context, policy_version="2.0")
+    decision2 = policy_engine.evaluate(new_context, base_case, plan, [])
+    assert decision2.policy_version == "2.0"
