@@ -59,6 +59,12 @@ class RazorpayAdapter:
                 error_message="Test mode is required for execution",
             )
 
+        if not decision:
+            return RazorpayExecutionResult(
+                result_type=RazorpayExecutionResultType.FAILED_BEFORE_SEND,
+                error_message="Missing PolicyDecision",
+            )
+
         if decision.decision != PolicyDecisionValue.APPROVE:
             return RazorpayExecutionResult(
                 result_type=RazorpayExecutionResultType.FAILED_BEFORE_SEND,

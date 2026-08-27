@@ -93,6 +93,23 @@ def test_authorization_guard(
     result = adapter.execute_payment_link(valid_action, base_case, deny_decision)
     assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
 
+    # Test SUPPRESS
+    suppress_decision = replace(valid_decision, decision=PolicyDecisionValue.SUPPRESS)
+    result = adapter.execute_payment_link(valid_action, base_case, suppress_decision)
+    assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
+
+    # Test ESCALATE
+    escalate_decision = replace(valid_decision, decision=PolicyDecisionValue.ESCALATE)
+    result = adapter.execute_payment_link(valid_action, base_case, escalate_decision)
+    assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
+
+    # Test REVALIDATE
+    revalidate_decision = replace(
+        valid_decision, decision=PolicyDecisionValue.REVALIDATE
+    )
+    result = adapter.execute_payment_link(valid_action, base_case, revalidate_decision)
+    assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
+
     # Test Case Mismatch
     mismatch_decision = replace(valid_decision, case_id=RecoveryCaseId("case_2"))
     result = adapter.execute_payment_link(valid_action, base_case, mismatch_decision)
@@ -101,6 +118,11 @@ def test_authorization_guard(
     # Test Action Mismatch
     mismatch_action = replace(valid_action, action_type=ActionType.ESCALATE)
     result = adapter.execute_payment_link(mismatch_action, base_case, valid_decision)
+    assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
+
+    # Test Missing Decision
+    # type checker normally prevents this, but testing runtime guard
+    result = adapter.execute_payment_link(valid_action, base_case, None)  # type: ignore
     assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
 
 

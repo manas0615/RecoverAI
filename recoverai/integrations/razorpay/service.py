@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from recoverai.domain.action import ActionStatus, RecoveryAction
 from recoverai.domain.case import RecoveryCase
@@ -21,7 +21,7 @@ class RazorpayExecutionService:
     def execute_and_record(
         self, action: RecoveryAction, case: RecoveryCase, decision: PolicyDecision
     ) -> RazorpayExecutionResult:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # We must enforce domain constraints for execution boundary.
         # Ensure it has been AUTHORIZED. Usually this is checked before passing to adapter.
@@ -35,7 +35,7 @@ class RazorpayExecutionService:
         if result.provider_reference:
             action.external_reference = result.provider_reference
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if result.result_type == RazorpayExecutionResultType.SUCCESSFUL_REQUEST:
             action.record_verification(ActionStatus.VERIFICATION_PENDING, timestamp=now)
@@ -45,12 +45,16 @@ class RazorpayExecutionService:
         ):
             action.failure_reason = result.error_message
             action.record_verification(ActionStatus.EXECUTION_UNKNOWN, timestamp=now)
-        elif result.result_type in (
-            RazorpayExecutionResultType.FAILED_BEFORE_SEND,
-            RazorpayExecutionResultType.PROVIDER_REJECTED,
-        ):
+        elif result.result_type == RazorpayExecutionResultType.PROVIDER_REJECTED:
             action.failure_reason = result.error_message
-            action.record_verification(ActionStatus.VERIFIED_FAILURE, timestamp=now)
+            # P08 execution completed (albeit rejected).
+            # We transition to VERIFICATION_PENDING and leave financial verification to P09.
+            action.record_verification(ActionStatus.VERIFICATION_PENDING, timestamp=now)
+        elif result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND:
+            action.failure_reason = result.error_message
+            # Failed before provider transport (e.g. auth/config safety gate).
+            # From EXECUTING, we must ESCALATE for human intervention.
+            action.record_verification(ActionStatus.ESCALATED, timestamp=now)
 
         # 4. Persist
         self.action_repo.save(action)

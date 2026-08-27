@@ -158,6 +158,36 @@ def test_service_provider_rejected(
 
         saved_action = action_repo.get(valid_action.action_id)
         assert saved_action is not None
-        assert saved_action.status == ActionStatus.VERIFIED_FAILURE
+        assert saved_action.status == ActionStatus.VERIFICATION_PENDING
         assert saved_action.failure_reason == "HTTP 400"
-        assert saved_action.completed_at is not None
+
+
+def test_service_failed_before_send(
+    tm: TransactionManager,
+    adapter: MagicMock,
+    valid_action: RecoveryAction,
+    valid_case: RecoveryCase,
+    valid_decision: PolicyDecision,
+):
+    adapter.execute_payment_link.return_value = RazorpayExecutionResult(
+        result_type=RazorpayExecutionResultType.FAILED_BEFORE_SEND,
+        error_message="Test mode error",
+    )
+
+    with tm.transaction() as conn:
+        conn.execute(
+            "INSERT INTO revenue_events (event_id, event_type, source_type, merchant_id, occurred_at, received_at, metadata, schema_version) VALUES ('evt_1', 'PAYMENT_FAILED', 'WEBHOOK', 'm_1', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00', '{}', '1.0')"
+        )
+        case_repo = RecoveryCaseRepository(conn)
+        case_repo.save(valid_case)
+
+        action_repo = RecoveryActionRepository(conn)
+        service = RazorpayExecutionService(adapter, action_repo)
+        result = service.execute_and_record(valid_action, valid_case, valid_decision)
+
+        assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
+
+        saved_action = action_repo.get(valid_action.action_id)
+        assert saved_action is not None
+        assert saved_action.status == ActionStatus.ESCALATED
+        assert saved_action.failure_reason == "Test mode error"
