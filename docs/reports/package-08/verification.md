@@ -2,25 +2,25 @@
 
 ## Verification Checklist
 
-- [x] **Adapter Boundary**: Abstracted behind `RazorpayAdapter` and `RazorpayExecutionService` returning explicitly typed enums.
-- [x] **Authentication**: Uses HTTP Basic Auth securely sourced from config (`RazorpayConfig`), verified via tests.
-- [x] **Request Model**: Maps strictly to Razorpay Standard Payment Link schema (requires minor units, correct string lengths). Built via built-in `urllib.request`.
-- [x] **Idempotency Strategy**: Uses the max-40-character unique `reference_id` requirement mapped from our `ActionId`. Does not guess non-existent HTTP headers.
-- [x] **Authorization**: Enforces `.decision == PolicyDecisionValue.APPROVE`, matching CaseID, and action type `CREATE_PAYMENT_LINK`. Tested rigorously.
-- [x] **Execution State**: Distinguishes `SUCCESSFUL_REQUEST`, `FAILED_BEFORE_SEND`, `PROVIDER_REJECTED`, `TIMEOUT_UNKNOWN`, `NETWORK_UNKNOWN`.
-- [x] **No Blind Retries**: `TIMEOUT_UNKNOWN` and `NETWORK_UNKNOWN` are bubbled up to the P03 persistence layer via `RazorpayExecutionService` mapping to `ActionStatus.EXECUTION_UNKNOWN`.
-- [x] **Test Mode Safety**: `RazorpayConfig.mode` defaults to "test". Adapter fails-closed securely if mode is anything else.
-- [x] **Persistence**: `RazorpayExecutionService` persists the provider `plink_xxx` reference in `RecoveryAction.external_reference`.
+- [x] **Adapter Boundary**: Abstracted securely behind `RazorpayAdapter` and natively uses `urllib.request`.
+- [x] **P05/P08 Boundary Preserved**: State is formally transitioned via `action.begin_execution` and `action.record_verification` ensuring P05 Domain limits dictate workflow boundaries rather than raw P08 state machine derivations.
+- [x] **Authentication/Authorization**: Tested rigor across mismatching Case IDs, missing Decisions, `DENY` outcomes, and strictly bound HTTP Basic Auth parameters via configuration securely. 
+- [x] **Correlation & Terminology Corrected**: Does NOT invent Razorpay HTTP idempotency rules. Limits duplicate attempts leveraging deterministic 40-character hashed `reference_id` configurations, leaving broader duplicate tracking to internal P07/P05 execution records securely.
+- [x] **No Blind Retries (Timeout Validation)**: Tested execution timeout returning `TIMEOUT_UNKNOWN` and triggering `ActionStatus.EXECUTION_UNKNOWN`. This ensures only ONE transport execution per invocation.
+- [x] **Test Mode Limit Guard**: Implementation immediately fails-closed unless configuration matches `RAZORPAY_MODE=test`, preserving provider limits (30 actions maximum per business profile).
+- [x] **Money/Minor Limits**: Converts `INR` safely mapping values precisely, with `5000` asserting purely inside payloads without float risks.
 
-## Lint & Type Safety
+## Provider Error & Classification Map
+- **Pre-send failures**: `FAILED_BEFORE_SEND` (no network interaction, auth missing).
+- **HTTP 4xx**: `PROVIDER_REJECTED` -> translates to `VERIFIED_FAILURE`. 
+- **Timeouts / 5xx Network Errors**: `TIMEOUT_UNKNOWN` / `NETWORK_UNKNOWN` -> explicitly forces `EXECUTION_UNKNOWN` bypassing blind retries directly.
+*Note: P08 has explicitly chosen NOT to provide retry support.*
 
-- Passed `ruff check .`
-- Passed `mypy recoverai/ tests/`
+## Lint & Type Safety Results
 
-## Test Results
+- Exact `pytest tests/unit/integrations/` tests: 9 passed, 0 failed.
+- Exact `ruff check .` result: All checks passed.
+- Exact `ruff format --check .` result: Files left unchanged.
+- Exact `mypy recoverai/ tests/` result: Success (no issues found in 87 source files).
 
-`pytest tests/unit/integrations/` passed entirely:
-
-- Adapter constraints (Test Mode, Authorization) securely reject executions.
-- `urllib.request` failures correctly map to execution outcome enums.
-- Execution service orchestrates state updates with `RecoveryActionRepository` correctly in a transaction.
+Tests specifically cover timeouts, `reference_id` hashing constraints, non-2xx provider response errors, success mapping logic, and strict policy authorization boundaries.
