@@ -74,6 +74,22 @@ class RevenueEventRepository:
             return None
         return self._map_row(row)
 
+    def get_by_external_reference(self, external_reference: str) -> list[RevenueEvent]:
+        cur = self.conn.execute(
+            "SELECT * FROM revenue_events WHERE external_reference = ?",
+            (external_reference,),
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
+    def get_by_merchant_and_type(
+        self, merchant_id: MerchantId, event_type: RevenueEventType
+    ) -> list[RevenueEvent]:
+        cur = self.conn.execute(
+            "SELECT * FROM revenue_events WHERE merchant_id = ? AND event_type = ?",
+            (merchant_id.value, event_type.value),
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
     def _map_row(self, row: dict) -> RevenueEvent:
         return RevenueEvent(
             event_id=RevenueEventId(row["event_id"]),

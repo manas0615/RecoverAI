@@ -113,6 +113,19 @@ class RecoveryActionRepository:
             return None
         return self._map_row(row)
 
+    def get_pending_verification(self, case_id: RecoveryCaseId) -> list[RecoveryAction]:
+        cur = self.conn.execute(
+            "SELECT * FROM recovery_actions WHERE case_id = ? AND status IN ('VERIFICATION_PENDING', 'EXECUTION_UNKNOWN')",
+            (case_id.value,),
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
+    def get_by_case(self, case_id: RecoveryCaseId) -> list[RecoveryAction]:
+        cur = self.conn.execute(
+            "SELECT * FROM recovery_actions WHERE case_id = ?", (case_id.value,)
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
     def _map_row(self, row: dict) -> RecoveryAction:
         return RecoveryAction(
             action_id=RecoveryActionId(row["action_id"]),
