@@ -3,7 +3,7 @@
 **Status:** IMPLEMENTED, EXTENDED, and VERIFIED.
 
 ## Summary
-The frontend was rebuilt and extended to match the "Warm Premium" design direction, strictly mapping data to P15 endpoints without fabricating missing metrics or executing fake actions. The UI intelligently handles all complex state derivations (WAITING_APPROVAL, ESCALATED, UNKNOWN, VERIFIED_SUCCESS) through parsed audit events.
+The frontend was rebuilt and extended to match the "Warm Premium" design direction, strictly mapping data to P15 endpoints without fabricating missing metrics or executing fake actions. The UI intelligently handles all complex state derivations (WAITING_APPROVAL, ESCALATED, UNKNOWN, VERIFIED_SUCCESS) through parsed audit events. Following a forensic audit, a minor navigation bug was surgically corrected to ensure all implemented routes (`/activity`, `/system`) are reachable without polluting the original, clean design.
 
 ## Artifacts
 - `docs/reports/package-16/implementation_plan.md` (Approved specification)

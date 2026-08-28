@@ -35,3 +35,5 @@
    - The hero metric renders individual `MoneyValue` components per currency if multiple exist.
 16. **No API Contract Invention**: VERIFIED
    - Strictly uses the 6 endpoints defined in P15.
+17. **Navigation Routes Reachable**: VERIFIED
+   - `/activity` and `/system` are fully clickable in the sidebar, loading correctly without fabricating backend data.

@@ -4,7 +4,7 @@
 **Package:** P16 Frontend / Stitch UI
 
 ## 1. Summary
-The P16 frontend package was successfully implemented according to the final approved micro-revision plan. The legacy dark-navy styling was completely removed and replaced with a warm, premium, editorial UI powered by React, TypeScript, and TailwindCSS v4. It was further extended to support the complete recovery lifecycle and fully responsive multi-device layouts.
+The P16 frontend package was successfully implemented according to the final approved micro-revision plan. The legacy dark-navy styling was completely removed and replaced with a warm, premium, editorial UI powered by React, TypeScript, and TailwindCSS v4. It was further extended to support the complete recovery lifecycle. A final surgical correction ensured all implemented routes (`/activity`, `/system`) are reachable via the main navigation sidebar.
 
 ## 2. Stitch MCP Integration (Continuation)
 - The **existing** Stitch project (`1051231661397186252`) and "Warm Premium" design system (`assets/15122457507156157995`) were continued. NO new parallel projects were created.
@@ -27,3 +27,6 @@ The P16 frontend package was successfully implemented according to the final app
 - A full frontend test suite (Vitest + React Testing Library) provides coverage for all major states.
 - The core user journey (Dashboard → Case Detail) is verified via integration tests.
 - Backend invariants (154 tests, mypy, ruff) remain fully green. No backend changes were made.
+
+## 6. Final Surgical Correction
+Following a forensic audit, a minor navigation bug was resolved. The `disabled: true` property was removed from the `Activity` and `System Health` navigation links in the `AppShell` component, making these existing components accessible to users without altering the canonical Warm Premium design or creating fake backend data.

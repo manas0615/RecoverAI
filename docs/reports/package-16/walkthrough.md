@@ -22,5 +22,9 @@ Clicking a case navigates to `/cases/:id`. This is the product-defining experien
 - **Workflow Handoffs:** For states like `WAITING_APPROVAL` or `ESCALATED`, a prominent "Human Intervention Required" notice explains that approval and execution orchestration are managed externally via n8n.
 - **Unknown States:** If an execution state times out, a stark warning clearly informs the analyst that the external provider's state is `UNKNOWN` and automatic execution is paused.
 
-### 4. Full Audit Transparency
-At the bottom of the Case Detail page, the full Audit Timeline is displayed. Every event is shown with its actor (System, ML Model, Policy Engine), timestamp, and relevant state transitions. A global `/activity` log serves as a polished "Coming Soon" placeholder for a future centralized audit stream (slated for Package 18).
+### 4. Full Audit Transparency & System Health
+At the bottom of the Case Detail page, the full Audit Timeline is displayed. Every event is shown with its actor (System, ML Model, Policy Engine), timestamp, and relevant state transitions. 
+
+By utilizing the navigation sidebar, the user can now also reach:
+- **System Health:** A dashboard reflecting real-time connectivity status against the backend (powered purely by `GET /api/health`).
+- **Activity Log:** A global polished "Coming Soon" placeholder that visually prepares the application for a future centralized audit stream (slated for Package 18), maintaining transparency without fabricating data.
