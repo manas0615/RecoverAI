@@ -13,3 +13,9 @@ The implementation flows through the layers precisely:
 3. **P05 State Machine**: `RecoveryStateMachine` orchestrates this by accepting semantic business commands. It validates the intent against allowed transitions.
 4. **Transaction**: The engine opens a `TransactionManager.transaction()` block. Within the block, it fetches the case using `RecoveryCaseRepository.get`, validates the transition, mutates the domain state, and attempts a `save()`.
 5. **Optimistic Version Check**: If another process modified the row concurrently, the `save()` query's `rowcount` will return `0`. This raises a `StaleStateTransitionError` which immediately bubbles up, aborting and automatically rolling back the SQLite transaction cleanly.
+
+## Package 16: Frontend / Stitch UI
+- Initialized a React + Vite + TypeScript frontend.
+- Applied enterprise design systems via Stitch MCP (Dark-First, Deep Navy).
+- Created the Dashboard and Tri-Fold Case Detail components.
+- Integrated directly with the existing P15 Backend API over Vite Proxy.
