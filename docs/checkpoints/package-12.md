@@ -17,6 +17,8 @@
 ## Commits
 - Implementation Commit: 866908c530801fa70e637ea6c8c36092cf66ce6a
 - Documentation Commit: 45094df7f0adb88564b9394da159a018bc83e9d9
+- Implementation Correction Commit: 7ba39319a8e0edf5d02612b05e32b5c20278c325
+- Documentation Correction Commit: 74e1a849b55c91cf1b5ee04e1bef42cb4854c9b4
 
 ## Verification
 - Docker is localized only to n8n.
