@@ -6,13 +6,21 @@
 The RecoverAI frontend utilizes a "Warm Premium" visual direction designed to communicate calm, clarity, and financial trust. This replaces the legacy dark-navy "SOC dashboard" aesthetic with an editorial layout featuring reduced card density and generous whitespace.
 
 ## 2. Stitch MCP Design References
-The following high-fidelity design references were generated via Stitch MCP to establish the structural composition and visual rules:
+The following high-fidelity design references were generated via Stitch MCP to establish the structural composition and visual rules.
+
+**The single canonical Stitch project used for P16:**
 - **Project ID:** `1051231661397186252` (Title: RecoverAI v2 — Warm Premium)
 - **Design System Asset:** `assets/15122457507156157995`
-- **Screens:**
-  - Case Detail (Desktop)
-  - Dashboard (Desktop)
-  - Dashboard (Mobile)
+
+**Generated Screens:**
+- Case Detail (Desktop)
+- Dashboard (Desktop)
+- Dashboard (Mobile)
+- Recovery Cases List (Desktop)
+- Recovery Cases List (Mobile)
+- Case Detail — WAITING_APPROVAL / ESCALATED
+- Case Detail — UNKNOWN
+- Case Detail — VERIFIED_SUCCESS
 
 *Note: The generated Stitch screens used neutral placeholders (e.g. `₹—`) to separate structural design from live production data.*
 
@@ -20,7 +28,8 @@ The following high-fidelity design references were generated via Stitch MCP to e
 1. **Reduced Density:** Fewer persistent borders, selective use of elevated surfaces.
 2. **Editorial Hierarchy:** Typography establishes order of importance.
 3. **Data Provenance:** The UI never fabricates missing metrics; it degrades gracefully.
-4. **Verified Success:** Green styling is strictly reserved for verified revenue recovery.
+4. **Verified Success:** Green styling is strictly reserved for verified revenue recovery. All UNKNOWN or ESCALATED states utilize warning/amber treatments.
+5. **Touch-First Accessibility:** All interactive elements on mobile adhere to a 44x44px minimum tap target.
 
 ## 4. Design Tokens (Tailwind v4 @theme)
 
