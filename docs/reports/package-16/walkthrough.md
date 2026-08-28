@@ -27,4 +27,4 @@ At the bottom of the Case Detail page, the full Audit Timeline is displayed. Eve
 
 By utilizing the navigation sidebar, the user can now also reach:
 - **System Health:** A dashboard reflecting real-time connectivity status against the backend (powered purely by `GET /api/health`).
-- **Activity Log:** A global polished "Coming Soon" placeholder that visually prepares the application for a future centralized audit stream (slated for Package 18), maintaining transparency without fabricating data.
+- **Activity Log:** A global polished "Coming Soon" placeholder that visually prepares the application for a future centralized audit stream (to be introduced in a future package), maintaining transparency without fabricating data.

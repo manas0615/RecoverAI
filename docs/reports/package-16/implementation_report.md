@@ -29,4 +29,4 @@ The P16 frontend package was successfully implemented according to the final app
 - Backend invariants (154 tests, mypy, ruff) remain fully green. No backend changes were made.
 
 ## 6. Final Surgical Correction
-Following a forensic audit, a minor navigation bug was resolved. The `disabled: true` property was removed from the `Activity` and `System Health` navigation links in the `AppShell` component, making these existing components accessible to users without altering the canonical Warm Premium design or creating fake backend data.
+Following a forensic audit, a minor navigation bug was resolved. The `disabled: true` property was removed from the `Activity` and `System Health` navigation links in the `AppShell` component, making these existing components accessible to users without altering the canonical Warm Premium design or creating fake backend data. A final surgical correction also updated the wording on the Activity and System Health pages to more accurately reflect their respective scopes (future global audit aggregation and backend readiness) rather than over-promising P18 or comprehensive infrastructure metrics.

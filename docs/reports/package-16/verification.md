@@ -37,3 +37,6 @@
    - Strictly uses the 6 endpoints defined in P15.
 17. **Navigation Routes Reachable**: VERIFIED
    - `/activity` and `/system` are fully clickable in the sidebar, loading correctly without fabricating backend data.
+18. **Page Wording Corrections**: VERIFIED
+   - System Health accurately states "backend is reachable".
+   - Activity Log accurately states "introduced in a future package" without claiming P18.
