@@ -1,163 +1,237 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ChevronLeft, ShieldAlert, Cpu, GitPullRequest, CheckCircle2, Clock, Play } from 'lucide-react';
+import { useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Brain, Shield, Zap, AlertTriangle } from 'lucide-react';
+import { useCaseDetails } from '../hooks/useCases';
+import { ErrorState } from '../components/feedback/ErrorState';
+import { LoadingSkeleton } from '../components/feedback/LoadingSkeleton';
+import { MoneyValue } from '../components/financial/MoneyValue';
+import { StatusBadge } from '../components/status/StatusBadge';
+import { RecoveryJourney } from '../components/financial/RecoveryJourney';
+import { Timeline } from '../components/data-display/Timeline';
 
-interface CaseDetail {
-  case_id: string;
-  amount_minor: number;
-  currency: string;
-  status: string;
-  created_at: string;
-}
+export function CaseDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { data, loading, error, refetch } = useCaseDetails(id);
 
-export default function CaseDetail() {
-  const { id } = useParams();
-  const [data, setData] = useState<CaseDetail | null>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const derivedData = useMemo(() => {
+    if (!data?.timeline) return null;
+    
+    // Sort timeline newest first to find latest states
+    const events = [...data.timeline].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    // 1. Current workflow state
+    const stateChange = events.find(e => e.event_type === 'RECOVERY_STATE_CHANGED');
+    const currentState = stateChange?.new_state || data.caseData.status; // fallback to case status
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/recovery-cases/' + id).then(res => res.json()),
-      fetch('/api/recovery-cases/' + id + '/timeline').then(res => res.json())
-    ]).then(([caseData, timelineData]) => {
-      setData(caseData);
-      setTimeline(timelineData.events || []);
-      setLoading(false);
-    });
-  }, [id]);
+    // 2. AI Recommendation
+    const aiEvent = events.find(e => ['LLM_RECOMMENDATION_CREATED', 'INTERVENTION_PROPOSED', 'RISK_ASSESSMENT_CREATED'].includes(e.event_type));
+    
+    // 3. Policy Decision
+    const policyEvent = events.find(e => e.event_type === 'POLICY_DECISION_CREATED');
+    
+    // 4. Verification/Execution
+    const execEvent = events.find(e => e.event_type.startsWith('ACTION_'));
+    const verifyEvent = events.find(e => e.event_type.startsWith('VERIFICATION_'));
 
-  if (loading) return <div className="p-10 text-slate-400">Loading case details...</div>;
-  if (!data) return <div className="p-10 text-red-400">Case not found.</div>;
+    return {
+      currentState,
+      aiEvent,
+      policyEvent,
+      execEvent,
+      verifyEvent,
+      needsApproval: currentState === 'WAITING_APPROVAL'
+    };
+  }, [data]);
+
+  if (error) {
+    return <ErrorState message="Case not found or unable to load details." onRetry={refetch} />;
+  }
+
+  if (loading || !data || !derivedData) {
+    return (
+      <div className="space-y-8">
+        <LoadingSkeleton className="h-10 w-1/3" />
+        <LoadingSkeleton className="h-40 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <LoadingSkeleton className="h-64 w-full" />
+          <LoadingSkeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  const { caseData, timeline } = data;
+  const { currentState, aiEvent, policyEvent, verifyEvent, needsApproval } = derivedData;
 
   return (
-    <div className="p-6 md:p-10 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      <header className="flex items-center gap-4 border-b border-border pb-6">
-        <Link to="/" className="p-2 rounded-md bg-surface border border-border hover:bg-slate-800 transition-colors">
-          <ChevronLeft size={20} />
-        </Link>
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold font-mono tracking-tight">Case {data.case_id.split('_')[1] || data.case_id}</h1>
-            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              {data.status}
-            </span>
-          </div>
-          <p className="text-sm text-slate-400 mt-1">Created on {new Date(data.created_at).toLocaleString()}</p>
-        </div>
-      </header>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      {/* Top Header */}
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => navigate('/cases')}
+          className="p-2 -ml-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)] tracking-tight">
+          Case {caseData.case_id}
+        </h1>
+        <StatusBadge status={currentState} className="ml-auto" />
+      </div>
 
-      {/* Tri-Fold Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* 1. AI Intelligence */}
-        <div className="bg-surface/50 border border-border rounded-xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-border bg-slate-800/30 flex items-center gap-2">
-            <Cpu className="text-primary" size={18} />
-            <h2 className="font-semibold text-sm uppercase tracking-wider text-slate-300">AI Intelligence</h2>
-          </div>
-          <div className="p-6 flex-1 space-y-6">
-            <div>
-              <p className="text-sm text-slate-400 mb-1">Amount at Risk</p>
-              <p className="text-4xl font-bold font-mono text-white">${(data.amount_minor / 100).toFixed(2)}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/50">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase mb-2">Root Cause Analysis</h3>
-              <p className="text-sm text-slate-300">High confidence of 'Insufficient Funds'. Payment velocity has dropped 40% in last 2 billing cycles.</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-400 mb-2">Recommended Intervention</p>
-              <div className="inline-flex items-center gap-2 text-sm font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                <CheckCircle2 size={16} /> Create Payment Link
-              </div>
-            </div>
+      {/* Hero Section */}
+      <div className="flex flex-col items-center justify-center p-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-sm">
+        <p className="text-sm font-medium text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">Revenue at Risk</p>
+        <MoneyValue 
+          amountMinor={caseData.amount_minor} 
+          currency={caseData.currency} 
+          className="text-4xl md:text-5xl font-display font-bold text-[var(--color-text-primary)] tracking-tight" 
+        />
+        <div className="w-full mt-10">
+          <RecoveryJourney currentState={currentState} />
+        </div>
+      </div>
+
+      {/* Unknown State Warning */}
+      {currentState === 'UNKNOWN' && (
+        <div className="flex items-start gap-3 p-4 bg-[var(--color-warning-bg)] border border-[var(--color-warning)]/20 rounded-xl">
+          <AlertTriangle className="w-5 h-5 text-[var(--color-warning)] shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-bold text-[var(--color-warning)]">External execution state unknown</h4>
+            <p className="text-sm text-[var(--color-warning)]/80 mt-1">
+              RecoverAI cannot currently confirm whether the recovery action completed.
+              Automatic duplicate execution is blocked until state is verified.
+            </p>
           </div>
         </div>
+      )}
 
-        {/* 2. Policy Decision */}
-        <div className="bg-surface/50 border border-border rounded-xl overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-border bg-slate-800/30 flex items-center gap-2">
-            <ShieldAlert className="text-purple-400" size={18} />
-            <h2 className="font-semibold text-sm uppercase tracking-wider text-slate-300">Policy Decision</h2>
+      {/* Needs Approval / Handoff Warning */}
+      {needsApproval && (
+        <div className="flex flex-col p-6 bg-[var(--color-info-bg)] border border-[var(--color-info)]/20 rounded-xl">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-5 h-5 text-[var(--color-info)]" />
+            <h4 className="text-base font-bold text-[var(--color-info)]">Human Approval Required</h4>
           </div>
-          <div className="p-6 flex-1 space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 grid place-items-center shrink-0">
-                <CheckCircle2 size={18} />
+          
+          <p className="text-sm text-[var(--color-info)]/90 mb-4">
+            <strong>Workflow Handoff:</strong> Approval and execution orchestration is managed externally via n8n.
+          </p>
+          
+          <div className="bg-white/60 p-4 rounded-lg text-sm text-[var(--color-text-secondary)]">
+            <p><strong>Recommendation:</strong> {aiEvent?.metadata?.recommended_action || 'Review required'}</p>
+            <p className="mt-2"><strong>Policy Explanation:</strong> {policyEvent?.metadata?.decision_reason || 'Requires manual authorization.'}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column: Summary & AI */}
+        <div className="space-y-8">
+          <section className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+            <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] mb-4">Case Summary</h2>
+            <dl className="grid grid-cols-2 gap-y-4 text-sm">
+              <div>
+                <dt className="text-[var(--color-text-muted)]">Status</dt>
+                <dd className="font-medium text-[var(--color-text-primary)] mt-1">{caseData.status}</dd>
               </div>
               <div>
-                <h3 className="font-medium text-slate-200">Action Authorized</h3>
-                <p className="text-sm text-slate-400 mt-1">Intervention complies with merchant rules. Value is below $500 manual-review threshold.</p>
+                <dt className="text-[var(--color-text-muted)]">Created</dt>
+                <dd className="font-medium text-[var(--color-text-primary)] mt-1">
+                  {new Date(caseData.created_at).toLocaleDateString()}
+                </dd>
               </div>
-            </div>
-            <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/50 space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400">Rule: Max Retries</span>
-                <span className="text-emerald-400 font-medium">PASS</span>
+              <div>
+                <dt className="text-[var(--color-text-muted)]">Customer ID</dt>
+                <dd className="font-mono text-xs text-[var(--color-text-secondary)] mt-1">{caseData.customer_id}</dd>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400">Rule: Fraud Check</span>
-                <span className="text-emerald-400 font-medium">PASS</span>
+              <div>
+                <dt className="text-[var(--color-text-muted)]">Verifications</dt>
+                <dd className="font-medium text-[var(--color-text-primary)] mt-1">{caseData.verification_count}</dd>
               </div>
-            </div>
-          </div>
-        </div>
+            </dl>
+          </section>
 
-        {/* 3. Execution Hub */}
-        <div className="bg-surface/50 border border-primary/30 rounded-xl overflow-hidden flex flex-col relative shadow-[0_0_20px_rgba(0,122,255,0.1)]">
-          <div className="p-4 border-b border-primary/20 bg-primary/5 flex items-center gap-2">
-            <GitPullRequest className="text-primary" size={18} />
-            <h2 className="font-semibold text-sm uppercase tracking-wider text-primary">Execution Hub</h2>
-          </div>
-          <div className="p-6 flex-1 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="font-medium text-slate-200">Execution Status</h3>
-              <div className="flex items-center gap-3">
-                <div className="relative flex items-center justify-center">
-                  <div className="w-4 h-4 bg-primary rounded-full animate-ping absolute opacity-50" />
-                  <div className="w-3 h-3 bg-primary rounded-full relative" />
-                </div>
-                <span className="text-sm font-medium text-slate-300">Waiting for Trigger...</span>
-              </div>
+          <section className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2 mb-4">
+              <Brain className="w-5 h-5 text-[var(--color-info)]" />
+              <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)]">AI Recommendation</h2>
             </div>
             
-            <button className="mt-8 w-full py-3 px-4 bg-primary hover:bg-blue-600 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-colors border border-blue-400/50 shadow-lg shadow-primary/20">
-              <Play size={18} />
-              Execute Intervention
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Audit Timeline */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-border bg-slate-900/50 flex items-center gap-2">
-          <Clock size={18} className="text-slate-400" />
-          <h2 className="font-semibold text-sm uppercase tracking-wider text-slate-300">Audit Timeline</h2>
-        </div>
-        <div className="p-6">
-          {timeline.length === 0 ? (
-            <p className="text-slate-400 text-sm">No timeline events recorded.</p>
-          ) : (
-            <div className="space-y-6">
-              {timeline.map((event, i) => (
-                <div key={i} className="flex gap-4 relative">
-                  {i !== timeline.length - 1 && <div className="absolute top-6 bottom-[-24px] left-[11px] w-px bg-border" /> }
-                  <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-600 grid place-items-center shrink-0 z-10">
-                    <div className="w-2 h-2 rounded-full bg-slate-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-200">{event.event_type}</p>
-                    <p className="text-xs text-slate-500 mt-1">{new Date(event.timestamp).toLocaleString()}</p>
-                    {event.details && <pre className="mt-2 text-xs bg-slate-900/50 p-2 rounded text-slate-400 border border-slate-800/50">{JSON.stringify(event.details, null, 2)}</pre>}
-                  </div>
+            {aiEvent ? (
+              <div className="space-y-4">
+                <div className="p-3 bg-[var(--color-info-bg)] rounded-lg">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-info)]">Proposed Action</span>
+                  <p className="mt-1 font-mono text-sm text-[var(--color-text-primary)]">{aiEvent.metadata?.recommended_action || aiEvent.metadata?.intervention_type || 'Unknown'}</p>
                 </div>
-              ))}
+                {aiEvent.metadata?.reasoning && (
+                  <div>
+                    <span className="text-xs text-[var(--color-text-muted)]">Reasoning</span>
+                    <p className="text-sm text-[var(--color-text-secondary)] mt-1">{aiEvent.metadata.reasoning}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--color-text-muted)] italic">No AI recommendation event found in timeline.</p>
+            )}
+          </section>
+        </div>
+
+        {/* Right Column: Policy & Verification */}
+        <div className="space-y-8">
+          <section className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-[var(--color-primary)]" />
+              <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)]">Policy Decision</h2>
             </div>
-          )}
+            
+            {policyEvent ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={policyEvent.metadata?.decision || 'UNKNOWN'} />
+                </div>
+                {policyEvent.metadata?.reasons && Array.isArray(policyEvent.metadata.reasons) && (
+                  <div className="flex flex-wrap gap-2">
+                    {policyEvent.metadata.reasons.map((r: string) => (
+                      <span key={r} className="px-2 py-1 bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] text-[11px] rounded font-mono">
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {policyEvent.metadata?.decision_reason && (
+                  <p className="text-sm text-[var(--color-text-secondary)]">{policyEvent.metadata.decision_reason}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--color-text-muted)] italic">No policy decision recorded yet.</p>
+            )}
+          </section>
+
+          <section className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+            <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] mb-4">Verification Outcome</h2>
+            {verifyEvent ? (
+              <div className="space-y-3">
+                <StatusBadge status={verifyEvent.new_state || 'UNKNOWN'} />
+                {verifyEvent.metadata && (
+                  <pre className="p-3 bg-[var(--color-bg)] rounded-lg text-[10px] font-mono text-[var(--color-text-secondary)] overflow-x-auto">
+                    {JSON.stringify(verifyEvent.metadata, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--color-text-muted)] italic">Verification not completed.</p>
+            )}
+          </section>
         </div>
       </div>
+
+      {/* Timeline */}
+      <section className="pt-8 border-t border-[var(--color-border)]">
+        <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-6">Audit Timeline</h2>
+        <Timeline events={timeline} />
+      </section>
     </div>
   );
 }

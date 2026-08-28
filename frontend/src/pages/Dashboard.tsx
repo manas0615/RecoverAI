@@ -1,132 +1,93 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Activity, ChevronRight, Server } from 'lucide-react';
+import { useMemo } from 'react';
+import { PageHeader } from '../components/layout/PageHeader';
+import { useCases } from '../hooks/useCases';
+import { ErrorState } from '../components/feedback/ErrorState';
+import { MetricCard } from '../components/data-display/MetricCard';
+import { UnavailableMetric } from '../components/data-display/UnavailableMetric';
+import { CaseTable } from '../components/data-display/CaseTable';
+import { MoneyValue } from '../components/financial/MoneyValue';
 
-interface Case {
-  case_id: string;
-  merchant_id: string;
-  customer_id: string;
-  status: string;
-  amount_minor: number;
-  currency: string;
-  created_at: string;
-  verification_count: number;
-}
+export function Dashboard() {
+  const { data, loading, error, refetch } = useCases();
 
-export default function Dashboard() {
-  const [cases, setCases] = useState<Case[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [health, setHealth] = useState<'healthy' | 'error' | 'loading'>('loading');
+  const metrics = useMemo(() => {
+    if (!data) return { activeCases: 0, revenueAtRisk: {}, openCases: [] };
+    
+    const open = data.cases.filter(c => c.status === 'OPEN');
+    const revenueByCurrency = open.reduce((acc, c) => {
+      acc[c.currency] = (acc[c.currency] || 0) + c.amount_minor;
+      return acc;
+    }, {} as Record<string, number>);
 
-  useEffect(() => {
-    fetch('/api/health')
-      .then(res => res.ok ? setHealth('healthy') : setHealth('error'))
-      .catch(() => setHealth('error'));
+    return {
+      activeCases: open.length,
+      revenueAtRisk: revenueByCurrency,
+      openCases: open
+    };
+  }, [data]);
 
-    fetch('/api/recovery-cases')
-      .then(res => res.json())
-      .then(data => {
-        setCases(data.cases || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+  if (error) {
+    return <ErrorState message="Unable to load recovery data. The backend may be unavailable." onRetry={refetch} />;
+  }
 
-  const totalAtRisk = cases.reduce((acc, c) => acc + (c.amount_minor / 100), 0);
-  const activeCases = cases.filter(c => c.status !== 'CLOSED').length;
+  // Handle multi-currency for the hero metric
+  // If multiple currencies exist, we show a breakdown or just primary if only one.
+  const currencies = Object.keys(metrics.revenueAtRisk);
+  const revenueDisplay = currencies.length > 0 ? (
+    <div className="flex flex-col gap-1">
+      {currencies.map(curr => (
+        <MoneyValue key={curr} amountMinor={metrics.revenueAtRisk[curr]} currency={curr} />
+      ))}
+    </div>
+  ) : (
+    <MoneyValue amountMinor={0} currency="INR" />
+  );
 
   return (
-    <div className="p-6 md:p-10 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      <header className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Overview</h1>
-          <p className="text-slate-400 mt-1">Executive summary of revenue recovery operations.</p>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-sm">
-          <Server size={14} className={health === 'healthy' ? 'text-emerald-400' : 'text-red-400'} />
-          <span className="font-medium text-slate-300">
-            {health === 'healthy' ? 'System Operational' : health === 'loading' ? 'Checking...' : 'System Degraded'}
-          </span>
-        </div>
-      </header>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <PageHeader 
+        title="Overview" 
+        subtitle="Revenue recovery operations"
+      />
 
-      {/* KPI Blocks */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-surface/40 backdrop-blur-md border border-border p-6 rounded-xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Revenue at Risk</h3>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-bold font-mono tracking-tight">${totalAtRisk.toFixed(2)}</span>
-            <span className="text-slate-400">USD</span>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard 
+          label="Open Revenue at Risk" 
+          value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : revenueDisplay}
+        />
+        <MetricCard 
+          label="Active Cases" 
+          value={loading ? <div className="h-9 w-12 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : metrics.activeCases}
+        />
+        
+        {/* Visually secondary unavailable metrics per architectural plan */}
+        <UnavailableMetric label="Verified Recovered" />
+        <UnavailableMetric label="Recovery Rate" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">Open Recovery Cases</h3>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Currently tracking <strong className="text-[var(--color-text-primary)]">{metrics.activeCases}</strong> active cases in the recovery pipeline.
+          </p>
         </div>
-        <div className="bg-surface/40 backdrop-blur-md border border-border p-6 rounded-xl">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Active Cases</h3>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-bold font-mono tracking-tight">{activeCases}</span>
-            <span className="text-slate-400">cases</span>
-          </div>
-        </div>
-        <div className="bg-surface/40 backdrop-blur-md border border-border p-6 rounded-xl">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Recovery Rate</h3>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-4xl font-bold font-mono tracking-tight text-emerald-400">68.4%</span>
-            <span className="text-emerald-400/80 text-sm font-medium">+2.1%</span>
+        
+        <div className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4">System Health</h3>
+          <div className="flex items-center gap-3">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-success)] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--color-success)]"></span>
+            </span>
+            <span className="text-sm font-medium text-[var(--color-text-secondary)]">System Operational</span>
           </div>
         </div>
       </div>
 
-      {/* Cases List */}
-      <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-2xl shadow-black/20">
-        <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-slate-900/50">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Activity size={18} className="text-primary" />
-            Recent Cases
-          </h2>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="text-slate-400 border-b border-border bg-slate-900/20">
-              <tr>
-                <th className="px-6 py-3 font-medium">Case ID</th>
-                <th className="px-6 py-3 font-medium">Amount</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Created</th>
-                <th className="px-6 py-3 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400">Loading cases...</td></tr>
-              ) : cases.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400">No recovery cases found.</td></tr>
-              ) : (
-                cases.map(c => (
-                  <tr key={c.case_id} className="hover:bg-slate-800/50 transition-colors group">
-                    <td className="px-6 py-4 font-mono text-slate-300">{c.case_id.split('_')[1] || c.case_id}</td>
-                    <td className="px-6 py-4 font-mono">${(c.amount_minor / 100).toFixed(2)} {c.currency}</td>
-                    <td className="px-6 py-4">
-                      <span className={'inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ' + (
-                        c.status === 'CLOSED' ? 'bg-emerald-500/10 text-emerald-400' :
-                        c.status === 'EXECUTING' ? 'bg-blue-500/10 text-blue-400' :
-                        'bg-amber-500/10 text-amber-400'
-                      )}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-400">{new Date(c.created_at).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right">
-                      <Link to={'/cases/' + c.case_id} className="inline-flex items-center gap-1 text-primary hover:text-white transition-colors">
-                        View <ChevronRight size={16} />
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)]">Recent Recovery Cases</h2>
+        <CaseTable cases={data?.cases.slice(0, 10) || []} loading={loading} />
       </div>
     </div>
   );
