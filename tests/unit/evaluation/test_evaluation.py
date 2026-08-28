@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-from recoverai.evaluation.evaluator import Evaluator
+from recoverai.domain.money import CurrencyCode, Money
+from recoverai.evaluation.evaluator import Evaluator, ObservedOutcome
 from recoverai.evaluation.metrics import EvaluationMetrics
-from recoverai.evaluation.simulator import SyntheticScenarioGenerator
+from recoverai.evaluation.simulator import SyntheticScenario, SyntheticScenarioGenerator
 
 
 def test_metric_correctness():
@@ -24,12 +25,34 @@ def test_metric_empty_dataset():
 
 def test_evaluator_classification():
     evaluator = Evaluator()
-    evaluator.add_case_result(
-        amount=Decimal(1000), recovered=True, is_false_recovery=False
+    scen1 = SyntheticScenario(
+        "s1",
+        "m1",
+        "c1",
+        Money(100000, CurrencyCode.INR),
+        "cause",
+        True,
+        False,
+        "ACTION",
+        False,
     )
-    evaluator.add_case_result(
-        amount=Decimal(2000), recovered=True, is_false_recovery=True
+    scen2 = SyntheticScenario(
+        "s2",
+        "m1",
+        "c1",
+        Money(200000, CurrencyCode.INR),
+        "cause",
+        False,
+        False,
+        "ACTION",
+        False,
     )
+
+    # Valid recovery
+    evaluator.evaluate_case(scen1, ObservedOutcome("ACTION", True))
+
+    # False recovery (observed claims recovery, but scenario ground truth says customer is not receptive and no natural recovery)
+    evaluator.evaluate_case(scen2, ObservedOutcome("ACTION", True))
 
     assert evaluator.metrics.eligible_recovery_cases == 2
     assert evaluator.metrics.revenue_at_risk == Decimal(3000)
@@ -40,16 +63,32 @@ def test_evaluator_classification():
 
 def test_evaluator_safety_metrics():
     evaluator = Evaluator()
-    evaluator.add_case_result(
-        amount=Decimal(500),
-        recovered=False,
-        unauthorized=True,
-        policy_bypass=True,
-        unknown_handled=True,
-        evidence_mismatch=True,
-        amount_mismatch=True,
-        duplicate=True,
+    scen = SyntheticScenario(
+        "s1",
+        "m1",
+        "c1",
+        Money(50000, CurrencyCode.INR),
+        "cause",
+        True,
+        False,
+        "ACTION",
+        False,
     )
+
+    evaluator.evaluate_case(
+        scen,
+        ObservedOutcome(
+            action_taken=None,
+            verified_recovered=False,
+            unauthorized_execution_attempt=True,
+            policy_bypass_attempt=True,
+            unknown_handled=True,
+            evidence_mismatch=True,
+            amount_mismatch=True,
+            duplicate_evidence=True,
+        ),
+    )
+
     assert evaluator.metrics.unauthorized_execution_attempts == 1
     assert evaluator.metrics.policy_bypass_attempts == 1
     assert evaluator.metrics.unknown_handling_count == 1
@@ -60,15 +99,41 @@ def test_evaluator_safety_metrics():
 
 def test_evaluator_baseline_comparison():
     evaluator = Evaluator()
-    evaluator.add_case_result(Decimal(1000), True)
-    evaluator.add_case_result(Decimal(1000), True)
+    scen1 = SyntheticScenario(
+        "s1",
+        "m1",
+        "c1",
+        Money(100000, CurrencyCode.INR),
+        "cause",
+        True,
+        False,
+        "ACTION",
+        False,
+    )
+    scen2 = SyntheticScenario(
+        "s2",
+        "m1",
+        "c1",
+        Money(100000, CurrencyCode.INR),
+        "cause",
+        False,
+        False,
+        "ACTION",
+        True,
+    )
+
+    evaluator.evaluate_case(scen1, ObservedOutcome("ACTION", True))
+    evaluator.evaluate_case(scen2, ObservedOutcome("ACTION", True))
 
     baseline = evaluator.evaluate_baseline("NO_INTERVENTION")
-    assert baseline.recovered_cases == 0
+    # No intervention only recovers if expected_natural_recovery is True (scen2)
+    assert baseline.recovered_cases == 1
+    assert baseline.verified_recovered_revenue == Decimal("1000.00")
 
     naive = evaluator.evaluate_baseline("NAIVE")
-    assert naive.recovered_cases == 0
-    assert naive.verified_recovered_revenue == Decimal("200.00")
+    # Naive recovers scen1 (receptive) and scen2 (natural)
+    assert naive.recovered_cases == 2
+    assert naive.verified_recovered_revenue == Decimal("2000.00")
 
 
 def test_synthetic_scenario_generator():

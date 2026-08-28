@@ -13,6 +13,10 @@ class SyntheticScenario:
     receptive_to_intervention: bool
     systemic_degradation_active: bool
 
+    # Ground Truth expected outcomes
+    expected_optimal_action: str | None
+    expected_natural_recovery: bool
+
 
 class SyntheticScenarioGenerator:
     def __init__(self, seed: int = 42):
@@ -40,6 +44,10 @@ class SyntheticScenarioGenerator:
                     else "system_downtime",
                     receptive_to_intervention=is_receptive,
                     systemic_degradation_active=is_degraded,
+                    expected_optimal_action="CREATE_PAYMENT_LINK"
+                    if is_receptive and not is_degraded
+                    else ("SUPPRESS" if is_degraded else None),
+                    expected_natural_recovery=False,
                 )
             )
         return scenarios
