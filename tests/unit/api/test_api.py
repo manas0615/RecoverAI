@@ -1,3 +1,7 @@
+import os
+
+os.environ["ENVIRONMENT"] = "test"
+
 from fastapi.testclient import TestClient
 
 from recoverai.api.main import app

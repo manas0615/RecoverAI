@@ -32,9 +32,13 @@ from recoverai.verification.engine import VerificationEngine
 
 class AppContainer:
     def __init__(self):
-        # We must use unique named memory DB so concurrent test files don't clash, but shared across this instance
-        db_name = f"file:mem_{uuid.uuid4().hex}?mode=memory&cache=shared"
-        self.tm = TransactionManager(f"sqlite:///{db_name}")
+        from recoverai.config import settings
+
+        if os.environ.get("ENVIRONMENT") == "test" or settings.environment == "test":
+            db_name = f"file:mem_{uuid.uuid4().hex}?mode=memory&cache=shared"
+            self.tm = TransactionManager(f"sqlite:///{db_name}")
+        else:
+            self.tm = TransactionManager(settings.database_url)
 
         # Keep global connection open first so the DB is not destroyed
         self.global_conn = self.tm.create_connection()
@@ -176,6 +180,7 @@ async def razorpay_webhook(merchant_id: str, request: Request):
             received_at=datetime.now(UTC),
         )
     except EventIngestionError as e:
+        # Catch exception from verifier
         raise HTTPException(status_code=400, detail=f"Webhook validation failed: {e}")
 
     if event is None:
