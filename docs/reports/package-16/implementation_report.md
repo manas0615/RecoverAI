@@ -1,23 +1,25 @@
-# Package 16: Frontend / Stitch UI
+# Package 16 — Implementation Report
 
-## Overview
-Implemented the PRODUCT UI layer using React, TypeScript, and Vite. The frontend architecture follows a "Dark-First" enterprise aesthetic designed via Stitch.
+**Status:** Completed
+**Package:** P16 Frontend / Stitch UI
 
-## Features
-- **Dashboard Overview**: Displays KPIs (Amount at risk, active cases) and a list of recovery cases fetched from `/api/recovery-cases`.
-- **Case Detail View**: A Tri-Fold Intelligence Grid showing AI Intelligence, Policy Decision, and Execution Hub.
-- **Audit Timeline**: Displays immutable audit events fetched from `/api/recovery-cases/{id}/timeline`.
+## 1. Summary
+The P16 frontend package was successfully implemented according to the final approved micro-revision plan. The legacy dark-navy styling was completely removed and replaced with a warm, premium, editorial UI powered by React, TypeScript, and TailwindCSS v4.
 
-## Stitch MCP Integration
-- Created a new project "RecoverAI Dashboard" using the Stitch MCP.
-- Generated `Dashboard` and `Case Detail` screens.
-- Extracted and implemented the following design principles from the Stitch response:
-  - Deep Navy (#0F172A) and Dark Slate (#1E293B) theme.
-  - Primary Blue (#007AFF) for action states.
-  - Use of `Inter` for prose and `JetBrains Mono` for tabular/financial data.
-  - "Tri-Fold Intelligence Grid" layout for Case Details.
+## 2. Stitch MCP Integration
+- A new Stitch project (`1051231661397186252`) was created.
+- The "Warm Premium" design system was applied.
+- High-fidelity screens were generated for Case Detail (Desktop), Dashboard (Desktop), and Dashboard (Mobile).
+- Prompts strictly used neutral placeholders (`₹—`, `Sample Case`) to prevent hallucinated production data.
 
-## Financial Safety
-- No business logic or state is evaluated on the client.
-- Statuses and rules are fetched deterministically from the P15 backend.
-- Executing an action correctly triggers the execution endpoints instead of mutating local state.
+## 3. Data Provenance & Invariants
+- The React implementation is strictly wired to the P15 REST API.
+- Missing metrics (Verified Recovered, Recovery Rate) are gracefully handled using a secondary `UnavailableMetric` component.
+- The Case Detail page derives AI recommendations, policy decisions, and execution states *exclusively* by parsing the audit timeline array.
+- The UI contains no fake browser-side execution buttons. Workflow handoffs to n8n are clearly communicated.
+- Multi-currency safety is maintained by never summing amounts across different currencies.
+
+## 4. Testing & Verification
+- A full frontend test suite (Vitest + React Testing Library) was introduced.
+- The core user journey (Dashboard → Case Detail) is verified via integration tests.
+- Backend invariants (154 tests, mypy, ruff) remain fully green.
