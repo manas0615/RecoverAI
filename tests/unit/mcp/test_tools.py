@@ -110,7 +110,6 @@ def test_valid_tool_invocation(mcp_ctx, mem_db):
     )
     RecoveryCaseRepository(mem_db).save(case)
 
-    
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute("get_recovery_case", {"case_id": "case_1"})
 
@@ -120,7 +119,7 @@ def test_valid_tool_invocation(mcp_ctx, mem_db):
 
 
 def test_invalid_arguments(mcp_ctx):
-    
+
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute("get_recovery_case", {})
 
@@ -129,7 +128,7 @@ def test_invalid_arguments(mcp_ctx):
 
 
 def test_unsupported_tool(mcp_ctx):
-    
+
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute("unknown_tool", {})
     assert result["code"] == "UNKNOWN_TOOL"
@@ -149,7 +148,6 @@ def test_policy_denied_action(mcp_ctx, mem_db):
     )
     RecoveryCaseRepository(mem_db).save(case)
 
-    
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute(
         "create_payment_link", {"case_id": "case_1", "action_id": "bad_action"}
@@ -181,7 +179,6 @@ def test_duplicate_invocation(mcp_ctx, mem_db):
     )
     RecoveryActionRepository(mem_db).save(action)
 
-    
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute(
         "create_payment_link", {"case_id": "case_1", "action_id": "act_1"}
@@ -206,14 +203,13 @@ def test_terminal_case_protection(mcp_ctx, mem_db):
     )
     RecoveryCaseRepository(mem_db).save(case)
 
-    
     # The actual implementation of terminal case protection in our MCP handler is optional if Policy handles it.
     # Let's ensure it doesn't raise a ValueError on init.
     assert case.status == RecoveryCaseStatus.CLOSED
 
 
 def test_unsupported_action(mcp_ctx):
-    
+
     registry = create_mcp_registry(mcp_ctx)
     result = registry.execute(
         "send_payment_link_notification",
