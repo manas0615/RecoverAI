@@ -60,6 +60,8 @@ Package 17 introduces security hardening to the existing RecoverAI MVP architect
 - Migrate all credentials to `recoverai.config.Settings`.
 - Implement `X-API-Key` authentication for the backend API.
 - Differentiate authorization levels: `FRONTEND_API_KEY` (read-only UI access) and `N8N_API_KEY` (orchestration access).
+  - **IMPORTANT SECURITY LIMITATION**: `FRONTEND_API_KEY` is a lightweight client credential embedded in the browser, not a confidential secret. It prevents completely unauthenticated scraping but does NOT strongly authenticate the human user.
+  - `N8N_API_KEY` is a true server-side secret kept strictly out of the browser.
 - Implement secure CORS policies.
 
 ## 12. Authentication Requirements
@@ -67,16 +69,20 @@ Package 17 introduces security hardening to the existing RecoverAI MVP architect
 - Define `FRONTEND_API_KEY` and `N8N_API_KEY` in application settings.
 
 ## 13. Authorization Requirements
+- **Authentication**: "Does this request possess a valid credential?"
+- **Authorization**: "Is this credential permitted to invoke this endpoint?"
 - **Frontend Endpoints:** `GET /recovery-cases`, `GET /recovery-cases/{id}`, `GET /recovery-cases/{id}/timeline` require `X-API-Key: <FRONTEND_API_KEY>`.
-- **MCP Execution:** `POST /mcp/execute` requires `X-API-Key: <N8N_API_KEY>`.
-- **Webhooks:** `POST /webhooks/razorpay/*` remain exclusively authorized via HMAC signature verification.
+- **MCP Execution:** `POST /mcp/execute` strictly requires `X-API-Key: <N8N_API_KEY>`. The frontend credential MUST NOT be authorized to execute MCP tools.
+- **Webhooks:** `POST /webhooks/razorpay/*` remain exclusively authorized via Razorpay HMAC signature verification. Do NOT add API key requirements here.
 - **Healthcheck:** `GET /health` remains unauthenticated.
 
-## 14. API Hardening
-- Add `CORSMiddleware` to `main.py`, restricting origins based on a new `frontend_cors_origin` configuration setting.
+## 14. API Hardening (CORS and Health)
+- **CORS Middleware:** Add `CORSMiddleware` to `main.py`, restricting origins based on a new `frontend_cors_origin` configuration setting. Ensure NO wildcard origins are used. CORS controls browser-origin access and is NOT a substitute for n8n/server-to-server authentication.
+- **Health Endpoint:** `GET /health` will remain unauthenticated as a minimal readiness/availability endpoint. It must only return `{"status": "ok"}` and must NOT expose secrets, provider credentials, database contents, internal topology, dependencies, or sensitive diagnostics, ensuring compatibility with standard orchestration (e.g., Docker/healthchecks) without risking data leaks.
 
 ## 15. Webhook Hardening
 - **NOT APPLICABLE** — Signature verification and duplicate handling were robustly implemented in P04. No changes needed.
+- **SECURITY INVARIANT**: Webhook authentication remains provider-signature based via HMAC. API keys MUST NOT bypass or replace this Razorpay HMAC verification.
 
 ## 16. MCP Hardening
 - Lock down `POST /mcp/execute` exclusively to the `N8N_API_KEY` role.
@@ -89,34 +95,58 @@ Package 17 introduces security hardening to the existing RecoverAI MVP architect
 
 ## 19. Secrets & Configuration Hardening
 - Refactor `AppContainer` in `recoverai/api/main.py` to source `RazorpayConfig` (key_id, key_secret), `WebhookVerifier` (secret), and `GatewayConfig` from the unified `recoverai.config.Settings`.
+- **SECURITY CORRECTION**: Runtime credentials must come from Settings/environment configuration to ensure that local placeholder credentials (`"mock"`, `"secret"`) are not silently substituted in production environments.
 
-## 20. Data/Persistence Hardening
+## 20. Security Error Contract
+Define the expected safe behavior for the API layer:
+- **Missing API key**: Returns `401 Unauthorized`.
+- **Invalid API key**: Returns `401 Unauthorized`.
+- **Insufficient role (e.g. Frontend Key on MCP route)**: Returns `403 Forbidden`.
+- **Internal Exception**: Standard 500 response. Must NOT leak stack traces, database contents, API keys, filesystem paths, SQL queries, provider credentials, or raw exception internals.
+
+## 21. Data/Persistence Hardening
 - **NOT APPLICABLE** — No SQL injection risks detected in the ORM/Query layer. SQLite operates strictly on the local filesystem.
 
-## 21. Logging/Audit Hardening
+## 22. Logging/Audit Hardening
 - **NOT APPLICABLE** — Redaction logic (`redact_secrets`) within `recoverai/domain/audit.py` is thoroughly implemented.
 
-## 22. Error/Information Disclosure Hardening
+## 23. Error/Information Disclosure Hardening
 - Ensure FastAPI's default handlers do not leak backend stack traces to unauthenticated clients. Standard 401/403 responses will be enforced for missing/invalid keys.
 
-## 23. Dependency/Supply-Chain Hardening
+## 24. Dependency/Supply-Chain Hardening
 - **NOT APPLICABLE** — P17 restricts scope to application hardening. Dependency versions remain frozen.
 
-## 24. Security Test Strategy
-- **API Tests:** Verify 401 Unauthorized for requests missing keys.
-- **Authz Tests:** Verify `FRONTEND_API_KEY` is rejected at `/mcp/execute`.
-- **Authz Tests:** Verify `N8N_API_KEY` is accepted at `/mcp/execute`.
-- **Config Tests:** Verify `AppContainer` initializes correctly using environment configurations instead of mocks.
+## 25. Security Test Strategy
+- **Public Health:**
+  - `GET /health` -> succeeds without API key.
+  - `GET /health` -> does not expose sensitive information.
+- **Read API:**
+  - no key -> `401 Unauthorized`.
+  - invalid key -> `401 Unauthorized`.
+  - valid `FRONTEND_API_KEY` -> succeeds.
+- **MCP API:**
+  - no key -> `401 Unauthorized`.
+  - invalid key -> `401 Unauthorized`.
+  - `FRONTEND_API_KEY` -> `403 Forbidden`.
+  - valid `N8N_API_KEY` -> succeeds.
+- **Webhook:**
+  - valid Razorpay signature -> existing behavior preserved.
+  - invalid signature -> rejected.
+  - API key alone MUST NOT bypass webhook signature verification.
+- **Configuration:**
+  - Credentials are loaded from `Settings`/environment -> no placeholder runtime credentials silently substituted.
+- **Regression:**
+  - All existing P01–P16 tests remain green.
 
-## 25. Implementation Sequence
+## 26. Implementation Sequence
 1. **Secrets & Configuration:** Update `recoverai/config.py` to include `frontend_api_key`, `n8n_api_key`, and `frontend_cors_origin`. Update `AppContainer` to use these settings.
-2. **Authentication Middleware:** Create `recoverai/api/security.py` to define API key dependencies.
-3. **Route Hardening:** Apply dependencies to `main.py` routes and add `CORSMiddleware`.
-4. **Test Adjustments:** Update `tests/unit/api/test_api.py` to pass appropriate headers during testing.
-5. **Frontend Integration:** Update `frontend/src/api/client.ts` to include the API key header.
-6. **n8n Integration:** Update `workflows/n8n/*.json` files to include the API key header.
+2. **Authentication Middleware:** Create `recoverai/api/security.py` to define API key dependencies (`FRONTEND_API_KEY`, `N8N_API_KEY`).
+3. **Route Hardening:** Apply dependencies to `main.py` routes and add `CORSMiddleware`. Ensure `/health` remains unauthenticated and webhook routes use only HMAC.
+4. **Test Adjustments:** Update `tests/unit/api/test_api.py` to pass appropriate headers during testing and cover the new authz rules.
+5. **Frontend Integration:** Update `frontend/src/api/client.ts` to include the API key header (`import.meta.env.VITE_API_KEY`). Note that Vite exposes this to the browser.
+6. **n8n Integration:** Update `workflows/n8n/*.json` files to include the API key header (`={{ $env.N8N_API_KEY }}`). Note that this must securely reference the n8n environment, not hardcode the key.
 
-## 26. Files/Modules Expected to Change
+## 27. Files/Modules Expected to Change
 - `recoverai/config.py`
 - `recoverai/api/main.py`
 - `recoverai/api/security.py` (New)
@@ -124,7 +154,7 @@ Package 17 introduces security hardening to the existing RecoverAI MVP architect
 - `frontend/src/api/client.ts`
 - `workflows/n8n/*.json`
 
-## 27. Files/Modules Explicitly Frozen
+## 28. Files/Modules Explicitly Frozen
 - `recoverai/domain/*`
 - `recoverai/policy/*`
 - `recoverai/persistence/*`
@@ -133,24 +163,35 @@ Package 17 introduces security hardening to the existing RecoverAI MVP architect
 - `frontend/src/pages/*`
 - `frontend/src/index.css`
 
-## 28. Documentation Changes
+## 29. Documentation Changes
 - `docs/checkpoints/package-17.md`
 - `docs/reports/package-17/implementation_report.md`
-- Update `docs/security.md` Verification Status to mark Authentication, Rate Limits, and CORS as VERIFIED.
+- Update `docs/security.md` Verification Status to mark Authentication, Authorization, and CORS as VERIFIED.
+- **RATE LIMITING**: NOT IMPLEMENTED / OUT OF P17 SCOPE. Do not claim verification.
 
-## 29. Verification Gates
+## 30. Verification Gates
 - `uv run pytest tests/`
 - `npm run build`
 - `uv run ruff check .`
 - `uv run mypy recoverai/ tests/`
 
-## 30. Definition of Done
-- No endpoints (except `/health` and webhooks) are accessible without an API key.
-- Hardcoded secrets are permanently removed from `AppContainer`.
-- Frontend correctly passes API keys.
-- All tests pass locally.
+## 31. Definition of Done
+- Protected API endpoints require appropriate credentials.
+- Read-only and orchestrator credentials are cleanly separated.
+- Frontend credential cannot invoke MCP.
+- n8n credential is not exposed to the browser.
+- Financial actions remain protected by P07/P05/P08.
+- Webhook HMAC verification remains authoritative (no API key required/permitted to bypass).
+- Runtime credentials come from configuration (Settings).
+- No real secrets are committed.
+- CORS is restrictive where applicable.
+- Safe errors do not leak internals (proper 401/403/500).
+- Security tests pass.
+- P01–P16 regression remains green.
+- Frontend build remains green.
+- Repository remains clean.
 
-## 31. Stop Conditions
+## 32. Stop Conditions
 - **DO NOT EXECUTE IMPLEMENTATION.** Only generate this plan document.
 - Do not modify source code or workflows.
 - Do not start P18.
