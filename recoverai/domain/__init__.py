@@ -68,3 +68,6 @@ __all__ = [
     "VerificationSource",
     "VerifiedState",
 ]
+
+from .audit import AuditActor as AuditActor
+from .audit import AuditEvent as AuditEvent
