@@ -22,7 +22,7 @@ export function ActivityLog() {
         
         <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
           <Clock className="w-4 h-4" />
-          <span>Slated for Package 18</span>
+          <span>Global audit aggregation will be introduced in a future package.</span>
         </div>
       </div>
     </div>

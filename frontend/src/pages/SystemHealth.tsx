@@ -34,7 +34,7 @@ export function SystemHealth() {
               {loading ? 'Checking Status...' : isHealthy ? 'System Operational' : 'System Degraded'}
             </h3>
             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              All infrastructure components are reporting healthy.
+              RecoverAI backend is reachable and responding normally.
             </p>
           </div>
         </div>
