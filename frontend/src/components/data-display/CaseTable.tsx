@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import type {  Case  } from '../../types/domain';
+import type { Case } from '../../types/domain';
 import { StatusBadge } from '../status/StatusBadge';
 import { MoneyValue } from '../financial/MoneyValue';
 import { ChevronRight, Inbox } from 'lucide-react';
@@ -41,45 +41,77 @@ export function CaseTable({ cases, loading }: CaseTableProps) {
   }
 
   return (
-    <div className="border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)]">
-            <tr>
-              <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Case</th>
-              <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Customer</th>
-              <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Amount at Risk</th>
-              <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Updated</th>
-              <th className="px-6 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--color-border-subtle)]">
-            {cases.map((c) => (
-              <tr 
-                key={c.case_id}
-                onClick={() => navigate(`/cases/${c.case_id}`)}
-                className="group cursor-pointer hover:bg-[var(--color-surface-secondary)]/50 transition-colors"
-              >
-                <td className="px-6 py-4 font-mono text-xs text-[var(--color-text-primary)]">{c.case_id.slice(0, 12)}...</td>
-                <td className="px-6 py-4 text-[var(--color-text-secondary)]">{c.customer_id}</td>
-                <td className="px-6 py-4 text-[var(--color-text-primary)] font-medium">
-                  <MoneyValue amountMinor={c.amount_minor} currency={c.currency} />
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={c.status} />
-                </td>
-                <td className="px-6 py-4 text-[var(--color-text-muted)] text-xs">
-                  {new Date(c.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 text-right text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
-                  <ChevronRight className="w-4 h-4 ml-auto" />
-                </td>
+    <>
+      {/* Desktop Table View */}
+      <div className="hidden md:block border border-[var(--color-border)] rounded-xl overflow-hidden bg-[var(--color-surface)] shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-[var(--color-surface-secondary)] border-b border-[var(--color-border)]">
+              <tr>
+                <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Case</th>
+                <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Amount at Risk</th>
+                <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">Updated</th>
+                <th className="px-6 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border-subtle)]">
+              {cases.map((c) => (
+                <tr 
+                  key={c.case_id}
+                  onClick={() => navigate(`/cases/${c.case_id}`)}
+                  className="group cursor-pointer hover:bg-[var(--color-surface-secondary)]/50 transition-colors"
+                >
+                  <td className="px-6 py-4 font-mono text-xs text-[var(--color-text-primary)]">{c.case_id.slice(0, 12)}...</td>
+                  <td className="px-6 py-4 text-[var(--color-text-secondary)]">{c.customer_id}</td>
+                  <td className="px-6 py-4 text-[var(--color-text-primary)] font-medium">
+                    <MoneyValue amountMinor={c.amount_minor} currency={c.currency} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={c.status} />
+                  </td>
+                  <td className="px-6 py-4 text-[var(--color-text-muted)] text-xs">
+                    {new Date(c.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-right text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {cases.map((c) => (
+          <div 
+            key={c.case_id}
+            onClick={() => navigate(`/cases/${c.case_id}`)}
+            className="flex flex-col p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-sm cursor-pointer hover:border-[var(--color-primary)]/30 transition-colors active:bg-[var(--color-surface-secondary)]"
+            style={{ minHeight: '44px' }}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="font-mono text-xs text-[var(--color-text-primary)] mb-1.5">{c.case_id}</div>
+                <div className="text-sm text-[var(--color-text-secondary)]">{c.customer_id}</div>
+              </div>
+              <StatusBadge status={c.status} />
+            </div>
+            
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border-subtle)]">
+              <MoneyValue 
+                amountMinor={c.amount_minor} 
+                currency={c.currency} 
+                className="font-medium text-[var(--color-text-primary)]" 
+              />
+              <ChevronRight className="w-5 h-5 text-[var(--color-text-muted)]" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
