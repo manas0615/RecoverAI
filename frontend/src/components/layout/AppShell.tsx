@@ -8,8 +8,8 @@ export function Sidebar({ className = '' }: { className?: string }) {
   const links = [
     { to: '/', icon: LayoutDashboard, label: 'Overview' },
     { to: '/cases', icon: FileStack, label: 'Recovery Cases' },
-    { to: '/activity', icon: Activity, label: 'Activity', disabled: true },
-    { to: '/system', icon: Server, label: 'System Health', disabled: true },
+    { to: '/activity', icon: Activity, label: 'Activity' },
+    { to: '/system', icon: Server, label: 'System Health' },
   ];
 
   return (
@@ -24,27 +24,20 @@ export function Sidebar({ className = '' }: { className?: string }) {
         <ul className="space-y-1">
           {links.map((link) => (
             <li key={link.to}>
-              {link.disabled ? (
-                <span className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-[var(--color-text-muted)] cursor-not-allowed">
-                  <link.icon className="w-4 h-4 opacity-50" />
-                  {link.label}
-                </span>
-              ) : (
-                <NavLink
-                  to={link.to}
-                  end={link.to === '/'}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
-                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
-                    }`
-                  }
-                >
-                  <link.icon className="w-4 h-4" />
-                  {link.label}
-                </NavLink>
-              )}
+              <NavLink
+                to={link.to}
+                end={link.to === '/'}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
+                  }`
+                }
+              >
+                <link.icon className="w-4 h-4" />
+                {link.label}
+              </NavLink>
             </li>
           ))}
         </ul>
