@@ -1,1 +1,22 @@
-{ "name": "Payment Verification", "nodes": [] }
+{
+  "name": "payment-verification",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $env.RECOVERAI_API_URL }}/mcp/execute",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "get_recovery_case" }
+          ]
+        }
+      },
+      "name": "Fetch Case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {}
+}

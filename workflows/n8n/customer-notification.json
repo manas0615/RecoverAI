@@ -1,1 +1,57 @@
-{ "name": "Customer Notification", "nodes": [] }
+{
+  "name": "customer-notification",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $env.RECOVERAI_API_URL }}/mcp/execute",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "tool", "value": "send_payment_link_notification" },
+            { "name": "args", "value": "={{ $json.args }}" }
+          ]
+        }
+      },
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.code }}",
+              "value2": "UNSUPPORTED_TOOL"
+            }
+          ]
+        }
+      },
+      "name": "Check Unsupported",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {},
+      "name": "Stop Workflow",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 200]
+    }
+  ],
+  "connections": {
+    "Send Notification": {
+      "main": [
+        [ { "node": "Check Unsupported", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Check Unsupported": {
+      "main": [
+        [ { "node": "Stop Workflow", "type": "main", "index": 0 } ]
+      ]
+    }
+  }
+}

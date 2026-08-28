@@ -1,1 +1,13 @@
-{ "name": "Error Handler", "nodes": [] }
+{
+  "name": "error-handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Log Error",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {}
+}
