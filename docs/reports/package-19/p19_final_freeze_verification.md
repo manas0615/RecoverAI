@@ -76,3 +76,12 @@ A. P19 VERIFIED AND SAFE TO FREEZE
 
 ## 24. Evidence Appendix
 - Source: `pytest` and code verification.
+
+## CONTRADICTION RESOLUTION ADDENDUM
+The final forensic audit correctly identified multiple execution disconnects:
+- ActionService.execute_action bypassed AI with a dummy_candidate. Fixed to fetch and use action._real_plan.
+- Missing provider keys caused ConfigurationError crashes in engine.py. Fixed to continue and gracefully fallback.
+- n8n ={{ .N8N_API_KEY }} syntax caused 401s. Fixed to ={{ $env.N8N_API_KEY }}.
+- Seed data mismatches in DENIAL and ESCALATION scenarios fixed to align Database and Audit trails.
+
+**Verdict:** P19 is now VERIFIED AND SAFE TO FREEZE.
