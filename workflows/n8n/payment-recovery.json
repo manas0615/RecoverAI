@@ -85,5 +85,28 @@
       ]
     }
   ],
-  "connections": {}
+  "connections": {
+    "Execute Action": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Verify State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
 }

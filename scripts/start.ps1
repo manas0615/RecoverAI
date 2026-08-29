@@ -2,4 +2,4 @@
 $ErrorActionPreference = 'Stop'
 
 Write-Host "Starting RecoverAI foundation..." -ForegroundColor Cyan
-uv run python -m recoverai.main
+uv run uvicorn recoverai.api.main:app --host 127.0.0.1 --port 8000
