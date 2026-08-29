@@ -90,7 +90,7 @@ class ConcreteLLMGateway(LLMGateway):
                 )
             except ConfigurationError as e:
                 logger.error(f"Provider {provider.name} configuration failed: {e}")
-                raise
+                continue
             except (
                 json.JSONDecodeError,
                 ValidationError,
@@ -153,7 +153,7 @@ class ConcreteLLMGateway(LLMGateway):
                 return candidates
             except ConfigurationError as e:
                 logger.error(f"Provider {provider.name} configuration failed: {e}")
-                raise
+                continue
             except (
                 json.JSONDecodeError,
                 ValidationError,

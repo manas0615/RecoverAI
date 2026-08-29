@@ -356,6 +356,21 @@ def seed_data():
         # Denied by policy, so we skip authorize/execution and just record cancellation
         action_d.record_verification(ActionStatus.CANCELLED, t_d + timedelta(minutes=1))
         action_repo.save(action_d)
+        
+        conn.execute(
+            """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                "dec_DENIAL",
+                case_d.case_id.value,
+                action_d.action_id.value,
+                "DENY",
+                "1.0",
+                "[]",
+                "[]",
+                t_d.isoformat(),
+            ),
+        )
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_d.case_id, timestamp=t_d)
         add_audit(
@@ -384,7 +399,7 @@ def seed_data():
                 "dec_ESCALATE",
                 case_e.case_id.value,
                 action_e.action_id.value,
-                "APPROVE",
+                "ESCALATE",
                 "1.0",
                 "[]",
                 "[]",

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from recoverai.domain.identifiers import (
     PolicyDecisionId,
@@ -57,6 +58,9 @@ class RecoveryAction:
     started_at: datetime | None = None
     completed_at: datetime | None = None
     failure_reason: str | None = None
+    
+    # Internal context
+    _real_plan: "Any | None" = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.action_id, RecoveryActionId):

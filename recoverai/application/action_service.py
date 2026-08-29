@@ -51,38 +51,18 @@ class RecoveryActionService:
             if not case:
                 raise ValueError(f"Case {action.case_id} not found")
 
-            from recoverai.domain.evidence import Probability
-            from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
-            from recoverai.domain.plan import (
-                CandidateStatus,
-                InterventionCandidate,
-                InterventionPlan,
-            )
             from recoverai.policy.engine import PolicyContext
 
             policy_context = PolicyContext(
                 policy_version="1.0", current_time=datetime.now(UTC)
             )
 
-            dummy_candidate = InterventionCandidate(
-                candidate_id=f"cand_{action.action_id.value}",
-                case_id=case.case_id,
-                action_type=action.action_type,
-                expected_recovery_probability=Probability(1.0, "direct"),
-                expected_recovery_value=RevenueAmount(Money(0, CurrencyCode.USD)),
-                eligibility_status=CandidateStatus.PROPOSED,
-            )
+            if getattr(action, "_real_plan", None) is not None:
+                plan = action._real_plan
+            else:
+                raise ValueError("Financial execution requires a real Intelligence InterventionPlan.")
 
-            plan = InterventionPlan(
-                plan_id=action.action_id.value,
-                case_id=case.case_id,
-                candidates=[dummy_candidate],
-                selected_action_type=action.action_type,
-                selection_reason="direct_execution",
-                selection_model_version="manual",
-                created_at=datetime.now(UTC),
-            )
-            decision = self.policy_engine.evaluate(policy_context, case, plan, [])
+            decision = self.policy_engine.evaluate(policy_context, case, plan, [])  # type: ignore
 
             # Audit policy decision
             audit_repo.append(

@@ -54,7 +54,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "={{ .N8N_API_KEY }}"
+              "value": "={{ $env.N8N_API_KEY }}"
             }
           ]
         }

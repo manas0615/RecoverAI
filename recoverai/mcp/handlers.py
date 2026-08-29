@@ -183,6 +183,14 @@ def handle_create_payment_link(
         )
         action_repo.save(action)
 
+    with ctx.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+        events = [RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids]
+    
+    # Generate real intelligence plan
+    _, _, plan = ctx.intelligence.analyze(case, events)
+    action._real_plan = plan
+
     # Now OUTSIDE the transaction, execute the action. ActionService will start its own transaction.
     action = ctx.action_service.execute_action(action)
 
@@ -260,6 +268,14 @@ def handle_resume_recovery_action(
                 f"Action cannot be resumed from status {action.status.name}",
                 "INVALID_STATE",
             )
+
+    with ctx.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+        events = [RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids]
+        
+    # Generate real intelligence plan
+    _, _, plan = ctx.intelligence.analyze(case, events)
+    action._real_plan = plan
 
     # Re-evaluate and execute through action service
     action = ctx.action_service.execute_action(action)

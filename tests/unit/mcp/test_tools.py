@@ -41,7 +41,11 @@ def mem_db():
     conn.execute(
         "CREATE TABLE recovery_actions (action_id TEXT PRIMARY KEY, case_id TEXT, action_type TEXT, policy_decision_id TEXT, idempotency_key TEXT, workflow_execution_reference TEXT, external_reference TEXT, attempt_number INTEGER, status TEXT, failure_reason TEXT, requested_at TEXT, started_at TEXT, completed_at TEXT)"
     )
+    conn.execute(
+        "CREATE TABLE revenue_events (event_id TEXT PRIMARY KEY, event_type TEXT, source_type TEXT, source_event_id TEXT, merchant_id TEXT, customer_id TEXT, amount_minor INTEGER, currency TEXT, external_reference TEXT, metadata JSON, schema_version TEXT, occurred_at TEXT, received_at TEXT)"
+    )
     conn.execute("CREATE TABLE case_source_events (case_id TEXT, event_id TEXT)")
+    conn.execute("INSERT INTO revenue_events (event_id, event_type, source_type, merchant_id, schema_version, occurred_at, received_at, metadata) VALUES ('evt_1', 'PAYMENT_FAILED', 'RAZORPAY_WEBHOOK', 'm_1', '1.0', '2026-08-29T00:00:00Z', '2026-08-29T00:00:00Z', '{}')")
     yield conn
     conn.close()
 
@@ -98,7 +102,29 @@ def mcp_ctx(mem_db):
 
     class DummyIntelligence:
         def analyze(self, case, events, context=None):
-            return (None, None, None)
+            from recoverai.domain.plan import InterventionPlan, InterventionCandidate, CandidateStatus
+            from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
+            from recoverai.domain.evidence import Probability
+            from recoverai.domain.action import ActionType
+            
+            dummy_candidate = InterventionCandidate(
+                candidate_id="cand_1",
+                case_id=case.case_id,
+                action_type=ActionType.CREATE_PAYMENT_LINK,
+                expected_recovery_probability=Probability(1.0, "direct"),
+                expected_recovery_value=RevenueAmount(Money(0, CurrencyCode.INR)),
+                eligibility_status=CandidateStatus.PROPOSED,
+            )
+            plan = InterventionPlan(
+                plan_id="plan_123",
+                case_id=case.case_id,
+                candidates=[dummy_candidate],
+                selected_action_type=ActionType.CREATE_PAYMENT_LINK,
+                selection_reason="direct_execution",
+                selection_model_version="manual",
+                created_at=datetime.now(UTC),
+            )
+            return (None, None, plan)
 
     tm = DummyTM()
     return MCPContext(
