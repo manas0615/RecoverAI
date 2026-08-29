@@ -61,7 +61,10 @@ export function CaseTable({ cases, loading }: CaseTableProps) {
                 <tr 
                   key={c.case_id}
                   onClick={() => navigate(`/cases/${c.case_id}`)}
-                  className="group cursor-pointer hover:bg-[var(--color-surface-secondary)]/50 transition-colors"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/cases/${c.case_id}`); } }}
+                  tabIndex={0}
+                  role="button"
+                  className="group cursor-pointer hover:bg-[var(--color-surface-secondary)]/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-primary)]"
                 >
                   <td className="px-6 py-4 font-mono text-xs text-[var(--color-text-primary)]">{c.case_id.slice(0, 12)}...</td>
                   <td className="px-6 py-4 text-[var(--color-text-secondary)]">{c.customer_id}</td>
@@ -90,7 +93,10 @@ export function CaseTable({ cases, loading }: CaseTableProps) {
           <div 
             key={c.case_id}
             onClick={() => navigate(`/cases/${c.case_id}`)}
-            className="flex flex-col p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-sm cursor-pointer hover:border-[var(--color-primary)]/30 transition-colors active:bg-[var(--color-surface-secondary)]"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/cases/${c.case_id}`); } }}
+            tabIndex={0}
+            role="button"
+            className="flex flex-col p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-sm cursor-pointer hover:border-[var(--color-primary)]/30 transition-colors active:bg-[var(--color-surface-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             style={{ minHeight: '44px' }}
           >
             <div className="flex items-start justify-between mb-3">

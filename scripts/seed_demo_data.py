@@ -15,9 +15,8 @@ from recoverai.domain.audit import (
 from recoverai.domain.case import (
     CaseWorkflowState,
     RecoveryCase,
-    RevenueSource,
-    RecoveryCaseStatus,
     RecoveryOutcomeValue,
+    RevenueSource,
 )
 from recoverai.domain.event import (
     EventSource,
@@ -27,16 +26,19 @@ from recoverai.domain.event import (
 )
 from recoverai.domain.identifiers import (
     CustomerId,
-    EvidenceId,
     MerchantId,
     PolicyDecisionId,
     RecoveryActionId,
     RecoveryCaseId,
     RevenueEventId,
+    VerificationRecordId,
 )
 from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
-from recoverai.domain.verification import VerificationRecord, VerifiedState, VerificationSource
-from recoverai.domain.identifiers import VerificationRecordId
+from recoverai.domain.verification import (
+    VerificationRecord,
+    VerificationSource,
+    VerifiedState,
+)
 from recoverai.persistence.repositories.action import RecoveryActionRepository
 from recoverai.persistence.repositories.audit import AuditRepository
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
@@ -104,10 +106,17 @@ def seed_data():
 
     with container.tm.transaction() as conn:
         conn.execute("DELETE FROM verification_records")
-        conn.execute("DELETE FROM audit_events")
         conn.execute("DELETE FROM recovery_actions")
+        conn.execute("DELETE FROM policy_decisions")
+        conn.execute("DELETE FROM intervention_plan_candidates")
+        conn.execute("DELETE FROM intervention_plans")
+        conn.execute("DELETE FROM intervention_candidates")
+        conn.execute("DELETE FROM cause_assessments")
+        conn.execute("DELETE FROM risk_assessments")
+        conn.execute("DELETE FROM case_source_events")
         conn.execute("DELETE FROM recovery_cases")
         conn.execute("DELETE FROM revenue_events")
+        conn.execute("DELETE FROM audit_events")
 
         conn.execute(
             "INSERT OR IGNORE INTO merchants (merchant_id, display_name, default_currency, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -182,6 +191,14 @@ def seed_data():
             action_a.action_id,
             {"decision": "APPROVE"},
             t_a + timedelta(minutes=1),
+        )
+        add_audit(
+            conn,
+            AuditEventType.ACTION_EXECUTING,
+            case_a.case_id,
+            action_a.action_id,
+            {"provider": "razorpay"},
+            t_a + timedelta(minutes=1, seconds=30),
         )
         add_audit(
             conn,
@@ -269,6 +286,14 @@ def seed_data():
         add_audit(conn, AuditEventType.CASE_CREATED, case_c.case_id, timestamp=t_c)
         add_audit(
             conn,
+            AuditEventType.RECOVERY_STATE_CHANGED,
+            case_c.case_id,
+            action_c.action_id,
+            {"new_state": "UNKNOWN"},
+            t_c + timedelta(minutes=2),
+        )
+        add_audit(
+            conn,
             AuditEventType.POLICY_DECISION_CREATED,
             case_c.case_id,
             action_c.action_id,
@@ -332,6 +357,14 @@ def seed_data():
         case_repo.save(case_e)
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_e.case_id, timestamp=t_e)
+        add_audit(
+            conn,
+            AuditEventType.RECOVERY_STATE_CHANGED,
+            case_e.case_id,
+            action_e.action_id,
+            {"new_state": "WAITING_APPROVAL"},
+            t_e + timedelta(minutes=1, seconds=30),
+        )
         add_audit(
             conn,
             AuditEventType.POLICY_DECISION_CREATED,

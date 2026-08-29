@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileStack, Server, Menu, X, ShieldCheck } from 'lucide-react';
 import { SystemStatus } from '../status/SystemStatus';
 import { TestModeBadge } from '../status/TestModeBadge';
 
-export function Sidebar({ className = '' }: { className?: string }) {
+export function Sidebar({ className = '', onNavClick }: { className?: string, onNavClick?: () => void }) {
   const links = [
     { to: '/', icon: LayoutDashboard, label: 'Overview' },
     { to: '/cases', icon: FileStack, label: 'Recovery Cases' },
@@ -25,9 +25,10 @@ export function Sidebar({ className = '' }: { className?: string }) {
             <li key={link.to}>
               <NavLink
                 to={link.to}
+                onClick={onNavClick}
                 end={link.to === '/'}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
                     isActive
                       ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)]'
                       : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
@@ -49,7 +50,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   return (
     <header className="h-16 border-b border-[var(--color-border)] bg-[var(--color-surface)] flex items-center justify-between px-4 lg:px-8">
       <div className="flex items-center gap-4 lg:hidden">
-        <button onClick={onMenuClick} className="p-2 -ml-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded-lg">
+        <button aria-label="Open menu" onClick={onMenuClick} className="p-2 -ml-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
@@ -70,6 +71,19 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg)]">
@@ -82,12 +96,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
           <div className="fixed inset-y-0 left-0 w-64 bg-[var(--color-bg)] shadow-xl transform transition-transform duration-200">
             <button
+              aria-label="Close menu"
               onClick={() => setMobileMenuOpen(false)}
-              className="absolute top-4 right-4 p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded-lg"
+              className="absolute top-4 right-4 p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)] rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             >
               <X className="w-5 h-5" />
             </button>
-            <Sidebar />
+            <Sidebar onNavClick={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}

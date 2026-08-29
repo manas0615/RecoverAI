@@ -207,16 +207,33 @@ export function CaseDetailView({ caseData, timeline, onBack }: CaseDetailViewPro
             <PlayCircle className="w-5 h-5 text-[var(--color-warning)]" />
             <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] uppercase tracking-wider">System Executes</h2>
           </div>
-          {execEvent ? (
+          {policyEvent?.metadata?.decision === 'DENY' || policyEvent?.metadata?.decision === 'SUPPRESS' ? (
+            <div className="p-4 bg-[var(--color-surface-secondary)] rounded-lg text-[var(--color-text-secondary)] text-sm border border-[var(--color-border)]">
+              <strong>EXECUTION BLOCKED</strong> — No downstream API calls or financial mutations occurred.
+            </div>
+          ) : execEvent ? (
             <div className="space-y-3">
               <div className="p-3 bg-[var(--color-bg)] rounded-lg">
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Action Executed</span>
                 <p className="mt-1 font-mono text-sm text-[var(--color-text-primary)]">{execEvent.event_type}</p>
               </div>
-              {execEvent.metadata && (
-                <pre className="p-3 bg-[var(--color-bg)] rounded-lg text-[10px] font-mono text-[var(--color-text-secondary)] overflow-x-auto">
-                  {JSON.stringify(execEvent.metadata, null, 2)}
-                </pre>
+              {execEvent.metadata && Object.keys(execEvent.metadata).length > 0 && (
+                <div className="p-3 bg-[var(--color-bg)] rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                    {Object.entries(execEvent.metadata).filter(([k]) => typeof execEvent.metadata[k] !== 'object').map(([k, v]) => (
+                      <div key={k}>
+                        <span className="block text-xs text-[var(--color-text-muted)]">{k}</span>
+                        <span className="block font-medium text-[var(--color-text-primary)]">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer text-[var(--color-primary)] font-medium">View Raw Data</summary>
+                    <pre className="mt-2 p-2 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded text-[10px] font-mono text-[var(--color-text-secondary)] overflow-x-auto">
+                      {JSON.stringify(execEvent.metadata, null, 2)}
+                    </pre>
+                  </details>
+                </div>
               )}
             </div>
           ) : (
@@ -234,13 +251,28 @@ export function CaseDetailView({ caseData, timeline, onBack }: CaseDetailViewPro
             <CheckCircle className="w-5 h-5 text-[var(--color-success)]" />
             <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] uppercase tracking-wider">Verification Proves</h2>
           </div>
-          {verifyEvent ? (
+          {policyEvent?.metadata?.decision === 'DENY' || policyEvent?.metadata?.decision === 'SUPPRESS' ? (
+            <p className="text-sm text-[var(--color-text-muted)] italic">Verification Not Applicable.</p>
+          ) : verifyEvent ? (
             <div className="space-y-3">
               <StatusBadge status={verifyEvent.new_state || 'UNKNOWN'} />
-              {verifyEvent.metadata && (
-                <pre className="p-3 bg-[var(--color-bg)] rounded-lg text-[10px] font-mono text-[var(--color-text-secondary)] overflow-x-auto">
-                  {JSON.stringify(verifyEvent.metadata, null, 2)}
-                </pre>
+              {verifyEvent.metadata && Object.keys(verifyEvent.metadata).length > 0 && (
+                <div className="p-3 bg-[var(--color-bg)] rounded-lg">
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                    {Object.entries(verifyEvent.metadata).filter(([k]) => typeof verifyEvent.metadata[k] !== 'object').map(([k, v]) => (
+                      <div key={k}>
+                        <span className="block text-xs text-[var(--color-text-muted)]">{k}</span>
+                        <span className="block font-medium text-[var(--color-text-primary)]">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer text-[var(--color-primary)] font-medium">View Raw Data</summary>
+                    <pre className="mt-2 p-2 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded text-[10px] font-mono text-[var(--color-text-secondary)] overflow-x-auto">
+                      {JSON.stringify(verifyEvent.metadata, null, 2)}
+                    </pre>
+                  </details>
+                </div>
               )}
             </div>
           ) : (
