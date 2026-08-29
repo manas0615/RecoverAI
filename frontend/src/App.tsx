@@ -5,7 +5,6 @@ import { CaseList } from './pages/CaseList';
 import { CaseDetail } from './pages/CaseDetail';
 import { SystemHealth } from './pages/SystemHealth';
 import { FixtureHarness } from './pages/FixtureHarness';
-import { ActivityLog } from './pages/ActivityLog';
 
 export default function App() {
   return (
@@ -17,7 +16,6 @@ export default function App() {
           <Route path="/cases/:id" element={<CaseDetail />} />
           <Route path="/system" element={<SystemHealth />} />
           <Route path="/fixtures" element={<FixtureHarness />} />
-          <Route path="/activity" element={<ActivityLog />} />
         </Routes>
       </AppShell>
     </BrowserRouter>

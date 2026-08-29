@@ -2,7 +2,7 @@ import type { Case, HealthResponse, RecoveryCasesResponse, TimelineResponse } fr
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
     super(message);

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCaseDetails } from '../hooks/useCases';
-import { ErrorState } from '../components/feedback/ErrorState';
+import { AccessBoundary } from '../components/feedback/AccessBoundary';
 import { LoadingSkeleton } from '../components/feedback/LoadingSkeleton';
 import { CaseDetailView } from './CaseDetailView';
 
@@ -10,7 +10,7 @@ export function CaseDetail() {
   const { data, loading, error, refetch } = useCaseDetails(id);
 
   if (error) {
-    return <ErrorState message="Case not found or unable to load details." onRetry={refetch} />;
+    return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Case not found or unable to load details." />;
   }
 
   if (loading || !data) {

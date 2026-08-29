@@ -136,6 +136,7 @@ def test_resume_terminal_case(mock_rzp_urlopen, base_case_and_action):
 
     with container.tm.transaction() as conn:
         from recoverai.domain.case import RecoveryOutcomeValue
+
         case = RecoveryCaseRepository(conn).get(case_id)
         case.close(RecoveryOutcomeValue.SUPPRESSED, datetime.now(UTC))
         RecoveryCaseRepository(conn).save(case)

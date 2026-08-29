@@ -16,6 +16,8 @@ from recoverai.domain.case import (
     CaseWorkflowState,
     RecoveryCase,
     RevenueSource,
+    RecoveryCaseStatus,
+    RecoveryOutcomeValue,
 )
 from recoverai.domain.event import (
     EventSource,
@@ -27,17 +29,19 @@ from recoverai.domain.identifiers import (
     CustomerId,
     EvidenceId,
     MerchantId,
+    PolicyDecisionId,
     RecoveryActionId,
     RecoveryCaseId,
     RevenueEventId,
 )
-from recoverai.domain.money import CurrencyCode, Money
-from recoverai.domain.verification import VerificationRecord, VerificationStatus
+from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
+from recoverai.domain.verification import VerificationRecord, VerifiedState, VerificationSource
+from recoverai.domain.identifiers import VerificationRecordId
 from recoverai.persistence.repositories.action import RecoveryActionRepository
 from recoverai.persistence.repositories.audit import AuditRepository
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
 from recoverai.persistence.repositories.event import RevenueEventRepository
-from recoverai.persistence.repositories.verification import VerificationRepository
+from recoverai.persistence.repositories.verification import VerificationRecordRepository
 
 
 def create_base_case(
@@ -71,7 +75,7 @@ def create_base_case(
         merchant_id=merchant_id,
         customer_id=customer_id,
         revenue_source=RevenueSource.PAYMENT,
-        amount_at_risk=Money(amount_minor, CurrencyCode.USD),
+        amount_at_risk=RevenueAmount(Money(amount_minor, CurrencyCode.USD)),
         opened_at=now,
         source_event_ids={event_id},
     )
@@ -129,7 +133,7 @@ def seed_data():
 
         action_repo = RecoveryActionRepository(conn)
         case_repo = RecoveryCaseRepository(conn)
-        vr_repo = VerificationRepository(conn)
+        vr_repo = VerificationRecordRepository(conn)
 
         # SCENARIO A — SUCCESS
         case_a, t_a = create_base_case(conn, "SUCCESS", 5000, 120)
@@ -137,29 +141,37 @@ def seed_data():
             action_id=RecoveryActionId("act_SUCCESS"),
             case_id=case_a.case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.CLOSED,
+            status=ActionStatus.PROPOSED,
             requested_at=t_a,
             external_reference="plink_success",
         )
+        action_a.authorize(PolicyDecisionId("dec_SUCCESS"), t_a)
+        
+        conn.execute(
+            """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("dec_SUCCESS", case_a.case_id.value, action_a.action_id.value, "APPROVE", "1.0", "[]", "[]", t_a.isoformat())
+        )
+
         action_a.begin_execution(t_a + timedelta(minutes=1))
         action_a.record_verification(
             ActionStatus.VERIFICATION_PENDING, t_a + timedelta(minutes=2)
         )
-        action_a.record_verification(ActionStatus.CLOSED, t_a + timedelta(minutes=5))
+        action_a.record_verification(ActionStatus.VERIFIED_SUCCESS, t_a + timedelta(minutes=5))
         action_repo.save(action_a)
 
         case_a.advance_workflow(CaseWorkflowState.VERIFYING, t_a + timedelta(minutes=2))
-        case_a.close(t_a + timedelta(minutes=5))
+        case_a.close(RecoveryOutcomeValue.RECOVERED, t_a + timedelta(minutes=5), RevenueAmount(Money(5000, CurrencyCode.USD)))
         case_repo.save(case_a)
 
         vr_repo.save(
             VerificationRecord(
-                record_id=EvidenceId("vr_SUCCESS"),
-                case_id=case_a.case_id,
+                verification_id=VerificationRecordId("vr_SUCCESS"),
                 action_id=action_a.action_id,
-                status=VerificationStatus.SUCCESS,
-                verified_at=t_a + timedelta(minutes=5),
-                evidence_data={"amount": 5000},
+                case_id=case_a.case_id,
+                verification_source=VerificationSource.SIMULATOR,
+                verified_state=VerifiedState.SUCCESS,
+                checked_at=t_a + timedelta(minutes=5),
             )
         )
         add_audit(conn, AuditEventType.CASE_CREATED, case_a.case_id, timestamp=t_a)
@@ -200,12 +212,18 @@ def seed_data():
             action_id=RecoveryActionId("act_FAILURE"),
             case_id=case_b.case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.CANCELLED,
+            status=ActionStatus.PROPOSED,
             requested_at=t_b,
-            failure_reason="Validation Error",
+        )
+        action_b.authorize(PolicyDecisionId("dec_FAILURE"), t_b)
+        conn.execute(
+            """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("dec_FAILURE", case_b.case_id.value, action_b.action_id.value, "APPROVE", "1.0", "[]", "[]", t_b.isoformat())
         )
         action_b.begin_execution(t_b + timedelta(minutes=1))
-        action_b.record_verification(ActionStatus.CANCELLED, t_b + timedelta(minutes=2))
+        action_b.record_verification(ActionStatus.VERIFIED_FAILURE, t_b + timedelta(minutes=2))
+        action_b.failure_reason = "Validation Error"
         action_repo.save(action_b)
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_b.case_id, timestamp=t_b)
@@ -232,14 +250,20 @@ def seed_data():
             action_id=RecoveryActionId("act_UNKNOWN"),
             case_id=case_c.case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.EXECUTION_UNKNOWN,
+            status=ActionStatus.PROPOSED,
             requested_at=t_c,
-            failure_reason="Timeout",
+        )
+        action_c.authorize(PolicyDecisionId("dec_UNKNOWN"), t_c)
+        conn.execute(
+            """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("dec_UNKNOWN", case_c.case_id.value, action_c.action_id.value, "APPROVE", "1.0", "[]", "[]", t_c.isoformat())
         )
         action_c.begin_execution(t_c + timedelta(minutes=1))
         action_c.record_verification(
             ActionStatus.EXECUTION_UNKNOWN, t_c + timedelta(minutes=2)
         )
+        action_c.failure_reason = "Timeout"
         action_repo.save(action_c)
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_c.case_id, timestamp=t_c)
@@ -266,9 +290,11 @@ def seed_data():
             action_id=RecoveryActionId("act_DENIAL"),
             case_id=case_d.case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.CANCELLED,
+            status=ActionStatus.PROPOSED,
             requested_at=t_d,
         )
+        # Denied by policy, so we skip authorize/execution and just record cancellation
+        action_d.record_verification(ActionStatus.CANCELLED, t_d + timedelta(minutes=1))
         action_repo.save(action_d)
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_d.case_id, timestamp=t_d)
@@ -287,9 +313,17 @@ def seed_data():
             action_id=RecoveryActionId("act_ESCALATION"),
             case_id=case_e.case_id,
             action_type=ActionType.ESCALATE,
-            status=ActionStatus.ESCALATED,
+            status=ActionStatus.PROPOSED,
             requested_at=t_e,
         )
+        action_e.authorize(PolicyDecisionId("dec_ESCALATE"), t_e)
+        conn.execute(
+            """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("dec_ESCALATE", case_e.case_id.value, action_e.action_id.value, "APPROVE", "1.0", "[]", "[]", t_e.isoformat())
+        )
+        action_e.begin_execution(t_e + timedelta(minutes=1))
+        action_e.record_verification(ActionStatus.ESCALATED, t_e + timedelta(minutes=2))
         action_repo.save(action_e)
 
         case_e.advance_workflow(

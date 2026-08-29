@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { useCases } from '../hooks/useCases';
-import { ErrorState } from '../components/feedback/ErrorState';
+import { AccessBoundary } from '../components/feedback/AccessBoundary';
 import { MetricCard } from '../components/data-display/MetricCard';
 import { UnavailableMetric } from '../components/data-display/UnavailableMetric';
 import { CaseTable } from '../components/data-display/CaseTable';
@@ -27,7 +27,7 @@ export function Dashboard() {
   }, [data]);
 
   if (error) {
-    return <ErrorState message="Unable to load recovery data. The backend may be unavailable." onRetry={refetch} />;
+    return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Unable to load recovery data." />;
   }
 
   // Handle multi-currency for the hero metric

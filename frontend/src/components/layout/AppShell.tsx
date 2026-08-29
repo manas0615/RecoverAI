@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileStack, Activity, Server, Menu, X, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FileStack, Server, Menu, X, ShieldCheck } from 'lucide-react';
 import { SystemStatus } from '../status/SystemStatus';
 import { TestModeBadge } from '../status/TestModeBadge';
 
@@ -8,7 +8,6 @@ export function Sidebar({ className = '' }: { className?: string }) {
   const links = [
     { to: '/', icon: LayoutDashboard, label: 'Overview' },
     { to: '/cases', icon: FileStack, label: 'Recovery Cases' },
-    { to: '/activity', icon: Activity, label: 'Activity' },
     { to: '/system', icon: Server, label: 'System Health' },
   ];
 

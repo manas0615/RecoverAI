@@ -170,7 +170,14 @@ class ConcreteLLMGateway(LLMGateway):
     def _build_cause_prompt(
         self, case: RecoveryCase, events: list[RevenueEvent], context: dict[str, Any]
     ) -> str:
-        return f"Analyze root cause for case {case.case_id.value}."
+        event_types = ", ".join([e.event_type.value for e in events])
+        return (
+            f"Analyze the root cause for revenue recovery case {case.case_id.value}. "
+            f"The case involves a failed payment of {case.amount_at_risk.amount_minor} {case.amount_at_risk.currency.value}. "
+            f"The following events occurred: {event_types}. "
+            f"Given the context: {context}, determine the likely cause category (e.g., CUSTOMER_SPECIFIC, SYSTEMIC_DEGRADATION), "
+            f"a confidence score between 0.0 and 1.0, and a concise explanation."
+        )
 
     def _build_plan_prompt(
         self,
@@ -179,4 +186,12 @@ class ConcreteLLMGateway(LLMGateway):
         context: dict[str, Any],
         cause: CauseAssessment,
     ) -> str:
-        return f"Generate interventions for case {case.case_id.value}."
+        event_types = ", ".join([e.event_type.value for e in events])
+        return (
+            f"Generate an intervention plan for revenue recovery case {case.case_id.value}. "
+            f"The case involves {case.amount_at_risk.amount_minor} {case.amount_at_risk.currency.value}. "
+            f"The determined cause is {cause.category} with {cause.confidence.value} confidence. "
+            f"Events: {event_types}. "
+            f"Select the best action (e.g., CREATE_PAYMENT_LINK, WAIT, ESCALATE), "
+            f"an expected recovery value in minor units, a success probability, and a concise reason."
+        )

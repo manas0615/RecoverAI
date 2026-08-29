@@ -1,13 +1,13 @@
 import { PageHeader } from '../components/layout/PageHeader';
 import { useCases } from '../hooks/useCases';
-import { ErrorState } from '../components/feedback/ErrorState';
+import { AccessBoundary } from '../components/feedback/AccessBoundary';
 import { CaseTable } from '../components/data-display/CaseTable';
 
 export function CaseList() {
   const { data, loading, error, refetch } = useCases();
 
   if (error) {
-    return <ErrorState message="Unable to load recovery cases." onRetry={refetch} />;
+    return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Unable to load recovery cases." />;
   }
 
   return (
