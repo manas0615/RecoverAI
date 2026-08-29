@@ -3,38 +3,19 @@
   "nodes": [
     {
       "parameters": {
-        "url": "={{ $env.RECOVERAI_API_URL }}/mcp/execute",
-        "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "tool",
-              "value": "create_payment_link"
-            },
-            {
-              "name": "args",
-              "value": "={{ $json.args }}"
-            }
-          ]
-        },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-API-Key",
-              "value": "={{ .N8N_API_KEY }}"
-            }
-          ]
-        }
+        "path": "payment-recovery",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
       },
-      "name": "Execute Action",
-      "type": "n8n-nodes-base.httpRequest",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        450,
+        250,
         300
-      ]
+      ],
+      "webhookId": "payment-recovery-webhook"
     },
     {
       "parameters": {
@@ -86,22 +67,22 @@
     }
   ],
   "connections": {
-    "Execute Action": {
+    "Wait": {
       "main": [
         [
           {
-            "node": "Wait",
+            "node": "Verify State",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Verify State",
+            "node": "Wait",
             "type": "main",
             "index": 0
           }

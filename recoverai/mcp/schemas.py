@@ -61,3 +61,8 @@ class CancelPaymentLinkInput(BaseModel):
 class EscalateRecoveryCaseInput(BaseModel):
     case_id: str = Field(..., min_length=1)
     reason_code: str = Field(..., min_length=1)
+
+
+class ResumeRecoveryActionInput(BaseModel):
+    case_id: str = Field(..., min_length=1)
+    action_id: str = Field(..., min_length=1)

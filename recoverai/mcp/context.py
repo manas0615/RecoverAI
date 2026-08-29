@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from recoverai.integrations.razorpay.service import RazorpayExecutionService
 from recoverai.persistence.connection import TransactionManager
@@ -12,6 +13,5 @@ class MCPContext:
     state_machine: RecoveryStateMachine
     policy_engine: PolicyEngine
     razorpay_service: RazorpayExecutionService
-    # In a full app, this would also have dependencies to n8n, Verification, Intelligence etc.
-    # We pass placeholders or just rely on DB for Read tools.
-    # intelligence: Any
+    action_service: Any
+    intelligence: Any

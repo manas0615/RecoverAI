@@ -132,4 +132,18 @@ def create_mcp_registry(ctx: MCPContext) -> MCPToolRegistry:
         requires_policy=True,
     )
 
+    from .handlers import handle_resume_recovery_action
+    from .schemas import ResumeRecoveryActionInput
+
+    registry.register(
+        "resume_recovery_action",
+        "ACT",
+        "HIGH",
+        ResumeRecoveryActionInput,
+        handle_resume_recovery_action,
+        requires_policy=True,
+        requires_verification=True,
+        idempotency_required=True,
+    )
+
     return registry

@@ -90,6 +90,16 @@ class RevenueEventRepository:
         )
         return [self._map_row(dict(row)) for row in cur.fetchall()]
 
+    def get_unprocessed_events(self) -> list[RevenueEvent]:
+        cur = self.conn.execute(
+            """
+            SELECT * FROM revenue_events
+            WHERE event_id NOT IN (SELECT event_id FROM case_source_events)
+            ORDER BY received_at ASC
+            """
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
     def _map_row(self, row: dict) -> RevenueEvent:
         return RevenueEvent(
             event_id=RevenueEventId(row["event_id"]),

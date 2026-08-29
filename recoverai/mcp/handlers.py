@@ -3,7 +3,6 @@ from typing import Any
 
 from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction
 from recoverai.domain.identifiers import RecoveryActionId, RecoveryCaseId
-from recoverai.domain.policy import PolicyDecisionValue
 from recoverai.persistence.repositories.action import RecoveryActionRepository
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
 
@@ -23,6 +22,7 @@ from .schemas import (
     GetRecoveryHistoryInput,
     GetSystemHealthInput,
     RankInterventionsInput,
+    ResumeRecoveryActionInput,
     SendPaymentLinkNotificationInput,
 )
 
@@ -92,19 +92,65 @@ def handle_get_system_health(
 def handle_assess_recovery_case(
     ctx: MCPContext, args: AssessRecoveryCaseInput
 ) -> dict[str, Any]:
-    return {"case_id": args.case_id, "recovery_probability": 0.8}
+    with ctx.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+
+        case = RecoveryCaseRepository(conn).get(RecoveryCaseId(args.case_id))
+        if not case:
+            raise ValueError("Case not found")
+        events = [
+            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
+        ]
+
+    risk, _, _ = ctx.intelligence.analyze(case, events)
+    return {
+        "case_id": args.case_id,
+        "recovery_probability": risk.recovery_probability.value,
+    }
 
 
 def handle_analyze_root_cause(
     ctx: MCPContext, args: AnalyzeRootCauseInput
 ) -> dict[str, Any]:
-    return {"category": "CUSTOMER_ACTION", "confidence": 0.9}
+    with ctx.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+
+        case = RecoveryCaseRepository(conn).get(RecoveryCaseId(args.case_id))
+        if not case:
+            raise ValueError("Case not found")
+        events = [
+            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
+        ]
+
+    _, cause, _ = ctx.intelligence.analyze(case, events)
+    return {"category": cause.category, "confidence": cause.confidence.value}
 
 
 def handle_rank_interventions(
     ctx: MCPContext, args: RankInterventionsInput
 ) -> dict[str, Any]:
-    return {"candidates": []}
+    with ctx.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+
+        case = RecoveryCaseRepository(conn).get(RecoveryCaseId(args.case_id))
+        if not case:
+            raise ValueError("Case not found")
+        events = [
+            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
+        ]
+
+    _, _, plan = ctx.intelligence.analyze(case, events)
+    candidates = []
+    for cand in plan.candidates:
+        candidates.append(
+            {
+                "candidate_id": cand.candidate_id,
+                "action_type": cand.action_type.value,
+                "expected_recovery_minor": cand.expected_recovery_value.amount_minor,
+                "probability": cand.expected_recovery_probability.value,
+            }
+        )
+    return {"candidates": candidates}
 
 
 def handle_create_payment_link(
@@ -135,44 +181,24 @@ def handle_create_payment_link(
             status=ActionStatus.PROPOSED,
             requested_at=datetime.now(UTC),
         )
+        action_repo.save(action)
 
-        from recoverai.domain.plan import InterventionPlan
-        from recoverai.policy.engine import PolicyContext
+    # Now OUTSIDE the transaction, execute the action. ActionService will start its own transaction.
+    action = ctx.action_service.execute_action(action)
 
-        # 2. Authorize via Policy
-        policy_context = PolicyContext(
-            policy_version="1.0", current_time=datetime.now(UTC)
-        )
-        plan = InterventionPlan(
-            plan_id=args.action_id,
-            case_id=case.case_id,
-            candidates=[],
-            selected_action_type=None,
-            selection_reason="mcp_direct_action",
-            selection_model_version="manual",
-            created_at=datetime.now(UTC),
-        )
-        decision = ctx.policy_engine.evaluate(policy_context, case, plan, [])
-        if decision.decision != PolicyDecisionValue.APPROVE:
-            raise MCPError("Action denied by policy", "POLICY_DENIAL")
+    if action.status == ActionStatus.EXECUTION_UNKNOWN:
+        raise MCPError("Execution status uncertain", "EXTERNAL_EXECUTION_UNCERTAINTY")
+    if (
+        action.status == ActionStatus.ESCALATED
+        or action.status == ActionStatus.CANCELLED
+    ):
+        raise MCPError("Action denied by policy", "POLICY_DENIAL")
 
-        action.status = ActionStatus.AUTHORIZED
-
-        # 3. Execute via Provider
-        result = ctx.razorpay_service.execute_and_record(action, case, decision)
-
-        # 4. Map result
-        if "UNKNOWN" in result.result_type.name:
-            raise MCPError(
-                "Execution status uncertain", "EXTERNAL_EXECUTION_UNCERTAINTY"
-            )
-
-        return {
-            "action_id": args.action_id,
-            "provider_reference": result.provider_reference,
-            "short_url": result.short_url,
-            "result_type": result.result_type.name,
-        }
+    return {
+        "action_id": args.action_id,
+        "provider_reference": action.external_reference,
+        "status": action.status.name,
+    }
 
 
 def handle_send_payment_link_notification(
@@ -210,3 +236,41 @@ def handle_escalate_recovery_case(
         )
         action_repo.save(action)
         return {"case_id": args.case_id, "escalated": True, "reason": args.reason_code}
+
+
+def handle_resume_recovery_action(
+    ctx: MCPContext, args: ResumeRecoveryActionInput
+) -> dict[str, Any]:
+    with ctx.tm.transaction() as conn:
+        case_repo = RecoveryCaseRepository(conn)
+        action_repo = RecoveryActionRepository(conn)
+        case = case_repo.get(RecoveryCaseId(args.case_id))
+        if not case:
+            raise ValueError(f"Case {args.case_id} not found")
+
+        action = action_repo.get(RecoveryActionId(args.action_id))
+        if not action:
+            raise ValueError(f"Action {args.action_id} not found")
+
+        if action.status not in {
+            ActionStatus.ESCALATED,
+            ActionStatus.PROPOSED,
+        }:
+            raise MCPError(
+                f"Action cannot be resumed from status {action.status.name}",
+                "INVALID_STATE",
+            )
+
+    # Re-evaluate and execute through action service
+    action = ctx.action_service.execute_action(action)
+
+    if action.status == ActionStatus.EXECUTION_UNKNOWN:
+        raise MCPError("Execution status uncertain", "EXTERNAL_EXECUTION_UNCERTAINTY")
+    if action.status in {ActionStatus.ESCALATED, ActionStatus.CANCELLED}:
+        raise MCPError("Action denied by policy upon resumption", "POLICY_DENIAL")
+
+    return {
+        "action_id": args.action_id,
+        "provider_reference": action.external_reference,
+        "status": action.status.name,
+    }

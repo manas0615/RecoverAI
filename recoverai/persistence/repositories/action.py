@@ -126,6 +126,21 @@ class RecoveryActionRepository:
         )
         return [self._map_row(dict(row)) for row in cur.fetchall()]
 
+    def get_by_external_reference(
+        self, external_reference: str
+    ) -> list[RecoveryAction]:
+        cur = self.conn.execute(
+            "SELECT * FROM recovery_actions WHERE external_reference = ?",
+            (external_reference,),
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
+    def get_all_pending_verification(self) -> list[RecoveryAction]:
+        cur = self.conn.execute(
+            "SELECT * FROM recovery_actions WHERE status IN ('VERIFICATION_PENDING', 'EXECUTION_UNKNOWN')"
+        )
+        return [self._map_row(dict(row)) for row in cur.fetchall()]
+
     def _map_row(self, row: dict) -> RecoveryAction:
         return RecoveryAction(
             action_id=RecoveryActionId(row["action_id"]),

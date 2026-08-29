@@ -3,14 +3,49 @@
   "nodes": [
     {
       "parameters": {
-        "url": "={{ $env.RECOVERAI_API_URL }}/mcp/execute",
+        "path": "human-approval",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "human-approval-webhook"
+    },
+    {
+      "parameters": {
+        "path": "approval-webhook",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Wait for Approval Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "webhookId": "approval-webhook-1"
+    },
+    {
+      "parameters": {
+        "url": "={{ .RECOVERAI_API_URL }}/mcp/execute",
         "method": "POST",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
               "name": "tool",
-              "value": "escalate_recovery_case"
+              "value": "resume_recovery_action"
+            },
+            {
+              "name": "args",
+              "value": "={{ .args }}"
             }
           ]
         },
@@ -24,36 +59,32 @@
           ]
         }
       },
-      "name": "Escalate to Human",
+      "name": "Resume Action",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [
-        450,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "path": "approval-webhook",
-        "responseMode": "onReceived",
-        "options": {}
-      },
-      "name": "Wait for Approval Webhook",
-      "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
         650,
         300
-      ],
-      "webhookId": "approval-webhook-1"
+      ]
     }
   ],
   "connections": {
-    "Escalate to Human": {
+    "Webhook": {
       "main": [
         [
           {
             "node": "Wait for Approval Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Resume Action",
             "type": "main",
             "index": 0
           }

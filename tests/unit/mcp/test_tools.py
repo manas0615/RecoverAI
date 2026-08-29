@@ -87,12 +87,27 @@ def mcp_ctx(mem_db):
                 provider_reference="plink_123",
             )
 
+    class DummyActionService:
+        def execute_action(self, action):
+            if action.action_id.value == "bad_action":
+                action.status = ActionStatus.CANCELLED
+                return action
+            action.status = ActionStatus.AUTHORIZED
+            action.external_reference = "plink_123"
+            return action
+
+    class DummyIntelligence:
+        def analyze(self, case, events, context=None):
+            return (None, None, None)
+
     tm = DummyTM()
     return MCPContext(
         tm=tm,
         state_machine=RecoveryStateMachine(tm),
         policy_engine=DummyPolicyEngine(),
         razorpay_service=DummyRazorpayService(),
+        action_service=DummyActionService(),
+        intelligence=DummyIntelligence(),
     )
 
 

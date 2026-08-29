@@ -73,11 +73,23 @@ class AppContainer:
             verification_repo=verification_repo,
         )
 
+        from recoverai.application.action_service import RecoveryActionService
+        from recoverai.application.case_manager import RecoveryCaseManager
+        from recoverai.intelligence.analyzer import RevenueIntelligenceAnalyzer
+
+        self.action_service = RecoveryActionService(
+            tm=self.tm, policy_engine=self.policy, razorpay_adapter=self.rzp_adapter
+        )
+        self.intelligence = RevenueIntelligenceAnalyzer(self.llm)
+        self.case_manager = RecoveryCaseManager(self.tm)
+
         self.mcp_context = MCPContext(
             tm=self.tm,
             policy_engine=self.policy,
             razorpay_service=self.rzp_service,
             state_machine=RecoveryStateMachine(self.tm),
+            action_service=self.action_service,
+            intelligence=self.intelligence,
         )
         self.mcp_registry = create_mcp_registry(self.mcp_context)
 
@@ -96,6 +108,39 @@ container = AppContainer()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup reconciliation
+    with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.action import RecoveryActionRepository
+        from recoverai.persistence.repositories.case import RecoveryCaseRepository
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+
+        action_repo = RecoveryActionRepository(conn)
+        case_repo = RecoveryCaseRepository(conn)
+        event_repo = RevenueEventRepository(conn)
+
+        # 1. Verify pending actions
+        actions = action_repo.get_all_pending_verification()
+        cases_to_verify = {a.case_id for a in actions}
+        for cid in cases_to_verify:
+            case = case_repo.get(cid)
+            if case:
+                container.verification.reconcile_case(case, datetime.now(UTC))
+                container.global_conn.commit()
+
+        # 2. Process unprocessed events
+        unprocessed = event_repo.get_unprocessed_events()
+        for event in unprocessed:
+            if event.event_type.value == "PAYMENT_FAILED":
+                try:
+                    container.case_manager.create_or_update_from_event(event)
+                    container.global_conn.commit()
+                except Exception as e:  # noqa: BLE001
+                    import logging
+
+                    logging.getLogger(__name__).error(
+                        f"Failed to process event {event.event_id}: {e}"
+                    )
+
     yield
     container.close()
 
@@ -133,14 +178,14 @@ def execute_mcp_tool(req: MCPExecuteRequest):
 
 def case_to_dict(case) -> dict:
     return {
-        "case_id": str(case.case_id),
-        "merchant_id": str(case.merchant_id),
-        "customer_id": str(case.customer_id),
+        "case_id": str(case.case_id.value),
+        "merchant_id": str(case.merchant_id.value),
+        "customer_id": str(case.customer_id.value) if case.customer_id else None,
         "status": case.status.value,
-        "created_at": case.created_at.isoformat(),
-        "amount_minor": case.opportunity_amount.amount_minor,
-        "currency": case.opportunity_amount.currency.value,
-        "verification_count": case.verification_count,
+        "created_at": case.opened_at.isoformat(),
+        "amount_minor": case.amount_at_risk.amount_minor,
+        "currency": case.amount_at_risk.currency.value,
+        "verification_count": 0,
     }
 
 
@@ -203,4 +248,41 @@ async def razorpay_webhook(merchant_id: str, request: Request):
 
     if event is None:
         return {"status": "duplicate"}
+
+    # Process based on type
+    try:
+        from recoverai.domain.event import RevenueEventType
+
+        if event.event_type == RevenueEventType.PAYMENT_FAILED:
+            container.case_manager.create_or_update_from_event(event)
+            container.global_conn.commit()
+        elif event.event_type == RevenueEventType.PAYMENT_LINK_PAID:
+            with container.tm.transaction() as conn:
+                from recoverai.persistence.repositories.action import (
+                    RecoveryActionRepository,
+                )
+                from recoverai.persistence.repositories.case import (
+                    RecoveryCaseRepository,
+                )
+
+                action_repo = RecoveryActionRepository(conn)
+                case_repo = RecoveryCaseRepository(conn)
+
+                # Payment link events have the provider reference in external_reference
+                if event.external_reference:
+                    actions = action_repo.get_by_external_reference(
+                        event.external_reference
+                    )
+                    for action in actions:
+                        case = case_repo.get(action.case_id)
+                        if case:
+                            container.verification.reconcile_case(
+                                case, datetime.now(UTC)
+                            )
+    except Exception as e:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).error(f"Error processing webhook event: {e}")
+        # Return 200 so webhook is not retried if it's an internal error; it will be picked up by reconciliation
+
     return {"status": "processed"}
