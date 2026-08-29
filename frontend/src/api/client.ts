@@ -16,6 +16,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'X-API-Key': import.meta.env.VITE_API_KEY || '',
       ...options?.headers,
     },
   });

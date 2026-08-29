@@ -8,22 +8,46 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "tool", "value": "create_payment_link" },
-            { "name": "args", "value": "={{ $json.args }}" }
+            {
+              "name": "tool",
+              "value": "create_payment_link"
+            },
+            {
+              "name": "args",
+              "value": "={{ $json.args }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ .N8N_API_KEY }}"
+            }
           ]
         }
       },
       "name": "Execute Action",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
-      "parameters": { "amount": 24, "unit": "hours" },
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
       "name": "Wait",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [650, 300]
+      "position": [
+        650,
+        300
+      ]
     },
     {
       "parameters": {
@@ -32,15 +56,33 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "tool", "value": "assess_recovery_case" },
-            { "name": "args", "value": "={{ $json.args }}" }
+            {
+              "name": "tool",
+              "value": "assess_recovery_case"
+            },
+            {
+              "name": "args",
+              "value": "={{ $json.args }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ .N8N_API_KEY }}"
+            }
           ]
         }
       },
       "name": "Verify State",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [850, 300]
+      "position": [
+        850,
+        300
+      ]
     }
   ],
   "connections": {}

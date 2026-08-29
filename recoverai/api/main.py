@@ -5,9 +5,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from recoverai.api.security import require_frontend_key, require_n8n_key
 from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
 from recoverai.ingestion.exceptions import EventIngestionError
 from recoverai.ingestion.razorpay.normalizer import RazorpayNormalizer
@@ -54,9 +56,13 @@ class AppContainer:
         verification_repo = VerificationRecordRepository(self.global_conn)
 
         self.policy = PolicyEngine(lambda: f"dec_{uuid.uuid4().hex[:8]}")
-        self.llm = ConcreteLLMGateway(GatewayConfig())
+        self.llm = ConcreteLLMGateway(GatewayConfig.from_env())
 
-        rzp_config = RazorpayConfig(key_id="mock", key_secret="mock", mode="test")
+        rzp_config = RazorpayConfig(
+            key_id=settings.razorpay_key_id or "mock",
+            key_secret=settings.razorpay_key_secret or "mock",
+            mode=settings.razorpay_mode,
+        )
         self.rzp_adapter = RazorpayAdapter(rzp_config)
         self.rzp_service = RazorpayExecutionService(self.rzp_adapter, action_repo)
 
@@ -75,7 +81,7 @@ class AppContainer:
         )
         self.mcp_registry = create_mcp_registry(self.mcp_context)
 
-        self.verifier = WebhookVerifier("secret")
+        self.verifier = WebhookVerifier(settings.razorpay_webhook_secret or "secret")
         self.normalizer = RazorpayNormalizer()
         self.ingestion = WebhookIngestionService(
             self.verifier, self.normalizer, self.tm
@@ -96,6 +102,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RecoverAI", lifespan=lifespan)
 
+from recoverai.config import settings
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_cors_origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
 def health_check():
@@ -107,7 +123,7 @@ class MCPExecuteRequest(BaseModel):
     args: dict[str, Any]
 
 
-@app.post("/mcp/execute")
+@app.post("/mcp/execute", dependencies=[Depends(require_n8n_key)])
 def execute_mcp_tool(req: MCPExecuteRequest):
     result = container.mcp_registry.execute(req.tool, req.args)
     if "error" in result and result.get("code") == "UNKNOWN_TOOL":
@@ -128,7 +144,7 @@ def case_to_dict(case) -> dict:
     }
 
 
-@app.get("/recovery-cases")
+@app.get("/recovery-cases", dependencies=[Depends(require_frontend_key)])
 def list_cases():
     with container.tm.transaction() as conn:
         cur = conn.execute("SELECT case_id FROM recovery_cases ORDER BY opened_at DESC")
@@ -141,7 +157,7 @@ def list_cases():
         return {"cases": cases}
 
 
-@app.get("/recovery-cases/{case_id}")
+@app.get("/recovery-cases/{case_id}", dependencies=[Depends(require_frontend_key)])
 def get_case(case_id: str):
     with container.tm.transaction() as conn:
         repo = RecoveryCaseRepository(conn)
@@ -154,7 +170,9 @@ def get_case(case_id: str):
         return case_to_dict(case)
 
 
-@app.get("/recovery-cases/{case_id}/timeline")
+@app.get(
+    "/recovery-cases/{case_id}/timeline", dependencies=[Depends(require_frontend_key)]
+)
 def get_case_timeline(case_id: str):
     with container.tm.transaction() as conn:
         repo = AuditRepository(conn)

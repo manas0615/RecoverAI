@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     n8n_base_url: str | None = Field(default=None, description="n8n Base URL")
     n8n_api_token: str | None = Field(default=None, description="n8n API Token")
 
+    # Security & API Boundaries
+    frontend_api_key: str = Field(
+        default="test_frontend_key_default",
+        description="Lightweight client credential for frontend reads",
+    )
+    n8n_api_key: str = Field(
+        default="test_n8n_key_default",
+        description="Server-side secret for n8n orchestrator access to MCP",
+    )
+    frontend_cors_origin: str = Field(
+        default="http://localhost:5173",
+        description="Allowed CORS origin for the frontend",
+    )
+
     # Application Settings
     log_level: str = Field(default="INFO", description="Logging level")
     environment: str = Field(

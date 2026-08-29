@@ -8,14 +8,29 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "tool", "value": "escalate_recovery_case" }
+            {
+              "name": "tool",
+              "value": "escalate_recovery_case"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ .N8N_API_KEY }}"
+            }
           ]
         }
       },
       "name": "Escalate to Human",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -26,14 +41,23 @@
       "name": "Wait for Approval Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [650, 300],
+      "position": [
+        650,
+        300
+      ],
       "webhookId": "approval-webhook-1"
     }
   ],
   "connections": {
     "Escalate to Human": {
       "main": [
-        [ { "node": "Wait for Approval Webhook", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Wait for Approval Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   }

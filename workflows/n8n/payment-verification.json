@@ -8,14 +8,29 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "tool", "value": "get_recovery_case" }
+            {
+              "name": "tool",
+              "value": "get_recovery_case"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ .N8N_API_KEY }}"
+            }
           ]
         }
       },
       "name": "Fetch Case",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     }
   ],
   "connections": {}

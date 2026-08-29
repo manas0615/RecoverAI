@@ -8,15 +8,33 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "tool", "value": "send_payment_link_notification" },
-            { "name": "args", "value": "={{ $json.args }}" }
+            {
+              "name": "tool",
+              "value": "send_payment_link_notification"
+            },
+            {
+              "name": "args",
+              "value": "={{ $json.args }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ .N8N_API_KEY }}"
+            }
           ]
         }
       },
       "name": "Send Notification",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -32,25 +50,43 @@
       "name": "Check Unsupported",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [650, 300]
+      "position": [
+        650,
+        300
+      ]
     },
     {
       "parameters": {},
       "name": "Stop Workflow",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [850, 200]
+      "position": [
+        850,
+        200
+      ]
     }
   ],
   "connections": {
     "Send Notification": {
       "main": [
-        [ { "node": "Check Unsupported", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Check Unsupported",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Check Unsupported": {
       "main": [
-        [ { "node": "Stop Workflow", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Stop Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   }
