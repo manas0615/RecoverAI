@@ -2793,12 +2793,12 @@ OWASP recommends protecting logs and avoiding direct storage of secrets, tokens,
 - MCP guidance around untrusted tool annotations.
 - n8n current security-audit capabilities.
 - OWASP API authorization, sensitive-business-flow, SSRF, and unsafe-API-consumption risks.
+- **Authentication**: `X-API-Key` implemented and verified.
+- **Authorization**: Role-based access (`FRONTEND_API_KEY` vs `N8N_API_KEY`) implemented and verified.
+- **CORS**: Restrictive `frontend_cors_origin` implemented and verified.
 
 ## PROPOSED
 
-- Exact authentication mechanism for the RecoverAI frontend/API.
-- Exact session/token implementation.
-- Exact CORS policy.
 - Exact rate-limit values.
 - Exact network allowlist.
 - Exact secret-management mechanism for the final deployment.
@@ -2806,9 +2806,10 @@ OWASP recommends protecting logs and avoiding direct storage of secrets, tokens,
 - Exact n8n deployment exposure.
 - Exact security monitoring/alerting implementation.
 
-## NOT YET IMPLEMENTED
+## NOT YET IMPLEMENTED / OUT OF SCOPE
 
-All security controls and security tests.
+- **Rate Limiting**: Not implemented in P17 (out of scope).
+- All security monitoring, advanced IAM, WAF, JWT, etc.
 
 ## CRITICAL
 
