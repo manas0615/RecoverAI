@@ -134,7 +134,7 @@ async def lifespan(app: FastAPI):
                 try:
                     container.case_manager.create_or_update_from_event(event)
                     container.global_conn.commit()
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:  # noqa: BLE001  # noqa: BLE001
                     import logging
 
                     logging.getLogger(__name__).error(
@@ -225,6 +225,93 @@ def get_case_timeline(case_id: str):
         return {"events": [e.to_dict() for e in events]}
 
 
+@app.post(
+    "/recovery-cases/{case_id}/analyze", dependencies=[Depends(require_frontend_key)]
+)
+async def analyze_case(case_id: str):
+    with container.tm.transaction() as conn:
+        case_repo = RecoveryCaseRepository(conn)
+        event_repo = RevenueEventRepository(conn)
+        try:
+            case = case_repo.get(RecoveryCaseId(case_id))
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid case ID")
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        events = [event_repo.get(eid) for eid in case.source_event_ids]
+
+    try:
+        from datetime import UTC, datetime
+
+        from recoverai.domain.audit import (
+            AuditActor,
+            AuditActorType,
+            AuditEvent,
+            AuditEventType,
+        )
+        from recoverai.persistence.repositories.audit import AuditRepository
+        from recoverai.policy.engine import PolicyContext
+
+        with container.tm.transaction() as conn:
+            audit_repo = AuditRepository(conn)
+
+            # 1. Run Intelligence
+            risk, cause, plan = container.intelligence.analyze(case, events)
+
+            audit_repo.append(
+                AuditEvent(
+                    event_type=AuditEventType.LLM_RECOMMENDATION_CREATED,
+                    actor=AuditActor(type=AuditActorType.LLM_AGENT, id=risk.model_name),
+                    case_id=case.case_id,
+                    timestamp=datetime.now(UTC),
+                    metadata={
+                        "recommended_action": plan.selected_action_type.value
+                        if plan.selected_action_type
+                        else "UNKNOWN",
+                        "reasoning": plan.selection_reason,
+                        "confidence": cause.confidence.value if cause else None,
+                        "cause_category": cause.category if cause else None,
+                    },
+                )
+            )
+
+            # 2. Evaluate Policy
+            policy_context = PolicyContext(
+                policy_version="1.0", current_time=datetime.now(UTC)
+            )
+            decision = container.policy.evaluate(policy_context, case, plan, [])
+
+            audit_repo.append(
+                AuditEvent(
+                    event_type=AuditEventType.POLICY_DECISION_CREATED,
+                    actor=AuditActor(type=AuditActorType.POLICY_ENGINE, id="policy"),
+                    case_id=case.case_id,
+                    timestamp=datetime.now(UTC),
+                    metadata={
+                        "decision": decision.decision.value,
+                        "reasons": [r.code for r in decision.reasons],
+                        "decision_reason": ", ".join(
+                            [r.description for r in decision.reasons]
+                        ),
+                    },
+                )
+            )
+
+            # 3. Do NOT auto-execute (as requested by instructions)
+            return {
+                "status": "success",
+                "recommendation": plan.selected_action_type.value
+                if plan.selected_action_type
+                else "UNKNOWN",
+            }
+    except Exception as e:  # noqa: BLE001
+        import logging
+
+        logging.getLogger(__name__).error(f"Analysis failed for {case_id}: {e}")
+        raise HTTPException(status_code=500, detail="Analysis unavailable")
+
+
 @app.post("/webhooks/razorpay/{merchant_id}")
 async def razorpay_webhook(merchant_id: str, request: Request):
     raw_body = await request.body()
@@ -279,7 +366,7 @@ async def razorpay_webhook(merchant_id: str, request: Request):
                             container.verification.reconcile_case(
                                 case, datetime.now(UTC)
                             )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).error(f"Error processing webhook event: {e}")

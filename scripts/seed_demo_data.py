@@ -155,22 +155,37 @@ def seed_data():
             external_reference="plink_success",
         )
         action_a.authorize(PolicyDecisionId("dec_SUCCESS"), t_a)
-        
+
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("dec_SUCCESS", case_a.case_id.value, action_a.action_id.value, "APPROVE", "1.0", "[]", "[]", t_a.isoformat())
+            (
+                "dec_SUCCESS",
+                case_a.case_id.value,
+                action_a.action_id.value,
+                "APPROVE",
+                "1.0",
+                "[]",
+                "[]",
+                t_a.isoformat(),
+            ),
         )
 
         action_a.begin_execution(t_a + timedelta(minutes=1))
         action_a.record_verification(
             ActionStatus.VERIFICATION_PENDING, t_a + timedelta(minutes=2)
         )
-        action_a.record_verification(ActionStatus.VERIFIED_SUCCESS, t_a + timedelta(minutes=5))
+        action_a.record_verification(
+            ActionStatus.VERIFIED_SUCCESS, t_a + timedelta(minutes=5)
+        )
         action_repo.save(action_a)
 
         case_a.advance_workflow(CaseWorkflowState.VERIFYING, t_a + timedelta(minutes=2))
-        case_a.close(RecoveryOutcomeValue.RECOVERED, t_a + timedelta(minutes=5), RevenueAmount(Money(5000, CurrencyCode.USD)))
+        case_a.close(
+            RecoveryOutcomeValue.RECOVERED,
+            t_a + timedelta(minutes=5),
+            RevenueAmount(Money(5000, CurrencyCode.USD)),
+        )
         case_repo.save(case_a)
 
         vr_repo.save(
@@ -236,10 +251,21 @@ def seed_data():
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("dec_FAILURE", case_b.case_id.value, action_b.action_id.value, "APPROVE", "1.0", "[]", "[]", t_b.isoformat())
+            (
+                "dec_FAILURE",
+                case_b.case_id.value,
+                action_b.action_id.value,
+                "APPROVE",
+                "1.0",
+                "[]",
+                "[]",
+                t_b.isoformat(),
+            ),
         )
         action_b.begin_execution(t_b + timedelta(minutes=1))
-        action_b.record_verification(ActionStatus.VERIFIED_FAILURE, t_b + timedelta(minutes=2))
+        action_b.record_verification(
+            ActionStatus.VERIFIED_FAILURE, t_b + timedelta(minutes=2)
+        )
         action_b.failure_reason = "Validation Error"
         action_repo.save(action_b)
 
@@ -274,7 +300,16 @@ def seed_data():
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("dec_UNKNOWN", case_c.case_id.value, action_c.action_id.value, "APPROVE", "1.0", "[]", "[]", t_c.isoformat())
+            (
+                "dec_UNKNOWN",
+                case_c.case_id.value,
+                action_c.action_id.value,
+                "APPROVE",
+                "1.0",
+                "[]",
+                "[]",
+                t_c.isoformat(),
+            ),
         )
         action_c.begin_execution(t_c + timedelta(minutes=1))
         action_c.record_verification(
@@ -345,7 +380,16 @@ def seed_data():
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            ("dec_ESCALATE", case_e.case_id.value, action_e.action_id.value, "APPROVE", "1.0", "[]", "[]", t_e.isoformat())
+            (
+                "dec_ESCALATE",
+                case_e.case_id.value,
+                action_e.action_id.value,
+                "APPROVE",
+                "1.0",
+                "[]",
+                "[]",
+                t_e.isoformat(),
+            ),
         )
         action_e.begin_execution(t_e + timedelta(minutes=1))
         action_e.record_verification(ActionStatus.ESCALATED, t_e + timedelta(minutes=2))

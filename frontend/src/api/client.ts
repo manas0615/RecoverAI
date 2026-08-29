@@ -36,4 +36,6 @@ export const apiClient = {
   getCase: (caseId: string) => fetchJson<Case>(`/api/recovery-cases/${caseId}`),
   
   getTimeline: (caseId: string) => fetchJson<TimelineResponse>(`/api/recovery-cases/${caseId}/timeline`),
+  
+  analyzeCase: (caseId: string) => fetchJson<{ status: string; recommendation: string }>(`/api/recovery-cases/${caseId}/analyze`, { method: 'POST' }),
 };

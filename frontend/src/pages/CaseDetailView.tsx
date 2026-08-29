@@ -10,9 +10,11 @@ interface CaseDetailViewProps {
   caseData: Case;
   timeline: TimelineEvent[];
   onBack?: () => void;
+  onAnalyze?: () => void;
+  isAnalyzing?: boolean;
 }
 
-export function CaseDetailView({ caseData, timeline, onBack }: CaseDetailViewProps) {
+export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyzing }: CaseDetailViewProps) {
   const derivedData = useMemo(() => {
     // Sort timeline newest first to find latest states
     const events = [...timeline].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -139,6 +141,32 @@ export function CaseDetailView({ caseData, timeline, onBack }: CaseDetailViewPro
         <div className="flex flex-col items-center py-2">
             <ArrowDown className="w-6 h-6 text-[var(--color-border)]" />
         </div>
+
+        {/* ANALYZE CASE BUTTON */}
+        {!aiEvent && !isAnalyzing && onAnalyze && (
+          <section className="w-full flex justify-center py-4">
+            <button
+              onClick={onAnalyze}
+              className="px-6 py-3 bg-[var(--color-primary)] text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+            >
+              Analyze Case
+            </button>
+          </section>
+        )}
+
+        {isAnalyzing && (
+          <section className="w-full flex flex-col items-center justify-center p-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4">
+            <div className="flex space-x-2 animate-pulse">
+              <div className="w-3 h-3 bg-[var(--color-primary)] rounded-full"></div>
+              <div className="w-3 h-3 bg-[var(--color-primary)] rounded-full animation-delay-200"></div>
+              <div className="w-3 h-3 bg-[var(--color-primary)] rounded-full animation-delay-400"></div>
+            </div>
+            <div className="text-sm font-medium text-[var(--color-text-primary)]">Analyzing case...</div>
+            <div className="text-xs text-[var(--color-text-secondary)]">Reviewing payment context</div>
+            <div className="text-xs text-[var(--color-text-secondary)]">Assessing recovery opportunity</div>
+            <div className="text-xs text-[var(--color-text-secondary)]">Generating recommendation</div>
+          </section>
+        )}
 
         {/* AI SUGGESTS */}
         <section className="w-full flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">

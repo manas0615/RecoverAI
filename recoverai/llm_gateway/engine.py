@@ -187,7 +187,11 @@ class ConcreteLLMGateway(LLMGateway):
         cause: CauseAssessment | None,
     ) -> str:
         event_types = ", ".join([e.event_type.value for e in events])
-        cause_str = f"The determined cause is {cause.category} with {cause.confidence.value} confidence. " if cause else "No cause determined. "
+        cause_str = (
+            f"The determined cause is {cause.category} with {cause.confidence.value} confidence. "
+            if cause
+            else "No cause determined. "
+        )
         return (
             f"Generate an intervention plan for revenue recovery case {case.case_id.value}. "
             f"The case involves {case.amount_at_risk.amount_minor} {case.amount_at_risk.currency.value}. "
