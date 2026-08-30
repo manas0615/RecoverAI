@@ -11,6 +11,7 @@ export function CaseDetail() {
   const navigate = useNavigate();
   const { data, loading, error, refetch } = useCaseDetails(id);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
   if (error) {
     return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Case not found or unable to load details." />;
@@ -32,12 +33,13 @@ export function CaseDetail() {
   const handleAnalyze = async () => {
     if (!id) return;
     setIsAnalyzing(true);
+    setAnalyzeError(null);
     try {
       await apiClient.analyzeCase(id);
       await refetch();
     } catch (err) {
       console.error('Failed to analyze case:', err);
-      alert('Analysis unavailable');
+      setAnalyzeError('Analysis unavailable. The case could not be analyzed right now. No financial action was performed.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -50,6 +52,7 @@ export function CaseDetail() {
       onBack={() => navigate('/cases')}
       onAnalyze={handleAnalyze}
       isAnalyzing={isAnalyzing}
+      analyzeError={analyzeError}
     />
   );
 }

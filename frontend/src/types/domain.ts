@@ -10,6 +10,7 @@ export interface Case {
   outcome_type?: string;
   recovered_amount_minor?: number;
   workflow_state?: string;
+  events?: any[];
 }
 
 export interface Actor {

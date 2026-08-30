@@ -12,9 +12,10 @@ interface CaseDetailViewProps {
   onBack?: () => void;
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
+  analyzeError?: string | null;
 }
 
-export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyzing }: CaseDetailViewProps) {
+export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyzing, analyzeError }: CaseDetailViewProps) {
   const derivedData = useMemo(() => {
     // Sort timeline newest first to find latest states
     const events = [...timeline].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -137,22 +138,72 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
           </dl>
         </section>
 
+          {/* EVIDENCE SECTION */}
+          {caseData.events && caseData.events.length > 0 && (
+            <>
+              <div className="flex flex-col items-center py-2">
+                <ArrowDown className="w-6 h-6 text-[var(--color-border)]" />
+              </div>
+              <section className="w-full flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] uppercase tracking-wider">What Happened? (Evidence)</h2>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-sm text-[var(--color-text-secondary)]">The system detected the following events:</p>
+                  <div className="flex flex-col gap-3">
+                    {caseData.events.map((ev: any) => (
+                      <div key={ev.event_id} className="p-3 bg-[var(--color-bg)] border border-[var(--color-border-subtle)] rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-mono text-sm font-bold text-[var(--color-text-primary)]">{ev.event_type}</span>
+                          <span className="text-xs text-[var(--color-text-muted)]">{new Date(ev.occurred_at).toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="block text-xs text-[var(--color-text-muted)]">Amount</span>
+                            <span className="block font-medium text-[var(--color-text-primary)]">
+                              {(ev.amount_minor / 100).toLocaleString(undefined, { style: 'currency', currency: ev.currency })}
+                            </span>
+                          </div>
+                          {ev.external_reference && (
+                            <div>
+                              <span className="block text-xs text-[var(--color-text-muted)]">Reference</span>
+                              <span className="block font-mono text-xs text-[var(--color-text-secondary)]">{ev.external_reference}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+
         {/* Narrative Pipeline */}
         <div className="flex flex-col items-center py-2">
             <ArrowDown className="w-6 h-6 text-[var(--color-border)]" />
         </div>
 
-        {/* ANALYZE CASE BUTTON */}
-        {!aiEvent && !isAnalyzing && onAnalyze && (
-          <section className="w-full flex justify-center py-4">
-            <button
-              onClick={onAnalyze}
-              className="px-6 py-3 bg-[var(--color-primary)] text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
-            >
-              Analyze Case
-            </button>
-          </section>
-        )}
+          {/* ANALYZE CASE BUTTON */}
+          {!aiEvent && !isAnalyzing && onAnalyze && (
+            <section className="w-full flex flex-col items-center py-4">
+              {analyzeError && (
+                <div className="mb-4 p-4 rounded-lg bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] text-center max-w-lg shadow-sm">
+                  <div className="flex items-center justify-center gap-2 text-[var(--color-warning)] font-bold mb-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    Analysis Unavailable
+                  </div>
+                  {analyzeError}
+                </div>
+              )}
+              <button
+                onClick={onAnalyze}
+                className="px-6 py-3 bg-[var(--color-primary)] text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+              >
+                {analyzeError ? 'Try Again' : 'Analyze Case'}
+              </button>
+            </section>
+          )}
 
         {isAnalyzing && (
           <section className="w-full flex flex-col items-center justify-center p-8 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-4">

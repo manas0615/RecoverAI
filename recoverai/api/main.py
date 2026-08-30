@@ -36,13 +36,9 @@ class AppContainer:
     def __init__(self):
         from recoverai.config import settings
 
-        if os.environ.get("ENVIRONMENT") == "test" or settings.environment == "test":
-            db_name = f"file:mem_{uuid.uuid4().hex}?mode=memory&cache=shared"
-            self.tm = TransactionManager(f"sqlite:///{db_name}")
-        else:
-            self.tm = TransactionManager(settings.database_url)
+        self.tm = TransactionManager(settings.database_url)
 
-        # Keep global connection open first so the DB is not destroyed
+        # Keep global connection open first so the DB is not destroyed if it is an in-memory DB
         self.global_conn = self.tm.create_connection()
 
         migrations_dir = (
@@ -210,14 +206,33 @@ def list_cases():
 @app.get("/recovery-cases/{case_id}", dependencies=[Depends(require_frontend_key)])
 def get_case(case_id: str):
     with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.event import RevenueEventRepository
+
         repo = RecoveryCaseRepository(conn)
+        event_repo = RevenueEventRepository(conn)
         try:
             case = repo.get(RecoveryCaseId(case_id))
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="Invalid case ID")
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
-        return case_to_dict(case)
+
+        events = [event_repo.get(eid) for eid in case.source_event_ids]
+
+        result = case_to_dict(case)
+        result["events"] = [
+            {
+                "event_id": e.event_id.value,
+                "event_type": e.event_type.value,
+                "amount_minor": e.amount.amount_minor if e.amount else None,
+                "currency": e.amount.currency.value if e.amount else None,
+                "occurred_at": e.occurred_at.isoformat(),
+                "external_reference": e.external_reference,
+            }
+            for e in events
+            if e
+        ]
+        return result
 
 
 @app.get(
@@ -295,10 +310,8 @@ async def analyze_case(case_id: str):
                     timestamp=datetime.now(UTC),
                     metadata={
                         "decision": decision.decision.value,
-                        "reasons": [r.code for r in decision.reasons],
-                        "decision_reason": ", ".join(
-                            [r.description for r in decision.reasons]
-                        ),
+                        "reasons": decision.reason_codes,
+                        "decision_reason": ", ".join(decision.reason_codes),
                     },
                 )
             )
