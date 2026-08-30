@@ -93,26 +93,48 @@ class RevenueIntelligenceAnalyzer:
         """
         Normalizes raw event inputs into analyzable signals.
         """
+        # Determine systemic signal from events (e.g. multiple failures in a short time, or provider errors)
+        has_systemic = context.get("active_downtime", False)
+        customer_failures = context.get("customer_failure_count", 0)
+        recent_events = len(events)
+        
+        # Check event types
+        event_types = [e.event_type.value for e in events]
+        if "PAYMENT_FAILED" in event_types and "PAYMENT_LINK_FAILED" in event_types:
+            customer_failures += 2
+        
+        # Determine if there's an explicit error from provider in events (like 'BAD_REQUEST' etc.)
+        for e in events:
+            if e.metadata and e.metadata.get("error_code") in ("GATEWAY_ERROR", "BAD_REQUEST", "SERVER_ERROR"):
+                has_systemic = True
+
         return {
-            "has_systemic_signal": context.get("active_downtime", False),
-            "customer_failure_count": context.get("customer_failure_count", 1),
-            "recent_events_count": len(events),
+            "has_systemic_signal": has_systemic,
+            "customer_failure_count": customer_failures,
+            "recent_events_count": recent_events,
+            "event_types": event_types,
         }
 
     def _assess_risk(
         self, case: RecoveryCase, features: dict[str, Any], events: list[RevenueEvent]
     ) -> RiskAssessment:
-        # Simple deterministic heuristic
-        prob_val = 0.8
+        # P22: Explainable deterministic heuristic
+        prob_val = 0.85 # Baseline
+
         if features.get("has_systemic_signal"):
-            prob_val = 0.1
-        elif features.get("customer_failure_count", 0) > 3:
-            prob_val = 0.4
+            prob_val -= 0.60
+        else:
+            failures = features.get("customer_failure_count", 0)
+            if failures > 0:
+                prob_val -= (failures * 0.15)
+                
+        # Clamp
+        prob_val = max(0.0, min(1.0, prob_val))
 
         return RiskAssessment(
             assessment_id=f"risk_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
-            recovery_probability=Probability(prob_val, "expected recovery probability"),
+            recovery_probability=Probability(prob_val, "Derived from historical failure count and systemic signals"),
             expected_recovery_value=case.amount_at_risk,
             model_name="deterministic_baseline",
             model_version="1.0",
@@ -124,9 +146,15 @@ class RevenueIntelligenceAnalyzer:
     ) -> CauseAssessment:
         from recoverai.domain.evidence import EvidenceSourceType
 
-        cat = "CUSTOMER_SPECIFIC"
         if features.get("has_systemic_signal"):
             cat = "SYSTEMIC_DEGRADATION"
+            conf = 0.95
+        elif features.get("customer_failure_count", 0) >= 2:
+            cat = "INSUFFICIENT_FUNDS"
+            conf = 0.80
+        else:
+            cat = "CUSTOMER_SPECIFIC"
+            conf = 0.70
 
         evidence = []
         for e in events:
@@ -143,7 +171,7 @@ class RevenueIntelligenceAnalyzer:
             cause_assessment_id=f"cause_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
             category=cat,
-            confidence=Probability(0.9, "cause confidence"),
+            confidence=Probability(conf, "cause confidence"),
             analysis_type=AnalysisType.RULE_BASED,
             model_version="1.0",
             created_at=datetime.now(UTC),
@@ -155,6 +183,8 @@ class RevenueIntelligenceAnalyzer:
     ) -> InterventionPlan:
         selected = None
         best_ev = -1.0
+        reason = ""
+        expected_value = case.amount_at_risk
 
         # Simple selection: max expected value * prob
         for cand in candidates:
@@ -166,16 +196,18 @@ class RevenueIntelligenceAnalyzer:
                 if ev > best_ev:
                     best_ev = ev
                     selected = cand.action_type
+                    reason = cand.reason
+                    expected_value = cand.expected_recovery_value
 
         return InterventionPlan(
             plan_id=f"plan_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
             candidates=candidates,
             selected_action_type=selected,
-            selection_reason="Highest expected value",
+            selection_reason=reason or "Highest expected value",
             selection_model_version=version,
             created_at=datetime.now(UTC),
-            expected_recovery_value=case.amount_at_risk,
+            expected_recovery_value=expected_value,
         )
 
     def _deterministic_intervention_plan(
@@ -186,6 +218,7 @@ class RevenueIntelligenceAnalyzer:
         events: list[RevenueEvent],
     ) -> InterventionPlan:
         from recoverai.domain.evidence import EvidenceSourceType
+        from recoverai.domain.money import Money, RevenueAmount
 
         evidence = []
         for e in events:
@@ -199,31 +232,36 @@ class RevenueIntelligenceAnalyzer:
             )
 
         candidates = []
-
+        # Calculate expected value (Prob * Amount)
+        base_amount = case.amount_at_risk.amount_minor
+        currency = case.amount_at_risk.currency
+        
+        # P22: Intervention economics
         if cause.category == "SYSTEMIC_DEGRADATION":
-            # Just wait
+            ev = int(base_amount * 0.9)
             candidates.append(
                 InterventionCandidate(
                     candidate_id=f"cand_{uuid.uuid4().hex[:8]}",
                     case_id=case.case_id,
                     action_type=ActionType.WAIT,
-                    expected_recovery_probability=Probability(0.9, "success prob"),
-                    expected_recovery_value=case.amount_at_risk,
+                    expected_recovery_probability=Probability(0.9, "Wait success prob"),
+                    expected_recovery_value=RevenueAmount(Money(ev, currency)),
                     eligibility_status=CandidateStatus.PROPOSED,
-                    reason="Systemic degradation active",
+                    reason="Systemic degradation active. Waiting avoids unnecessary friction and failures.",
                     evidence_references=evidence,
                 )
             )
         else:
+            ev = int(base_amount * risk.recovery_probability.value)
             candidates.append(
                 InterventionCandidate(
                     candidate_id=f"cand_{uuid.uuid4().hex[:8]}",
                     case_id=case.case_id,
                     action_type=ActionType.CREATE_PAYMENT_LINK,
-                    expected_recovery_probability=Probability(0.7, "success prob"),
-                    expected_recovery_value=case.amount_at_risk,
+                    expected_recovery_probability=risk.recovery_probability,
+                    expected_recovery_value=RevenueAmount(Money(ev, currency)),
                     eligibility_status=CandidateStatus.PROPOSED,
-                    reason="Standard recovery procedure",
+                    reason=f"Standard recovery procedure. Expected value: {(ev/100):.2f} {currency.value}.",
                     evidence_references=evidence,
                 )
             )

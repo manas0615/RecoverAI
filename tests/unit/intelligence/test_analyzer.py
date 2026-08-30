@@ -98,7 +98,7 @@ def test_deterministic_analyzer_systemic():
     risk, cause, plan = analyzer.analyze(case, [event], context)
 
     assert isinstance(risk, RiskAssessment)
-    assert risk.recovery_probability.value == 0.1
+    assert risk.recovery_probability.value == 0.25
     assert risk.model_name == "deterministic_baseline"
 
     assert isinstance(cause, CauseAssessment)
@@ -118,7 +118,7 @@ def test_deterministic_analyzer_customer():
 
     risk, cause, plan = analyzer.analyze(case, [event], context)
 
-    assert risk.recovery_probability.value == 0.8
+    assert risk.recovery_probability.value == 0.85
     assert cause.category == "CUSTOMER_SPECIFIC"
     assert plan.selected_action_type == ActionType.CREATE_PAYMENT_LINK
 
@@ -135,7 +135,7 @@ def test_mock_llm_analyzer_success():
     risk, cause, plan = analyzer.analyze(case, [event], {})
 
     # Risk is still deterministic
-    assert risk.recovery_probability.value == 0.8
+    assert risk.recovery_probability.value == 0.85
 
     # Cause should be from mock LLM
     assert cause.category == "MOCK_CATEGORY"
