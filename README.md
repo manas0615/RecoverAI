@@ -17,7 +17,7 @@ RecoverAI is an **evidence-first revenue recovery system**. It does not guess. I
 
 **Detect → Understand → Recommend → Decide → Execute → Verify → Audit**
 
-Unlike naive simple-retry logic or blind payment-link spam, RecoverAI uses AI to interpret the qualitative context of a failure, but relies on a deterministic policy engine to make the final financial safety decision. It sacrifices some aggressive gross recovery in exchange for preventing failed, friction-inducing interventions.
+Unlike simple-retry logic or blind payment-link spam, RecoverAI uses AI to interpret the qualitative context of a failure, but relies on a deterministic policy engine to make the final financial safety decision. It sacrifices some aggressive gross recovery in exchange for preventing failed, friction-inducing interventions.
 
 ---
 
