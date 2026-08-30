@@ -286,12 +286,17 @@ async def analyze_case(case_id: str):
                     case_id=case.case_id,
                     timestamp=datetime.now(UTC),
                     metadata={
-                        "recommended_action": plan.selected_action_type.value
-                        if plan.selected_action_type
-                        else "UNKNOWN",
+                        "recommended_action": plan.selected_action_type.value if plan.selected_action_type else "UNKNOWN",
                         "reasoning": plan.selection_reason,
                         "confidence": cause.confidence.value if cause else None,
                         "cause_category": cause.category if cause else None,
+                        "recovery_probability": risk.recovery_probability.value,
+                        "expected_recovery_amount": plan.expected_recovery_value.amount_minor if plan.expected_recovery_value else (risk.expected_recovery_value.amount_minor if risk.expected_recovery_value else 0),
+                        "expected_recovery_currency": plan.expected_recovery_value.currency.value if plan.expected_recovery_value else (risk.expected_recovery_value.currency.value if risk.expected_recovery_value else "USD"),
+                        "analysis_source": "Gemini" if (cause and cause.analysis_type.name == "LLM") else "Deterministic Fallback",
+                        "deterministic_fallback": cause.analysis_type.name != "LLM" if cause else True,
+                        "probability_meaning": getattr(risk.recovery_probability, 'reasoning', "Derived from historical failure count and systemic signals"),
+                        "model_version": risk.model_version
                     },
                 )
             )
@@ -319,9 +324,16 @@ async def analyze_case(case_id: str):
             # 3. Do NOT auto-execute (as requested by instructions)
             return {
                 "status": "success",
-                "recommendation": plan.selected_action_type.value
-                if plan.selected_action_type
-                else "UNKNOWN",
+                "recommendation": plan.selected_action_type.value if plan.selected_action_type else "UNKNOWN",
+                "recommendation_reason": plan.selection_reason,
+                "expected_recovery_value": plan.expected_recovery_value.amount_minor if plan.expected_recovery_value else (risk.expected_recovery_value.amount_minor if risk.expected_recovery_value else 0),
+                "recovery_probability": risk.recovery_probability.value,
+                "probability_meaning": getattr(risk.recovery_probability, 'reasoning', "Derived from historical failure count and systemic signals"),
+                "cause_category": cause.category if cause else "UNKNOWN",
+                "cause_confidence": cause.confidence.value if cause else 0.0,
+                "policy_decision": decision.decision.value,
+                "policy_reasons": decision.reason_codes,
+                "model_version": risk.model_version
             }
     except Exception as e:  # noqa: BLE001
         import logging
