@@ -1,14 +1,65 @@
 import { useMemo } from 'react';
 import { PageHeader } from '../components/layout/PageHeader';
-import { useCases } from '../hooks/useCases';
+import { useCases, useAnalytics } from '../hooks/useCases';
 import { AccessBoundary } from '../components/feedback/AccessBoundary';
 import { MetricCard } from '../components/data-display/MetricCard';
 import { UnavailableMetric } from '../components/data-display/UnavailableMetric';
 import { CaseTable } from '../components/data-display/CaseTable';
 import { MoneyValue } from '../components/financial/MoneyValue';
 
+const FunnelChart = ({ data }: { data: { stage: string; count: number }[] }) => {
+  const maxCount = Math.max(...data.map(d => d.count), 1);
+  return (
+    <div className="flex flex-col gap-4 mt-2">
+      {data.map((item, index) => {
+        const width = `${(item.count / maxCount) * 100}%`;
+        return (
+          <div key={index} className="flex items-center gap-4">
+            <div className="w-24 text-sm font-medium text-[var(--color-text-primary)] truncate" title={item.stage}>{item.stage}</div>
+            <div className="flex-1 flex items-center">
+              <div 
+                className="h-8 rounded-r bg-[#D6C8B8] shadow-sm flex items-center justify-end px-3 transition-all duration-500 ease-out" 
+                style={{ width, minWidth: item.count > 0 ? '2rem' : '0' }}
+              >
+                {item.count > 0 && <span className="text-xs font-semibold text-[#5C5046]">{item.count}</span>}
+              </div>
+              {item.count === 0 && <span className="ml-3 text-sm font-semibold text-[var(--color-text-secondary)]">0</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const OutcomeDistribution = ({ data }: { data: { name: string; value: number }[] }) => {
+  const total = data.reduce((acc, curr) => acc + curr.value, 0) || 1;
+  return (
+    <div className="flex flex-col gap-5 mt-2">
+      {data.map((item, index) => {
+        const percentage = ((item.value / total) * 100).toFixed(1);
+        return (
+          <div key={index} className="flex flex-col gap-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium text-[var(--color-text-primary)]">{item.name}</span>
+              <span className="font-semibold text-[var(--color-text-secondary)]">{percentage}% <span className="text-[var(--color-text-muted)] font-normal">({item.value})</span></span>
+            </div>
+            <div className="w-full bg-[var(--color-surface-secondary)] rounded-full h-2.5 shadow-inner">
+              <div 
+                className="bg-[#C8B49C] h-2.5 rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${percentage}%` }} 
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export function Dashboard() {
   const { data, loading, error, refetch } = useCases();
+  const { data: analyticsData, loading: analyticsLoading, error: analyticsError, refetch: analyticsRefetch } = useAnalytics();
 
   const metrics = useMemo(() => {
     if (!data) return { activeCases: 0, revenueAtRisk: {}, verifiedRecovered: {}, openCases: [] };
@@ -38,12 +89,10 @@ export function Dashboard() {
     };
   }, [data]);
 
-  if (error) {
-    return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Unable to load recovery data." />;
+  if (error || analyticsError) {
+    return <AccessBoundary error={error || analyticsError} onRetry={() => { refetch(); analyticsRefetch(); }} fallbackMessage="Unable to load recovery data." />;
   }
 
-  // Handle multi-currency for the hero metric
-  // If multiple currencies exist, we show a breakdown or just primary if only one.
   const openCurrencies = Object.keys(metrics.revenueAtRisk);
   const revenueDisplay = (
     <div className="flex flex-col gap-1">
@@ -93,27 +142,51 @@ export function Dashboard() {
           <UnavailableMetric label="Verified Recovered" />
         )}
         
-        {/* Visually secondary unavailable metrics per architectural plan */}
         <UnavailableMetric label="Recovery Rate" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-2">Open Recovery Cases</h3>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            Currently tracking <strong className="text-[var(--color-text-primary)]">{metrics.activeCases}</strong> active cases in the recovery pipeline.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          <h3 className="text-base font-bold font-display text-[var(--color-text-primary)] mb-4">Recovery Funnel</h3>
+          {analyticsLoading || !analyticsData ? (
+             <div className="space-y-4 mt-2">
+               {[1, 2, 3].map(i => (
+                 <div key={i} className="flex items-center gap-4">
+                   <div className="w-24 h-5 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
+                   <div className="h-8 bg-[var(--color-surface-secondary)] rounded animate-pulse" style={{ width: `${100 - i * 20}%` }} />
+                 </div>
+               ))}
+             </div>
+          ) : (
+            analyticsData.funnel && analyticsData.funnel.length > 0 ? (
+               <FunnelChart data={analyticsData.funnel} />
+            ) : (
+               <p className="text-sm text-[var(--color-text-muted)] italic mt-2">No funnel data available.</p>
+            )
+          )}
         </div>
         
         <div className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-          <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4">System Health</h3>
-          <div className="flex items-center gap-3">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-success)] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--color-success)]"></span>
-            </span>
-            <span className="text-sm font-medium text-[var(--color-text-secondary)]">System Operational</span>
-          </div>
+          <h3 className="text-base font-bold font-display text-[var(--color-text-primary)] mb-4">Outcome Distribution</h3>
+          {analyticsLoading || !analyticsData ? (
+             <div className="space-y-5 mt-2">
+               {[1, 2, 3].map(i => (
+                 <div key={i} className="space-y-2">
+                   <div className="flex justify-between">
+                     <div className="w-16 h-4 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
+                     <div className="w-12 h-4 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
+                   </div>
+                   <div className="w-full h-2.5 bg-[var(--color-surface-secondary)] rounded-full animate-pulse" />
+                 </div>
+               ))}
+             </div>
+          ) : (
+            analyticsData.outcomeDistribution && analyticsData.outcomeDistribution.length > 0 ? (
+               <OutcomeDistribution data={analyticsData.outcomeDistribution} />
+            ) : (
+               <p className="text-sm text-[var(--color-text-muted)] italic mt-2">No outcome data available.</p>
+            )
+          )}
         </div>
       </div>
 
