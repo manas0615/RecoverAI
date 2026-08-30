@@ -24,3 +24,9 @@ export function useCaseDetails(caseId: string | undefined) {
 
   return useApi(fetcher, [caseId]);
 }
+
+
+export function useAnalytics() {
+  const fetcher = useCallback(() => apiClient.getAnalytics(), []);
+  return useApi(fetcher);
+}

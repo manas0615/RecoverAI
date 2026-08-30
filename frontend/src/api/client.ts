@@ -38,4 +38,6 @@ export const apiClient = {
   getTimeline: (caseId: string) => fetchJson<TimelineResponse>(`/api/recovery-cases/${caseId}/timeline`),
   
   analyzeCase: (caseId: string) => fetchJson<{ status: string; recommendation: string }>(`/api/recovery-cases/${caseId}/analyze`, { method: 'POST' }),
+
+  getAnalytics: () => fetchJson<any>('/api/analytics'),
 };

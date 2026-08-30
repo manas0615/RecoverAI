@@ -238,6 +238,34 @@ def get_case(case_id: str):
 @app.get(
     "/recovery-cases/{case_id}/timeline", dependencies=[Depends(require_frontend_key)]
 )
+
+@app.get("/analytics", dependencies=[Depends(require_frontend_key)])
+def get_analytics():
+    with container.tm.transaction() as conn:
+        cur = conn.execute("SELECT status, outcome_type, workflow_state FROM recovery_cases")
+        cases = cur.fetchall()
+        
+        identified = len(cases)
+        contacted = sum(1 for c in cases if c["workflow_state"] in ("CONTACTED", "NEGOTIATING", "PROMISE_TO_PAY", "RECOVERED", "FAILED"))
+        recovered = sum(1 for c in cases if c["outcome_type"] in ("SUCCESS", "RECOVERED") or c["workflow_state"] == "RECOVERED")
+        
+        funnel = [
+            {"stage": "Identified", "count": identified},
+            {"stage": "Contacted", "count": contacted},
+            {"stage": "Recovered", "count": recovered}
+        ]
+        
+        outcomes_map = {}
+        for c in cases:
+            outcome = c["outcome_type"] if c["outcome_type"] else "PENDING"
+            outcomes_map[outcome] = outcomes_map.get(outcome, 0) + 1
+        
+        outcomes = [{"name": k, "value": v} for k, v in outcomes_map.items()]
+        
+        return {"funnel": funnel, "outcomeDistribution": outcomes}
+
+
+@app.get("/recovery-cases/{case_id}/timeline", dependencies=[Depends(require_frontend_key)])
 def get_case_timeline(case_id: str):
     with container.tm.transaction() as conn:
         repo = AuditRepository(conn)
