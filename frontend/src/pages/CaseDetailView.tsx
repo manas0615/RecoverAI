@@ -226,62 +226,79 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
           </div>
           {aiEvent ? (
             <div className="space-y-4">
-              <div className="p-3 bg-[var(--color-info-bg)] rounded-lg">
+              <div className="p-4 bg-[var(--color-info-bg)] rounded-xl border border-[var(--color-info)]/20 shadow-sm">
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-info)]">Proposed Action</span>
-                <p className="mt-1 font-mono text-sm text-[var(--color-text-primary)]">{aiEvent.metadata?.recommended_action || aiEvent.metadata?.intervention_type || 'Unknown'}</p>
-              </div>
-              {aiEvent.metadata?.reasoning && (
-                <div>
-                  <span className="text-xs text-[var(--color-text-muted)]">Reasoning</span>
-                  <p className="text-sm text-[var(--color-text-secondary)] mt-1">{aiEvent.metadata.reasoning}</p>
+                <p className="mt-1 font-mono text-base font-bold text-[var(--color-text-primary)]">{aiEvent.metadata?.recommended_action || aiEvent.metadata?.recommendation || aiEvent.metadata?.intervention_type || 'Unknown'}</p>
+                
+                {/* Why this recommendation? */}
+                <div className="mt-4 pt-4 border-t border-[var(--color-info)]/20">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Why this recommendation?</span>
+                  <p className="text-sm text-[var(--color-text-secondary)] mt-2">
+                    {aiEvent.metadata?.reasoning || aiEvent.metadata?.recommendation_reason || 'No reasoning provided.'}
+                  </p>
                 </div>
-              )}
-              
-              <details className="mt-4 group border border-[var(--color-border-subtle)] rounded-lg overflow-hidden">
-                <summary className="flex items-center justify-between cursor-pointer p-3 bg-[var(--color-surface-secondary)] text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]/80 transition-colors">
-                  Why this recommendation?
-                  <span className="text-[var(--color-text-muted)] text-xs group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-4 bg-[var(--color-surface)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-text-muted)]">Analysis Source</span>
-                    <span className="text-xs font-mono bg-[var(--color-info-bg)] text-[var(--color-info)] px-2 py-1 rounded border border-[var(--color-info)]/20">
-                      {aiEvent.metadata?.analysis_source || (aiEvent.metadata?.deterministic_fallback ? 'Deterministic Fallback' : 'Gemini')}
+              </div>
+
+              {/* Intelligence Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Recovery Probability */}
+                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Recovery Probability</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-[var(--color-text-primary)]">
+                      {aiEvent.metadata?.recovery_probability !== undefined 
+                        ? `${(aiEvent.metadata.recovery_probability * 100).toFixed(0)}%` 
+                        : 'Unavailable'}
                     </span>
                   </div>
-
-                  {aiEvent.evidence_references && aiEvent.evidence_references.length > 0 && (
-                    <div>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] block mb-1">Evidence References</span>
-                      <ul className="list-disc list-inside text-xs text-[var(--color-text-secondary)] space-y-1">
-                        {aiEvent.evidence_references.map((ref: string, idx: number) => (
-                          <li key={idx} className="font-mono">{ref}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {aiEvent.metadata && (
-                    <div>
-                      <span className="text-xs font-medium text-[var(--color-text-muted)] block mb-2">Case Context & Signals</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {Object.entries(aiEvent.metadata)
-                          .filter(([k]) => !['recommended_action', 'intervention_type', 'reasoning', 'analysis_source', 'deterministic_fallback'].includes(k))
-                          .map(([k, v]) => (
-                            <div key={k} className="p-2 bg-[var(--color-bg)] rounded border border-[var(--color-border-subtle)]">
-                              <span className="block text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
-                                {k.replace(/_/g, ' ')}
-                              </span>
-                              <span className="block text-xs font-medium text-[var(--color-text-primary)] truncate" title={typeof v === 'object' ? JSON.stringify(v) : String(v)}>
-                                {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
+                  {aiEvent.metadata?.probability_meaning && (
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-2">{aiEvent.metadata.probability_meaning}</p>
                   )}
                 </div>
-              </details>
+
+                {/* Expected Recovery Value */}
+                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Expected Value</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-[var(--color-text-primary)]">
+                      {aiEvent.metadata?.expected_recovery_amount !== undefined || aiEvent.metadata?.expected_recovery_value !== undefined ? (
+                        <MoneyValue 
+                          amountMinor={aiEvent.metadata.expected_recovery_amount ?? aiEvent.metadata.expected_recovery_value} 
+                          currency={aiEvent.metadata?.expected_recovery_currency || 'USD'} 
+                        />
+                      ) : 'Unavailable'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Cause */}
+                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Predicted Cause</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold text-[var(--color-text-primary)]">{aiEvent.metadata?.cause_category || 'Unknown'}</span>
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      Confidence: {aiEvent.metadata?.cause_confidence !== undefined || aiEvent.metadata?.confidence !== undefined
+                        ? `${((aiEvent.metadata.cause_confidence ?? aiEvent.metadata.confidence) * 100).toFixed(0)}%` 
+                        : 'Unavailable'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* AI Provenance */}
+                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">AI Provenance</span>
+                  <div className="flex flex-col items-start gap-2">
+                    <span className="text-xs font-mono bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-2 py-1 rounded border border-[var(--color-primary)]/20">
+                      {aiEvent.metadata?.analysis_source || (aiEvent.metadata?.model_version?.includes('deterministic') ? 'Deterministic Fallback' : 'Gemini LLM')}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-secondary)] truncate w-full" title={aiEvent.metadata?.model_version}>
+                      Model: {aiEvent.metadata?.model_version || 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
             </div>
           ) : (
             <p className="text-sm text-[var(--color-text-muted)] italic">No AI recommendation event found in timeline.</p>

@@ -97,15 +97,19 @@ class RevenueIntelligenceAnalyzer:
         has_systemic = context.get("active_downtime", False)
         customer_failures = context.get("customer_failure_count", 0)
         recent_events = len(events)
-        
+
         # Check event types
         event_types = [e.event_type.value for e in events]
         if "PAYMENT_FAILED" in event_types and "PAYMENT_LINK_FAILED" in event_types:
             customer_failures += 2
-        
+
         # Determine if there's an explicit error from provider in events (like 'BAD_REQUEST' etc.)
         for e in events:
-            if e.metadata and e.metadata.get("error_code") in ("GATEWAY_ERROR", "BAD_REQUEST", "SERVER_ERROR"):
+            if e.metadata and e.metadata.get("error_code") in (
+                "GATEWAY_ERROR",
+                "BAD_REQUEST",
+                "SERVER_ERROR",
+            ):
                 has_systemic = True
 
         return {
@@ -119,22 +123,24 @@ class RevenueIntelligenceAnalyzer:
         self, case: RecoveryCase, features: dict[str, Any], events: list[RevenueEvent]
     ) -> RiskAssessment:
         # P22: Explainable deterministic heuristic
-        prob_val = 0.85 # Baseline
+        prob_val = 0.85  # Baseline
 
         if features.get("has_systemic_signal"):
             prob_val -= 0.60
         else:
             failures = features.get("customer_failure_count", 0)
             if failures > 0:
-                prob_val -= (failures * 0.15)
-                
+                prob_val -= failures * 0.15
+
         # Clamp
         prob_val = max(0.0, min(1.0, prob_val))
 
         return RiskAssessment(
             assessment_id=f"risk_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
-            recovery_probability=Probability(prob_val, "Derived from historical failure count and systemic signals"),
+            recovery_probability=Probability(
+                prob_val, "Derived from historical failure count and systemic signals"
+            ),
             expected_recovery_value=case.amount_at_risk,
             model_name="deterministic_baseline",
             model_version="1.0",
@@ -235,7 +241,7 @@ class RevenueIntelligenceAnalyzer:
         # Calculate expected value (Prob * Amount)
         base_amount = case.amount_at_risk.amount_minor
         currency = case.amount_at_risk.currency
-        
+
         # P22: Intervention economics
         if cause.category == "SYSTEMIC_DEGRADATION":
             ev = int(base_amount * 0.9)
@@ -261,7 +267,7 @@ class RevenueIntelligenceAnalyzer:
                     expected_recovery_probability=risk.recovery_probability,
                     expected_recovery_value=RevenueAmount(Money(ev, currency)),
                     eligibility_status=CandidateStatus.PROPOSED,
-                    reason=f"Standard recovery procedure. Expected value: {(ev/100):.2f} {currency.value}.",
+                    reason=f"Standard recovery procedure. Expected value: {(ev / 100):.2f} {currency.value}.",
                     evidence_references=evidence,
                 )
             )

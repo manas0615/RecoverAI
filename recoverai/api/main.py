@@ -238,34 +238,6 @@ def get_case(case_id: str):
 @app.get(
     "/recovery-cases/{case_id}/timeline", dependencies=[Depends(require_frontend_key)]
 )
-
-@app.get("/analytics", dependencies=[Depends(require_frontend_key)])
-def get_analytics():
-    with container.tm.transaction() as conn:
-        cur = conn.execute("SELECT status, outcome_type, workflow_state FROM recovery_cases")
-        cases = cur.fetchall()
-        
-        identified = len(cases)
-        contacted = sum(1 for c in cases if c["workflow_state"] in ("CONTACTED", "NEGOTIATING", "PROMISE_TO_PAY", "RECOVERED", "FAILED"))
-        recovered = sum(1 for c in cases if c["outcome_type"] in ("SUCCESS", "RECOVERED") or c["workflow_state"] == "RECOVERED")
-        
-        funnel = [
-            {"stage": "Identified", "count": identified},
-            {"stage": "Contacted", "count": contacted},
-            {"stage": "Recovered", "count": recovered}
-        ]
-        
-        outcomes_map = {}
-        for c in cases:
-            outcome = c["outcome_type"] if c["outcome_type"] else "PENDING"
-            outcomes_map[outcome] = outcomes_map.get(outcome, 0) + 1
-        
-        outcomes = [{"name": k, "value": v} for k, v in outcomes_map.items()]
-        
-        return {"funnel": funnel, "outcomeDistribution": outcomes}
-
-
-@app.get("/recovery-cases/{case_id}/timeline", dependencies=[Depends(require_frontend_key)])
 def get_case_timeline(case_id: str):
     with container.tm.transaction() as conn:
         repo = AuditRepository(conn)
@@ -320,6 +292,33 @@ async def analyze_case(case_id: str):
                         "reasoning": plan.selection_reason,
                         "confidence": cause.confidence.value if cause else None,
                         "cause_category": cause.category if cause else None,
+                        "recovery_probability": risk.recovery_probability.value,
+                        "expected_recovery_amount": plan.expected_recovery_value.amount_minor
+                        if plan.expected_recovery_value
+                        else (
+                            risk.expected_recovery_value.amount_minor
+                            if risk.expected_recovery_value
+                            else 0
+                        ),
+                        "expected_recovery_currency": plan.expected_recovery_value.currency.value
+                        if plan.expected_recovery_value
+                        else (
+                            risk.expected_recovery_value.currency.value
+                            if risk.expected_recovery_value
+                            else "USD"
+                        ),
+                        "analysis_source": "Gemini"
+                        if (cause and cause.analysis_type.name == "LLM")
+                        else "Deterministic Fallback",
+                        "deterministic_fallback": cause.analysis_type.name != "LLM"
+                        if cause
+                        else True,
+                        "probability_meaning": getattr(
+                            risk.recovery_probability,
+                            "reasoning",
+                            "Derived from historical failure count and systemic signals",
+                        ),
+                        "model_version": risk.model_version,
                     },
                 )
             )
@@ -351,14 +350,24 @@ async def analyze_case(case_id: str):
                 if plan.selected_action_type
                 else "UNKNOWN",
                 "recommendation_reason": plan.selection_reason,
-                "expected_recovery_value": plan.expected_recovery_value.amount_minor,
+                "expected_recovery_value": plan.expected_recovery_value.amount_minor
+                if plan.expected_recovery_value
+                else (
+                    risk.expected_recovery_value.amount_minor
+                    if risk.expected_recovery_value
+                    else 0
+                ),
                 "recovery_probability": risk.recovery_probability.value,
-                "probability_meaning": risk.recovery_probability.meaning,
+                "probability_meaning": getattr(
+                    risk.recovery_probability,
+                    "reasoning",
+                    "Derived from historical failure count and systemic signals",
+                ),
                 "cause_category": cause.category if cause else "UNKNOWN",
                 "cause_confidence": cause.confidence.value if cause else 0.0,
                 "policy_decision": decision.decision.value,
                 "policy_reasons": decision.reason_codes,
-                "model_version": plan.selection_model_version,
+                "model_version": risk.model_version,
             }
     except Exception as e:  # noqa: BLE001
         import logging
@@ -526,6 +535,8 @@ def get_analytics():
             "verified_recovered": verified_recovered,
             "active_cases": active_cases,
             "unknown_exposure": unknown_exposure,
-            "outcome_distribution": outcome_distribution,
-            "recovery_funnel": funnel,
+            "outcomeDistribution": [
+                {"name": k, "value": v} for k, v in outcome_distribution.items()
+            ],
+            "funnel": [{"stage": k.title(), "count": v} for k, v in funnel.items()],
         }

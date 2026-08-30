@@ -90,7 +90,7 @@ export function Dashboard() {
   }, [data]);
 
   if (error || analyticsError) {
-    return <AccessBoundary error={error || analyticsError} onRetry={() => { refetch(); analyticsRefetch(); }} fallbackMessage="Unable to load recovery data." />;
+    return <AccessBoundary error={error || analyticsError || new Error('Unknown')} onRetry={() => { refetch(); analyticsRefetch(); }} fallbackMessage="Unable to load recovery data." />;
   }
 
   const openCurrencies = Object.keys(metrics.revenueAtRisk);

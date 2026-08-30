@@ -37,7 +37,19 @@ export const apiClient = {
   
   getTimeline: (caseId: string) => fetchJson<TimelineResponse>(`/api/recovery-cases/${caseId}/timeline`),
   
-  analyzeCase: (caseId: string) => fetchJson<{ status: string; recommendation: string }>(`/api/recovery-cases/${caseId}/analyze`, { method: 'POST' }),
+  analyzeCase: (caseId: string) => fetchJson<{
+    status: string;
+    recommendation: string;
+    recommendation_reason: string;
+    expected_recovery_value: number;
+    recovery_probability: number;
+    probability_meaning: string;
+    cause_category: string;
+    cause_confidence: number;
+    policy_decision: string;
+    policy_reasons: string[];
+    model_version: string;
+  }>(`/api/recovery-cases/${caseId}/analyze`, { method: 'POST' }),
 
   getAnalytics: () => fetchJson<any>('/api/analytics'),
 };
