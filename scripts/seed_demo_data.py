@@ -65,7 +65,7 @@ def create_base_case(
         ),
         merchant_id=merchant_id,
         customer_id=customer_id,
-        amount=Money(amount_minor, CurrencyCode.USD),
+        amount=Money(amount_minor, CurrencyCode.INR),
         occurred_at=now,
         received_at=now,
         schema_version="1.0",
@@ -77,7 +77,7 @@ def create_base_case(
         merchant_id=merchant_id,
         customer_id=customer_id,
         revenue_source=RevenueSource.PAYMENT,
-        amount_at_risk=RevenueAmount(Money(amount_minor, CurrencyCode.USD)),
+        amount_at_risk=RevenueAmount(Money(amount_minor, CurrencyCode.INR)),
         opened_at=now,
         source_event_ids={event_id},
     )
@@ -128,7 +128,7 @@ def seed_data():
             (
                 merchant_id.value,
                 "Demo Merchant",
-                "USD",
+                "INR",
                 "ACTIVE",
                 datetime.now(UTC).isoformat(),
                 datetime.now(UTC).isoformat(),
@@ -150,7 +150,7 @@ def seed_data():
         vr_repo = VerificationRecordRepository(conn)
 
         # SCENARIO A — SUCCESS
-        case_a, t_a = create_base_case(conn, "SUCCESS", 5000, 120)
+        case_a, t_a = create_base_case(conn, "SUCCESS", 50000, 120)
         action_a = RecoveryAction(
             action_id=RecoveryActionId("act_SUCCESS"),
             case_id=case_a.case_id,
@@ -189,7 +189,7 @@ def seed_data():
         case_a.close(
             RecoveryOutcomeValue.RECOVERED,
             t_a + timedelta(minutes=5),
-            RevenueAmount(Money(5000, CurrencyCode.USD)),
+            RevenueAmount(Money(50000, CurrencyCode.INR)),
         )
         case_repo.save(case_a)
 
@@ -245,7 +245,7 @@ def seed_data():
         )
 
         # SCENARIO B — PROVIDER FAILURE
-        case_b, t_b = create_base_case(conn, "FAILURE", 7000, 100)
+        case_b, t_b = create_base_case(conn, "FAILURE", 120000, 100)
         action_b = RecoveryAction(
             action_id=RecoveryActionId("act_FAILURE"),
             case_id=case_b.case_id,
@@ -300,7 +300,7 @@ def seed_data():
         )
 
         # SCENARIO C — EXECUTION_UNKNOWN
-        case_c, t_c = create_base_case(conn, "UNKNOWN", 4000, 80)
+        case_c, t_c = create_base_case(conn, "UNKNOWN", 85000, 80)
         action_c = RecoveryAction(
             action_id=RecoveryActionId("act_UNKNOWN"),
             case_id=case_c.case_id,
@@ -361,7 +361,7 @@ def seed_data():
         )
 
         # SCENARIO D — POLICY DENIAL
-        case_d, t_d = create_base_case(conn, "DENIAL", 3000, 60)
+        case_d, t_d = create_base_case(conn, "DENIAL", 45000, 60)
         action_d = RecoveryAction(
             action_id=RecoveryActionId("act_DENIAL"),
             case_id=case_d.case_id,
@@ -404,7 +404,7 @@ def seed_data():
 
         # SCENARIO E — HUMAN ESCALATION
 
-        case_e, t_e = create_base_case(conn, "ESCALATION", 80000, 40)
+        case_e, t_e = create_base_case(conn, "ESCALATION", 5000000, 40)
         action_e = RecoveryAction(
             action_id=RecoveryActionId("act_ESCALATION"),
             case_id=case_e.case_id,
@@ -462,7 +462,7 @@ def seed_data():
         )
 
         # SCENARIO F — DUPLICATE/IDEMPOTENCY
-        case_f, t_f = create_base_case(conn, "DUPLICATE", 2000, 30)
+        case_f, t_f = create_base_case(conn, "DUPLICATE", 25000, 30)
 
         # Simulate receiving a duplicate webhook. It fails to insert (idempotency),
         # so the system only logs an audit event indicating a duplicate was received.
@@ -477,7 +477,7 @@ def seed_data():
         )
 
         # SCENARIO G — LIVE DETECTED/ANALYZE
-        case_g, t_g = create_base_case(conn, "LIVE", 1500, 10)
+        case_g, t_g = create_base_case(conn, "LIVE", 100000, 10)
         # We explicitly DO NOT add an LLM recommendation or proposed action.
         # The UI will let the user click "Analyze Case" to trigger one.
         add_audit(conn, AuditEventType.CASE_CREATED, case_g.case_id, timestamp=t_g)

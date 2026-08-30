@@ -401,7 +401,7 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
                         {aiEvent.metadata?.expected_recovery_amount !== undefined || aiEvent.metadata?.expected_recovery_value !== undefined ? (
                           <MoneyValue 
                             amountMinor={aiEvent.metadata.expected_recovery_amount ?? aiEvent.metadata.expected_recovery_value} 
-                            currency={aiEvent.metadata?.expected_recovery_currency || caseData.currency || 'USD'} 
+                            currency={aiEvent.metadata?.expected_recovery_currency || caseData.currency || 'INR'} 
                           />
                         ) : (
                           <span className="text-sm font-mono text-[var(--color-text-muted)]">Unavailable</span>

@@ -310,7 +310,7 @@ async def analyze_case(case_id: str):
                         else (
                             risk.expected_recovery_value.currency.value
                             if risk and risk.expected_recovery_value
-                            else "USD"
+                            else "INR"
                         ),
                         "analysis_source": "Gemini"
                         if (cause and cause.analysis_type.name == "LLM")
