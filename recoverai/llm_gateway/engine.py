@@ -11,7 +11,6 @@ from recoverai.domain.assessment import AnalysisType, CauseAssessment
 from recoverai.domain.case import RecoveryCase
 from recoverai.domain.event import RevenueEvent
 from recoverai.domain.evidence import EvidenceReference, EvidenceSourceType, Probability
-from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
 from recoverai.domain.plan import CandidateStatus, InterventionCandidate
 from recoverai.intelligence.gateway import GatewayError, LLMGateway
 
@@ -27,7 +26,6 @@ from .providers import (
 from .schemas import (
     CauseAssessmentModel,
     EvidenceReferenceModel,
-    InterventionCandidateModel,
     InterventionPlanResponseModel,
     ObservedEventFact,
     RecoveryEvidenceBundle,
@@ -64,7 +62,11 @@ class ConcreteLLMGateway(LLMGateway):
         for e in sorted_events:
             meta = dict(e.metadata) if e.metadata else {}
             err_code = meta.get("error_code") or meta.get("code") or meta.get("reason")
-            err_desc = meta.get("error_description") or meta.get("description") or meta.get("error_reason")
+            err_desc = (
+                meta.get("error_description")
+                or meta.get("description")
+                or meta.get("error_reason")
+            )
             pay_method = meta.get("payment_method") or meta.get("method")
 
             observed_events.append(
@@ -79,7 +81,10 @@ class ConcreteLLMGateway(LLMGateway):
                 )
             )
 
-        systemic = bool(context.get("active_downtime", False) or context.get("has_systemic_signal", False))
+        systemic = bool(
+            context.get("active_downtime", False)
+            or context.get("has_systemic_signal", False)
+        )
         failure_count = int(context.get("customer_failure_count", 0))
         prior_actions = [str(a) for a in context.get("prior_recovery_actions", [])]
 
@@ -148,7 +153,9 @@ class ConcreteLLMGateway(LLMGateway):
                     cause_assessment_id=f"cause_{uuid.uuid4().hex[:8]}",
                     case_id=case.case_id,
                     category=model.category,
-                    confidence=Probability(model.confidence, meaning=model.confidence_meaning),
+                    confidence=Probability(
+                        model.confidence, meaning=model.confidence_meaning
+                    ),
                     analysis_type=AnalysisType.LLM,
                     model_version=f"{provider.name}-latest",
                     created_at=datetime.now(UTC),
@@ -215,7 +222,9 @@ class ConcreteLLMGateway(LLMGateway):
         for provider in self.providers:
             try:
                 raw_json = provider.generate_json(prompt, schema=schema)
-                plan_response = InterventionPlanResponseModel.model_validate_json(raw_json)
+                plan_response = InterventionPlanResponseModel.model_validate_json(
+                    raw_json
+                )
 
                 candidates = []
                 for idx, model in enumerate(plan_response.candidates):

@@ -12,20 +12,14 @@ data = {
     "url": "https://yareli-overfat-debauchedly.ngrok-free.dev/webhooks/razorpay/merch_demo",
     "alert_email": "test@example.com",
     "secret": "my_secure_webhook_secret_123",
-    "events": {
-        "payment.failed": True,
-        "payment_link.paid": True
-    }
+    "events": {"payment.failed": True, "payment_link.paid": True},
 }
 
 req = urllib.request.Request(
     "https://api.razorpay.com/v1/webhooks",
     data=json.dumps(data).encode(),
-    headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Basic {auth}"
-    },
-    method="POST"
+    headers={"Content-Type": "application/json", "Authorization": f"Basic {auth}"},
+    method="POST",
 )
 
 try:

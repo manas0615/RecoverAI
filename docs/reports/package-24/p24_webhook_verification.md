@@ -7,7 +7,7 @@
 `9318acab622610b2b13b584ecacadd90b1d05df6`
 
 ## 3. Test Mode Confirmation
-The execution environment strictly used Razorpay Test Mode credentials (`rzp_test_TURMnQDelKdhAj`). No live credentials were used.
+The execution environment strictly used Razorpay Test Mode credentials (`rzp_test_***`). No live credentials were used.
 
 ## 4. Existing Provider Reference
 * **Case ID:** `case_LIVE`

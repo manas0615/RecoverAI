@@ -56,6 +56,5 @@ class RazorpayExecutionService:
             # From EXECUTING, we must ESCALATE for human intervention.
             action.record_verification(ActionStatus.ESCALATED, timestamp=now)
 
-        # 4. Persist
-        self.action_repo.save(action)
+        # 4. Persist (Delegated to action_service)
         return result

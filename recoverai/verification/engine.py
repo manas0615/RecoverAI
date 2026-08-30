@@ -2,6 +2,12 @@ import uuid
 from datetime import datetime
 
 from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction
+from recoverai.domain.audit import (
+    AuditActor,
+    AuditActorType,
+    AuditEvent,
+    AuditEventType,
+)
 from recoverai.domain.case import (
     CaseWorkflowState,
     RecoveryCase,
@@ -17,6 +23,7 @@ from recoverai.domain.verification import (
 )
 from recoverai.integrations.razorpay.parser import RazorpayEventParser
 from recoverai.persistence.repositories.action import RecoveryActionRepository
+from recoverai.persistence.repositories.audit import AuditRepository
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
 from recoverai.persistence.repositories.event import RevenueEventRepository
 from recoverai.persistence.repositories.verification import (
@@ -31,11 +38,13 @@ class VerificationEngine:
         case_repo: RecoveryCaseRepository,
         event_repo: RevenueEventRepository,
         verification_repo: VerificationRecordRepository,
+        audit_repo: "AuditRepository | None" = None,
     ):
         self.action_repo = action_repo
         self.case_repo = case_repo
         self.event_repo = event_repo
         self.verification_repo = verification_repo
+        self.audit_repo = audit_repo
 
     def reconcile_case(self, case: RecoveryCase, current_time: datetime) -> None:
         """
@@ -66,6 +75,19 @@ class VerificationEngine:
                     pass  # stays in EXECUTION_UNKNOWN or VERIFICATION_PENDING
 
                 self.action_repo.save(action)
+
+                if self.audit_repo:
+                    self.audit_repo.append(
+                        AuditEvent(
+                            event_type=AuditEventType.VERIFICATION_COMPLETED,
+                            actor=AuditActor(
+                                type=AuditActorType.SYSTEM, id="verification_engine"
+                            ),
+                            case_id=case.case_id,
+                            action_id=action.action_id,
+                            metadata={"verified_state": record.verified_state.value},
+                        )
+                    )
 
         # After checking all actions, see if we can transition the case
         # If any action was VERIFIED_SUCCESS, the case is RECOVERED.

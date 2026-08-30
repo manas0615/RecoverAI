@@ -15,6 +15,7 @@ services:
       - N8N_API_KEY=${N8N_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
+      - ../workflows:/workflows
 
 volumes:
   n8n_data:

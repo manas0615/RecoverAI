@@ -53,7 +53,8 @@ class RecoveryActionRepository:
                         status = ?,
                         failure_reason = ?,
                         started_at = ?,
-                        completed_at = ?
+                        completed_at = ?,
+                        plan_snapshot = ?
                     WHERE action_id = ?
                 """,
                     (
@@ -68,6 +69,7 @@ class RecoveryActionRepository:
                         action.failure_reason,
                         dt_to_str(action.started_at),
                         dt_to_str(action.completed_at),
+                        action.plan_snapshot,
                         action.action_id.value,
                     ),
                 )
@@ -78,8 +80,8 @@ class RecoveryActionRepository:
                         action_id, case_id, action_type, policy_decision_id,
                         idempotency_key, workflow_execution_reference,
                         external_reference, attempt_number, status, failure_reason,
-                        requested_at, started_at, completed_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        requested_at, started_at, completed_at, plan_snapshot
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         action.action_id.value,
@@ -97,6 +99,7 @@ class RecoveryActionRepository:
                         dt_to_str(action.requested_at),
                         dt_to_str(action.started_at),
                         dt_to_str(action.completed_at),
+                        action.plan_snapshot,
                     ),
                 )
         except sqlite3.IntegrityError as e:
@@ -158,4 +161,5 @@ class RecoveryActionRepository:
             started_at=str_to_dt(row["started_at"]),
             completed_at=str_to_dt(row["completed_at"]),
             failure_reason=row["failure_reason"],
+            plan_snapshot=row.get("plan_snapshot"),
         )

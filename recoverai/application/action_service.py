@@ -57,14 +57,20 @@ class RecoveryActionService:
                 policy_version="1.0", current_time=datetime.now(UTC)
             )
 
-            if getattr(action, "_real_plan", None) is not None:
-                plan = action._real_plan
-            else:
+            from recoverai.domain.plan import InterventionPlan
+
+            plan = getattr(action, "_real_plan", None)
+            if not isinstance(plan, InterventionPlan):
                 raise ValueError(
                     "Financial execution requires a real Intelligence InterventionPlan."
                 )
 
-            decision = self.policy_engine.evaluate(policy_context, case, plan, [])  # type: ignore
+            history = [
+                a
+                for a in action_repo.get_by_case(action.case_id)
+                if a.action_id != action.action_id
+            ]
+            decision = self.policy_engine.evaluate(policy_context, case, plan, history)
 
             # Audit policy decision
             audit_repo.append(
@@ -92,12 +98,24 @@ class RecoveryActionService:
                             action_id=action.action_id,
                         )
                     )
-                    self._trigger_n8n(
+                    trigger_success = self._trigger_n8n(
                         "human-approval",
                         {
                             "case_id": case.case_id.value,
                             "action_id": action.action_id.value,
                         },
+                    )
+                    audit_repo.append(
+                        AuditEvent(
+                            event_type=AuditEventType.WORKFLOW_STARTED
+                            if trigger_success
+                            else AuditEventType.WORKFLOW_TRIGGER_FAILED,
+                            actor=AuditActor(
+                                type=AuditActorType.SYSTEM, id="action_service"
+                            ),
+                            case_id=case.case_id,
+                            action_id=action.action_id,
+                        )
                     )
                 else:
                     action.record_verification(
@@ -118,6 +136,11 @@ class RecoveryActionService:
             )
 
             action.status = ActionStatus.AUTHORIZED
+            import hashlib
+
+            action.idempotency_key = hashlib.sha256(
+                action.action_id.value.encode()
+            ).hexdigest()
             action_repo.save(action)
 
             audit_repo.append(
@@ -129,8 +152,17 @@ class RecoveryActionService:
                 )
             )
 
-            # Execute
-            result = rzp_service.execute_and_record(action, case, decision)
+        # Execute outside of the first transaction
+        result = rzp_service.execute_and_record(action, case, decision)
+
+        with self.tm.transaction() as conn:
+            action_repo = RecoveryActionRepository(conn)
+            case_repo = RecoveryCaseRepository(conn)
+            audit_repo = AuditRepository(conn)
+            action_repo.save(action)
+            case = case_repo.get(action.case_id)
+            if not case:
+                raise ValueError(f"Case {action.case_id} not found")
 
             # Re-fetch action to get the updated status/reference
             fetched_action = action_repo.get(action.action_id)
@@ -152,7 +184,7 @@ class RecoveryActionService:
                 case.advance_workflow(CaseWorkflowState.VERIFYING, datetime.now(UTC))
                 case_repo.save(case)
                 # Orchestration handoff to n8n
-                self._trigger_n8n(
+                trigger_success = self._trigger_n8n(
                     "payment-recovery",
                     {
                         "case_id": case.case_id.value,
@@ -161,7 +193,9 @@ class RecoveryActionService:
                 )
                 audit_repo.append(
                     AuditEvent(
-                        event_type=AuditEventType.WORKFLOW_STARTED,
+                        event_type=AuditEventType.WORKFLOW_STARTED
+                        if trigger_success
+                        else AuditEventType.WORKFLOW_TRIGGER_FAILED,
                         actor=AuditActor(
                             type=AuditActorType.SYSTEM, id="action_service"
                         ),
@@ -185,11 +219,11 @@ class RecoveryActionService:
 
             return action
 
-    def _trigger_n8n(self, workflow_name: str, payload: dict):
+    def _trigger_n8n(self, workflow_name: str, payload: dict) -> bool:
         # We look up the webhook URL for the given workflow name or use a general n8n base url.
         n8n_url = settings.n8n_base_url
         if not n8n_url:
-            return
+            return False
 
         url = f"{n8n_url.rstrip('/')}/{workflow_name}"
         data = json.dumps(payload).encode("utf-8")
@@ -204,6 +238,7 @@ class RecoveryActionService:
         )
         try:
             with urllib.request.urlopen(req, timeout=5.0) as _:
-                pass
+                return True
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to trigger n8n workflow {workflow_name}: {e}")
+            return False

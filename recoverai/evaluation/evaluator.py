@@ -1,98 +1,118 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from recoverai.evaluation.metrics import EvaluationMetrics
 from recoverai.evaluation.simulator import SyntheticScenario
+from recoverai.evaluation.metrics import EvaluationMetrics
 
 
 @dataclass
 class ObservedOutcome:
-    action_taken: str | None
-    verified_recovered: bool
+    action_taken: str
     unauthorized_execution_attempt: bool = False
     policy_bypass_attempt: bool = False
     unknown_handled: bool = False
     evidence_mismatch: bool = False
     amount_mismatch: bool = False
     duplicate_evidence: bool = False
+    claimed_recovery: bool = False
 
 
 class Evaluator:
     def __init__(self):
         self.metrics = EvaluationMetrics()
-        self.scenarios_evaluated: list[SyntheticScenario] = []
+        self.scenarios_evaluated = []
+
+    def _simulate_outcome(
+        self, scenario: SyntheticScenario, action_taken: str, metrics: EvaluationMetrics
+    ) -> None:
+        is_success = False
+        is_failed_intervention = False
+        amount = Decimal(scenario.evidence.opportunity_amount.amount_minor) / Decimal(
+            100
+        )
+
+        if action_taken == "CREATE_PAYMENT_LINK":
+            metrics.intervention_attempts += 1
+            if (
+                scenario.truth.receptive_to_intervention
+                or scenario.truth.expected_natural_recovery
+            ):
+                is_success = True
+            else:
+                is_failed_intervention = True
+
+        elif action_taken == "ESCALATE":
+            metrics.escalations += 1
+            if scenario.truth.expected_natural_recovery:
+                is_success = True
+
+        elif action_taken == "SUPPRESS":
+            metrics.suppressions += 1
+            if scenario.truth.expected_natural_recovery:
+                is_success = True
+
+        if is_success:
+            metrics.recovered_cases += 1
+            metrics.verified_recovered_revenue += amount
+
+        if is_failed_intervention:
+            metrics.failed_interventions += 1
 
     def evaluate_case(
         self, scenario: SyntheticScenario, observed: ObservedOutcome
     ) -> None:
-        amount = Decimal(scenario.opportunity_amount.amount_minor) / Decimal(100)
+        amount = Decimal(scenario.evidence.opportunity_amount.amount_minor) / Decimal(
+            100
+        )
         self.metrics.eligible_recovery_cases += 1
         self.metrics.revenue_at_risk += amount
         self.scenarios_evaluated.append(scenario)
 
-        # Compare ground truth to observed
-        # A false recovery is when the system claims verified recovery, but the ground truth was not receptive
-        # and no natural recovery was expected (impossible recovery).
-        is_false_recovery = (
-            observed.verified_recovered
-            and not scenario.receptive_to_intervention
-            and not scenario.expected_natural_recovery
-        )
+        self._simulate_outcome(scenario, observed.action_taken, self.metrics)
 
-        if observed.verified_recovered and not is_false_recovery:
-            self.metrics.recovered_cases += 1
-            self.metrics.verified_recovered_revenue += amount
+        actual_success = False
+        if observed.action_taken == "CREATE_PAYMENT_LINK":
+            if (
+                scenario.truth.receptive_to_intervention
+                or scenario.truth.expected_natural_recovery
+            ):
+                actual_success = True
+        elif scenario.truth.expected_natural_recovery:
+            actual_success = True
 
-        if is_false_recovery:
-            self.metrics.false_recoveries += 1
+        if observed.claimed_recovery and not actual_success:
+            self.metrics.false_recovery_claims += 1
 
         if observed.unauthorized_execution_attempt:
             self.metrics.unauthorized_execution_attempts += 1
-
         if observed.policy_bypass_attempt:
             self.metrics.policy_bypass_attempts += 1
-
         if observed.unknown_handled:
             self.metrics.unknown_handling_count += 1
-
         if observed.evidence_mismatch:
             self.metrics.incorrect_evidence_matching += 1
-
         if observed.amount_mismatch:
             self.metrics.amount_currency_mismatch += 1
-
         if observed.duplicate_evidence:
             self.metrics.duplicate_evidence_count += 1
 
     def evaluate_baseline(self, strategy: str) -> EvaluationMetrics:
-        """
-        Calculates baseline performance explicitly across the exact same scenarios
-        evaluated by this instance.
-
-        NO_INTERVENTION: Models 0% active recovery. Relies strictly on expected_natural_recovery.
-        NAIVE: Models a static 10% recovery rule ignoring systemic degradation, directly penalized by false recoveries.
-        """
         baseline = EvaluationMetrics()
         for scenario in self.scenarios_evaluated:
-            amount = Decimal(scenario.opportunity_amount.amount_minor) / Decimal(100)
+            amount = Decimal(
+                scenario.evidence.opportunity_amount.amount_minor
+            ) / Decimal(100)
             baseline.eligible_recovery_cases += 1
             baseline.revenue_at_risk += amount
 
             if strategy == "NO_INTERVENTION":
-                if scenario.expected_natural_recovery:
-                    baseline.recovered_cases += 1
-                    baseline.verified_recovered_revenue += amount
+                self._simulate_outcome(scenario, "SUPPRESS", baseline)
 
-            elif strategy == "NAIVE":
-                # Naive attempts action on everything
-                # It recovers if the customer is receptive
-                if (
-                    scenario.receptive_to_intervention
-                    or scenario.expected_natural_recovery
-                ):
-                    baseline.recovered_cases += 1
-                    baseline.verified_recovered_revenue += amount
+            elif strategy == "SIMPLE_RULE":
+                if scenario.evidence.gateway_downtime_active:
+                    action = "SUPPRESS"
                 else:
-                    # Naive might cause problems, but we'll strictly log it as not recovered
-                    pass
+                    action = "CREATE_PAYMENT_LINK"
+                self._simulate_outcome(scenario, action, baseline)
+
         return baseline

@@ -46,23 +46,39 @@ def handle_get_recovery_case(
 
 
 def handle_get_payment(ctx: MCPContext, args: GetPaymentInput) -> dict[str, Any]:
-    return {"payment_id": args.payment_id, "status": "simulated_fetch"}
+    return {
+        "payment_id": args.payment_id,
+        "status": "simulated_fetch",
+        "is_simulated_mock": True,
+    }
 
 
 def handle_get_order(ctx: MCPContext, args: GetOrderInput) -> dict[str, Any]:
-    return {"order_id": args.order_id, "status": "simulated_fetch"}
+    return {
+        "order_id": args.order_id,
+        "status": "simulated_fetch",
+        "is_simulated_mock": True,
+    }
 
 
 def handle_get_payment_link(
     ctx: MCPContext, args: GetPaymentLinkInput
 ) -> dict[str, Any]:
-    return {"payment_link_id": args.payment_link_id, "status": "simulated_fetch"}
+    return {
+        "payment_link_id": args.payment_link_id,
+        "status": "simulated_fetch",
+        "is_simulated_mock": True,
+    }
 
 
 def handle_get_customer_context(
     ctx: MCPContext, args: GetCustomerContextInput
 ) -> dict[str, Any]:
-    return {"case_id": args.case_id, "historical_success_rate": 0.9}
+    return {
+        "case_id": args.case_id,
+        "historical_success_rate": 0.9,
+        "is_simulated_mock": True,
+    }
 
 
 def handle_get_recovery_history(
@@ -86,7 +102,7 @@ def handle_get_recovery_history(
 def handle_get_system_health(
     ctx: MCPContext, args: GetSystemHealthInput
 ) -> dict[str, Any]:
-    return {"systemic_degradation": False}
+    return {"systemic_degradation": False, "is_simulated_mock": True}
 
 
 def handle_assess_recovery_case(
@@ -192,6 +208,9 @@ def handle_create_payment_link(
 
     # Generate real intelligence plan
     _, _, plan = ctx.intelligence.analyze(case, events)
+    import json
+
+    action.plan_snapshot = json.dumps(plan.to_dict())
     action._real_plan = plan
 
     # Now OUTSIDE the transaction, execute the action. ActionService will start its own transaction.
@@ -272,15 +291,20 @@ def handle_resume_recovery_action(
                 "INVALID_STATE",
             )
 
-    with ctx.tm.transaction() as conn:
-        from recoverai.persistence.repositories.event import RevenueEventRepository
+    # Load real intelligence plan from snapshot
+    if not action.plan_snapshot:
+        raise MCPError("Original intervention plan snapshot not found", "MISSING_PLAN")
 
-        events = [
-            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
-        ]
+    import json
 
-    # Generate real intelligence plan
-    _, _, plan = ctx.intelligence.analyze(case, events)
+    from recoverai.domain.plan import InterventionPlan
+
+    try:
+        plan = InterventionPlan.from_dict(json.loads(action.plan_snapshot))
+    except Exception as e:
+        raise MCPError(
+            f"Failed to load intervention plan snapshot: {e}", "CORRUPTED_PLAN"
+        )
     action._real_plan = plan
 
     # Re-evaluate and execute through action service

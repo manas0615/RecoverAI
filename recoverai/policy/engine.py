@@ -61,21 +61,48 @@ class PolicyEngine:
         if plan.expected_recovery_value is not None:
             if plan.expected_recovery_value.currency != case.amount_at_risk.currency:
                 return self._build_decision(
-                    context, case, plan, PolicyDecisionValue.DENY, "CURRENCY_MISMATCH_WITH_CASE"
+                    context,
+                    case,
+                    plan,
+                    PolicyDecisionValue.DENY,
+                    "CURRENCY_MISMATCH_WITH_CASE",
                 )
-            if plan.expected_recovery_value.amount_minor > case.amount_at_risk.amount_minor:
+            if (
+                plan.expected_recovery_value.amount_minor
+                > case.amount_at_risk.amount_minor
+            ):
                 return self._build_decision(
-                    context, case, plan, PolicyDecisionValue.DENY, "EXPECTED_VALUE_EXCEEDS_AMOUNT_AT_RISK"
+                    context,
+                    case,
+                    plan,
+                    PolicyDecisionValue.DENY,
+                    "EXPECTED_VALUE_EXCEEDS_AMOUNT_AT_RISK",
                 )
 
         for cand in plan.candidates:
-            if cand.expected_recovery_value and cand.expected_recovery_value.currency != case.amount_at_risk.currency:
+            if (
+                cand.expected_recovery_value
+                and cand.expected_recovery_value.currency
+                != case.amount_at_risk.currency
+            ):
                 return self._build_decision(
-                    context, case, plan, PolicyDecisionValue.DENY, "CANDIDATE_CURRENCY_MISMATCH"
+                    context,
+                    case,
+                    plan,
+                    PolicyDecisionValue.DENY,
+                    "CANDIDATE_CURRENCY_MISMATCH",
                 )
-            if cand.expected_recovery_value and cand.expected_recovery_value.amount_minor > case.amount_at_risk.amount_minor:
+            if (
+                cand.expected_recovery_value
+                and cand.expected_recovery_value.amount_minor
+                > case.amount_at_risk.amount_minor
+            ):
                 return self._build_decision(
-                    context, case, plan, PolicyDecisionValue.DENY, "CANDIDATE_VALUE_EXCEEDS_AMOUNT_AT_RISK"
+                    context,
+                    case,
+                    plan,
+                    PolicyDecisionValue.DENY,
+                    "CANDIDATE_VALUE_EXCEEDS_AMOUNT_AT_RISK",
                 )
 
         # 1.1 Terminal Case Protection

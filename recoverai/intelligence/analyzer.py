@@ -30,6 +30,7 @@ class RevenueIntelligenceAnalyzer:
         probability: Probability,
     ) -> RevenueAmount:
         from recoverai.domain.money import Money, RevenueAmount
+
         ev_minor = int(round(amount_at_risk.amount_minor * probability.value))
         ev_minor = max(0, min(amount_at_risk.amount_minor, ev_minor))
         return RevenueAmount(Money(ev_minor, amount_at_risk.currency))
@@ -153,7 +154,9 @@ class RevenueIntelligenceAnalyzer:
             assessment_id=f"risk_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
             recovery_probability=prob,
-            expected_recovery_value=self.calculate_expected_recovery_value(case.amount_at_risk, prob),
+            expected_recovery_value=self.calculate_expected_recovery_value(
+                case.amount_at_risk, prob
+            ),
             model_name="deterministic_baseline",
             model_version="1.0",
             created_at=datetime.now(UTC),
@@ -167,12 +170,15 @@ class RevenueIntelligenceAnalyzer:
         if features.get("has_systemic_signal"):
             cat = "SYSTEMIC_DEGRADATION"
             conf = 0.95
+        elif features.get("customer_failure_count", 0) >= 3:
+            cat = "FRAUD_SUSPICION"
+            conf = 0.85
         elif features.get("customer_failure_count", 0) >= 2:
             cat = "INSUFFICIENT_FUNDS"
             conf = 0.80
         else:
             cat = "CUSTOMER_SPECIFIC"
-            conf = 0.70
+            conf = 0.70 - (features.get("customer_failure_count", 0) * 0.05)
 
         evidence = []
         for e in events:
@@ -218,7 +224,7 @@ class RevenueIntelligenceAnalyzer:
                 expected_recovery_value=calculated_ev,
                 eligibility_status=cand.eligibility_status,
                 reason=cand.reason,
-                evidence_references=cand.evidence_references
+                evidence_references=cand.evidence_references,
             )
             hydrated_candidates.append(hydrated)
 
@@ -282,6 +288,19 @@ class RevenueIntelligenceAnalyzer:
                     evidence_references=evidence,
                 )
             )
+        elif cause.category == "FRAUD_SUSPICION":
+            candidates.append(
+                InterventionCandidate(
+                    candidate_id=f"cand_{uuid.uuid4().hex[:8]}",
+                    case_id=case.case_id,
+                    action_type=ActionType.SUPPRESS,
+                    expected_recovery_probability=Probability(0.0, "Fraud suppression"),
+                    expected_recovery_value=RevenueAmount(Money(0, currency)),
+                    eligibility_status=CandidateStatus.PROPOSED,
+                    reason="High failure count indicates potential fraud or persistent hard decline. Suppressing to protect merchant standing.",
+                    evidence_references=evidence,
+                )
+            )
         else:
             ev = int(base_amount * risk.recovery_probability.value)
             candidates.append(
@@ -292,7 +311,24 @@ class RevenueIntelligenceAnalyzer:
                     expected_recovery_probability=risk.recovery_probability,
                     expected_recovery_value=RevenueAmount(Money(ev, currency)),
                     eligibility_status=CandidateStatus.PROPOSED,
-                    reason=f"Standard recovery procedure. Expected value: {(ev / 100):.2f} {currency.value}.",
+                    reason=f"Standard recovery procedure based on {cause.category}. Expected value: {(ev / 100):.2f} {currency.value}.",
+                    evidence_references=evidence,
+                )
+            )
+            # Add an alternative candidate
+            candidates.append(
+                InterventionCandidate(
+                    candidate_id=f"cand_alt_{uuid.uuid4().hex[:8]}",
+                    case_id=case.case_id,
+                    action_type=ActionType.ESCALATE,
+                    expected_recovery_probability=Probability(
+                        0.2, "Escalation to human"
+                    ),
+                    expected_recovery_value=RevenueAmount(
+                        Money(int(base_amount * 0.2), currency)
+                    ),
+                    eligibility_status=CandidateStatus.PROPOSED,
+                    reason="Fallback manual escalation",
                     evidence_references=evidence,
                 )
             )

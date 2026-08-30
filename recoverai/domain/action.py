@@ -61,6 +61,7 @@ class RecoveryAction:
 
     # Internal context
     _real_plan: "Any | None" = field(default=None, repr=False, compare=False)
+    plan_snapshot: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.action_id, RecoveryActionId):

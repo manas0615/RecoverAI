@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from recoverai.api.security import require_frontend_key, require_n8n_key
 from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
-from recoverai.ingestion.exceptions import EventIngestionError, DuplicateWebhookEvent
+from recoverai.ingestion.exceptions import DuplicateWebhookEvent, EventIngestionError
 from recoverai.ingestion.razorpay.normalizer import RazorpayNormalizer
 from recoverai.ingestion.razorpay.service import WebhookIngestionService
 from recoverai.ingestion.razorpay.signature import WebhookVerifier
@@ -50,6 +50,7 @@ class AppContainer:
         case_repo = RecoveryCaseRepository(self.global_conn)
         event_repo = RevenueEventRepository(self.global_conn)
         verification_repo = VerificationRecordRepository(self.global_conn)
+        audit_repo = AuditRepository(self.global_conn)
 
         self.policy = PolicyEngine(lambda: f"dec_{uuid.uuid4().hex[:8]}")
         self.llm = ConcreteLLMGateway(GatewayConfig.from_env())
@@ -67,6 +68,7 @@ class AppContainer:
             case_repo=case_repo,
             event_repo=event_repo,
             verification_repo=verification_repo,
+            audit_repo=audit_repo,
         )
 
         from recoverai.application.action_service import RecoveryActionService
@@ -334,7 +336,10 @@ async def analyze_case(case_id: str):
             policy_context = PolicyContext(
                 policy_version="1.0", current_time=datetime.now(UTC)
             )
-            decision = container.policy.evaluate(policy_context, case, plan, [])
+            action_history = RecoveryActionRepository(conn).get_by_case(case.case_id)
+            decision = container.policy.evaluate(
+                policy_context, case, plan, action_history
+            )
 
             audit_repo.append(
                 AuditEvent(

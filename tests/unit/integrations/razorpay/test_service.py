@@ -90,6 +90,7 @@ def test_service_successful_request(
         # Need to insert initial action so we don't violate optimistic locking in repo.save (which is UPSERT actually, so it's fine)
         service = RazorpayExecutionService(adapter, action_repo)
         result = service.execute_and_record(valid_action, valid_case, valid_decision)
+        action_repo.save(valid_action)
 
         assert result.result_type == RazorpayExecutionResultType.SUCCESSFUL_REQUEST
 
@@ -122,6 +123,7 @@ def test_service_timeout_unknown(
         action_repo = RecoveryActionRepository(conn)
         service = RazorpayExecutionService(adapter, action_repo)
         result = service.execute_and_record(valid_action, valid_case, valid_decision)
+        action_repo.save(valid_action)
 
         assert result.result_type == RazorpayExecutionResultType.TIMEOUT_UNKNOWN
 
@@ -153,6 +155,7 @@ def test_service_provider_rejected(
         action_repo = RecoveryActionRepository(conn)
         service = RazorpayExecutionService(adapter, action_repo)
         result = service.execute_and_record(valid_action, valid_case, valid_decision)
+        action_repo.save(valid_action)
 
         assert result.result_type == RazorpayExecutionResultType.PROVIDER_REJECTED
 
@@ -184,6 +187,7 @@ def test_service_failed_before_send(
         action_repo = RecoveryActionRepository(conn)
         service = RazorpayExecutionService(adapter, action_repo)
         result = service.execute_and_record(valid_action, valid_case, valid_decision)
+        action_repo.save(valid_action)
 
         assert result.result_type == RazorpayExecutionResultType.FAILED_BEFORE_SEND
 

@@ -176,7 +176,7 @@ def test_mock_llm_analyzer_candidates_fallback():
     assert cause.category == "MOCK_CATEGORY"
 
     # Plan falls back to deterministic using the mock cause!
-    assert len(plan.candidates) == 1
+    assert len(plan.candidates) == 2
     # Deterministic fallback sees category != SYSTEMIC_DEGRADATION, defaults to CREATE_PAYMENT_LINK
     assert plan.candidates[0].action_type == ActionType.CREATE_PAYMENT_LINK
     assert plan.selected_action_type == ActionType.CREATE_PAYMENT_LINK
@@ -250,9 +250,7 @@ def test_systemic_degradation_via_error_code_metadata():
     case = create_dummy_case()
     event = create_dummy_event()
     object.__setattr__(
-        event,
-        "metadata",
-        {"error_code": "GATEWAY_ERROR", "provider_status": "DOWN"}
+        event, "metadata", {"error_code": "GATEWAY_ERROR", "provider_status": "DOWN"}
     )
 
     risk, cause, plan = analyzer.analyze(case, [event], {})

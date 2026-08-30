@@ -82,12 +82,42 @@ def base_case_and_action():
         )
         RecoveryCaseRepository(conn).save(case)
 
+        import json
+
+        from recoverai.domain.evidence import Probability
+        from recoverai.domain.plan import (
+            CandidateStatus,
+            InterventionCandidate,
+            InterventionPlan,
+        )
+
+        candidate = InterventionCandidate(
+            candidate_id="mock_cand",
+            case_id=case_id,
+            action_type=ActionType.CREATE_PAYMENT_LINK,
+            expected_recovery_probability=Probability(value=0.99, meaning="mock"),
+            expected_recovery_value=RevenueAmount(Money(5000, CurrencyCode.USD)),
+            eligibility_status=CandidateStatus.PROPOSED,
+        )
+
+        plan = InterventionPlan(
+            plan_id="mock",
+            case_id=case_id,
+            candidates=[candidate],
+            selected_action_type=ActionType.CREATE_PAYMENT_LINK,
+            selection_reason="mock",
+            selection_model_version="mock",
+            expected_recovery_value=RevenueAmount(Money(5000, CurrencyCode.USD)),
+            created_at=datetime.now(UTC),
+        )
+
         action = RecoveryAction(
             action_id=action_id,
             case_id=case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.ESCALATED,
+            status=ActionStatus.PROPOSED,
             requested_at=datetime.now(UTC),
+            plan_snapshot=json.dumps(plan.to_dict()),
         )
         RecoveryActionRepository(conn).save(action)
     return case_id, action_id
@@ -145,4 +175,4 @@ def test_resume_terminal_case(mock_rzp_urlopen, base_case_and_action):
     result = container.mcp_registry.execute("resume_recovery_action", req.model_dump())
 
     assert result.get("success") is not True
-    assert result.get("code") == "INVALID_INPUT"
+    assert result.get("code") == "POLICY_DENIAL"

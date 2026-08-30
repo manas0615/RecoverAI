@@ -31,15 +31,19 @@ from recoverai.persistence.repositories.case import RecoveryCaseRepository
 from recoverai.state_machine.engine import RecoveryStateMachine
 
 
+def _dict_factory(cursor, row):
+    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+
+
 @pytest.fixture
 def mem_db():
     conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
+    conn.row_factory = _dict_factory
     conn.execute(
         "CREATE TABLE recovery_cases (case_id TEXT PRIMARY KEY, merchant_id TEXT, customer_id TEXT, revenue_source TEXT, amount_at_risk_minor INTEGER, amount_at_risk_currency TEXT, status TEXT, workflow_state TEXT, outcome_type TEXT, version INTEGER, recovered_amount_minor INTEGER, recovered_amount_currency TEXT, opened_at TEXT, updated_at TEXT, closed_at TEXT)"
     )
     conn.execute(
-        "CREATE TABLE recovery_actions (action_id TEXT PRIMARY KEY, case_id TEXT, action_type TEXT, policy_decision_id TEXT, idempotency_key TEXT, workflow_execution_reference TEXT, external_reference TEXT, attempt_number INTEGER, status TEXT, failure_reason TEXT, requested_at TEXT, started_at TEXT, completed_at TEXT)"
+        "CREATE TABLE recovery_actions (action_id TEXT PRIMARY KEY, case_id TEXT, action_type TEXT, policy_decision_id TEXT, idempotency_key TEXT, workflow_execution_reference TEXT, external_reference TEXT, attempt_number INTEGER, status TEXT, failure_reason TEXT, requested_at TEXT, started_at TEXT, completed_at TEXT, plan_snapshot TEXT)"
     )
     conn.execute(
         "CREATE TABLE revenue_events (event_id TEXT PRIMARY KEY, event_type TEXT, source_type TEXT, source_event_id TEXT, merchant_id TEXT, customer_id TEXT, amount_minor INTEGER, currency TEXT, external_reference TEXT, metadata JSON, schema_version TEXT, occurred_at TEXT, received_at TEXT)"

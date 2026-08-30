@@ -1,0 +1,758 @@
+{
+  "BASELINE": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.15,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 510594.54,
+        "revenue_recovery_rate": 0.08264676876789755,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 131,
+        "case_recovery_rate": 0.08733333333333333,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 3362181.48,
+        "revenue_recovery_rate": 0.5442154460430924,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 785,
+        "case_recovery_rate": 0.5233333333333333,
+        "interventions": {
+          "attempts": 1343,
+          "failed": 558,
+          "escalations": 0,
+          "suppressions": 157
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6178033.91,
+      "verified_recovered_revenue": 3159057.44,
+      "revenue_recovery_rate": 0.5113370185434932,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 727,
+      "case_recovery_rate": 0.4846666666666667,
+      "interventions": {
+        "attempts": 1222,
+        "failed": 506,
+        "escalations": 121,
+        "suppressions": 157
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "NAT_REC_LOW": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.1,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 322086.34,
+        "revenue_recovery_rate": 0.05213411656395392,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 94,
+        "case_recovery_rate": 0.06266666666666666,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 3362181.48,
+        "revenue_recovery_rate": 0.5442154460430924,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 785,
+        "case_recovery_rate": 0.5233333333333333,
+        "interventions": {
+          "attempts": 1343,
+          "failed": 558,
+          "escalations": 0,
+          "suppressions": 157
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6178033.91,
+      "verified_recovered_revenue": 3114326.43,
+      "revenue_recovery_rate": 0.5040966876143288,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 722,
+      "case_recovery_rate": 0.48133333333333334,
+      "interventions": {
+        "attempts": 1222,
+        "failed": 506,
+        "escalations": 121,
+        "suppressions": 157
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "NAT_REC_HIGH": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.2,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 625643.59,
+        "revenue_recovery_rate": 0.10126904434553355,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 169,
+        "case_recovery_rate": 0.11266666666666666,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 3362181.48,
+        "revenue_recovery_rate": 0.5442154460430924,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 785,
+        "case_recovery_rate": 0.5233333333333333,
+        "interventions": {
+          "attempts": 1343,
+          "failed": 558,
+          "escalations": 0,
+          "suppressions": 157
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6178033.91,
+      "verified_recovered_revenue": 3167023.38,
+      "revenue_recovery_rate": 0.5126264158041826,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 730,
+      "case_recovery_rate": 0.4866666666666667,
+      "interventions": {
+        "attempts": 1222,
+        "failed": 506,
+        "escalations": 121,
+        "suppressions": 157
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "SYS_LOW": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.05,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.15,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6025983.98,
+        "verified_recovered_revenue": 483860.72,
+        "revenue_recovery_rate": 0.080295719604618,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 133,
+        "case_recovery_rate": 0.08866666666666667,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6025983.98,
+        "verified_recovered_revenue": 3617401.88,
+        "revenue_recovery_rate": 0.6003006134775685,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 856,
+        "case_recovery_rate": 0.5706666666666667,
+        "interventions": {
+          "attempts": 1410,
+          "failed": 554,
+          "escalations": 0,
+          "suppressions": 90
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6025983.98,
+      "verified_recovered_revenue": 3391556.13,
+      "revenue_recovery_rate": 0.5628219625635315,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 793,
+      "case_recovery_rate": 0.5286666666666666,
+      "interventions": {
+        "attempts": 1287,
+        "failed": 504,
+        "escalations": 123,
+        "suppressions": 90
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "SYS_HIGH": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.15,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.15,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6073879.86,
+        "verified_recovered_revenue": 429470.72,
+        "revenue_recovery_rate": 0.07070780619621936,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 124,
+        "case_recovery_rate": 0.08266666666666667,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6073879.86,
+        "verified_recovered_revenue": 3115732.33,
+        "revenue_recovery_rate": 0.5129723342930922,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 740,
+        "case_recovery_rate": 0.49333333333333335,
+        "interventions": {
+          "attempts": 1258,
+          "failed": 518,
+          "escalations": 0,
+          "suppressions": 242
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6073879.86,
+      "verified_recovered_revenue": 2846430.92,
+      "revenue_recovery_rate": 0.4686347088860595,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 682,
+      "case_recovery_rate": 0.45466666666666666,
+      "interventions": {
+        "attempts": 1152,
+        "failed": 478,
+        "escalations": 106,
+        "suppressions": 242
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "REC_LOW": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.5,
+        "prob_natural_recovery": 0.15,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 5948101.29,
+        "verified_recovered_revenue": 417222.85,
+        "revenue_recovery_rate": 0.07014387107049416,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 113,
+        "case_recovery_rate": 0.07533333333333334,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 5948101.29,
+        "verified_recovered_revenue": 2727564.73,
+        "revenue_recovery_rate": 0.4585605720241526,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 670,
+        "case_recovery_rate": 0.44666666666666666,
+        "interventions": {
+          "attempts": 1328,
+          "failed": 658,
+          "escalations": 0,
+          "suppressions": 172
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 5948101.29,
+      "verified_recovered_revenue": 2566189.43,
+      "revenue_recovery_rate": 0.4314300152074243,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 615,
+      "case_recovery_rate": 0.41,
+      "interventions": {
+        "attempts": 1194,
+        "failed": 590,
+        "escalations": 134,
+        "suppressions": 172
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "REC_HIGH": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.7,
+        "prob_natural_recovery": 0.15,
+        "threshold": 3
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 5974473.69,
+        "verified_recovered_revenue": 594798.5,
+        "revenue_recovery_rate": 0.09955663559043977,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 157,
+        "case_recovery_rate": 0.10466666666666667,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 5974473.69,
+        "verified_recovered_revenue": 3841296.97,
+        "revenue_recovery_rate": 0.6429515249903126,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 920,
+        "case_recovery_rate": 0.6133333333333333,
+        "interventions": {
+          "attempts": 1340,
+          "failed": 420,
+          "escalations": 0,
+          "suppressions": 160
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 5974473.69,
+      "verified_recovered_revenue": 3536260.94,
+      "revenue_recovery_rate": 0.5918949724255962,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 846,
+      "case_recovery_rate": 0.564,
+      "interventions": {
+        "attempts": 1213,
+        "failed": 383,
+        "escalations": 127,
+        "suppressions": 160
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "THRESH_2": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.15,
+        "threshold": 2
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 510594.54,
+        "revenue_recovery_rate": 0.08264676876789755,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 131,
+        "case_recovery_rate": 0.08733333333333333,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 3362181.48,
+        "revenue_recovery_rate": 0.5442154460430924,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 785,
+        "case_recovery_rate": 0.5233333333333333,
+        "interventions": {
+          "attempts": 1343,
+          "failed": 558,
+          "escalations": 0,
+          "suppressions": 157
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6178033.91,
+      "verified_recovered_revenue": 3002277.77,
+      "revenue_recovery_rate": 0.48596006654162244,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 701,
+      "case_recovery_rate": 0.4673333333333333,
+      "interventions": {
+        "attempts": 1170,
+        "failed": 484,
+        "escalations": 173,
+        "suppressions": 157
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  },
+  "THRESH_4": {
+    "metadata": {
+      "evaluation_mode": "DETERMINISTIC FALLBACK V2",
+      "sample_size": 1500,
+      "seed": 123,
+      "params": {
+        "prob_systemic": 0.1,
+        "prob_receptive": 0.6,
+        "prob_natural_recovery": 0.15,
+        "threshold": 4
+      }
+    },
+    "baselines": {
+      "NO_INTERVENTION": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 510594.54,
+        "revenue_recovery_rate": 0.08264676876789755,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 131,
+        "case_recovery_rate": 0.08733333333333333,
+        "interventions": {
+          "attempts": 0,
+          "failed": 0,
+          "escalations": 0,
+          "suppressions": 1500
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      },
+      "SIMPLE_RULE": {
+        "revenue_at_risk": 6178033.91,
+        "verified_recovered_revenue": 3362181.48,
+        "revenue_recovery_rate": 0.5442154460430924,
+        "eligible_recovery_cases": 1500,
+        "recovered_cases": 785,
+        "case_recovery_rate": 0.5233333333333333,
+        "interventions": {
+          "attempts": 1343,
+          "failed": 558,
+          "escalations": 0,
+          "suppressions": 157
+        },
+        "safety": {
+          "false_recovery_claims": 0,
+          "unauthorized_execution_attempts": 0,
+          "policy_bypass_attempts": 0,
+          "unknown_handling_count": 0,
+          "incorrect_evidence_matching": 0,
+          "amount_currency_mismatch": 0,
+          "duplicate_evidence_count": 0
+        }
+      }
+    },
+    "recoverai": {
+      "revenue_at_risk": 6178033.91,
+      "verified_recovered_revenue": 3244154.1,
+      "revenue_recovery_rate": 0.5251110866757933,
+      "eligible_recovery_cases": 1500,
+      "recovered_cases": 760,
+      "case_recovery_rate": 0.5066666666666667,
+      "interventions": {
+        "attempts": 1282,
+        "failed": 528,
+        "escalations": 61,
+        "suppressions": 157
+      },
+      "safety": {
+        "false_recovery_claims": 0,
+        "unauthorized_execution_attempts": 0,
+        "policy_bypass_attempts": 0,
+        "unknown_handling_count": 0,
+        "incorrect_evidence_matching": 0,
+        "amount_currency_mismatch": 0,
+        "duplicate_evidence_count": 0
+      }
+    }
+  }
+}

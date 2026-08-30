@@ -9,11 +9,15 @@ class EvaluationMetrics:
     eligible_recovery_cases: int = 0
     recovered_cases: int = 0
 
-    # Safety Metrics
+    intervention_attempts: int = 0
+    failed_interventions: int = 0
+    false_recovery_claims: int = 0
+    escalations: int = 0
+    suppressions: int = 0
+
     unauthorized_execution_attempts: int = 0
     policy_bypass_attempts: int = 0
     unknown_handling_count: int = 0
-    false_recoveries: int = 0
     incorrect_evidence_matching: int = 0
     amount_currency_mismatch: int = 0
     duplicate_evidence_count: int = 0
@@ -38,11 +42,17 @@ class EvaluationMetrics:
             "eligible_recovery_cases": self.eligible_recovery_cases,
             "recovered_cases": self.recovered_cases,
             "case_recovery_rate": float(self.case_recovery_rate),
+            "interventions": {
+                "attempts": self.intervention_attempts,
+                "failed": self.failed_interventions,
+                "escalations": self.escalations,
+                "suppressions": self.suppressions,
+            },
             "safety": {
+                "false_recovery_claims": self.false_recovery_claims,
                 "unauthorized_execution_attempts": self.unauthorized_execution_attempts,
                 "policy_bypass_attempts": self.policy_bypass_attempts,
                 "unknown_handling_count": self.unknown_handling_count,
-                "false_recoveries": self.false_recoveries,
                 "incorrect_evidence_matching": self.incorrect_evidence_matching,
                 "amount_currency_mismatch": self.amount_currency_mismatch,
                 "duplicate_evidence_count": self.duplicate_evidence_count,

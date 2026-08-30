@@ -10,11 +10,13 @@ from recoverai.config import settings
 
 client = TestClient(app)
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     import os
 
     from recoverai.api.main import container
+
     container.tm.run_migrations(
         os.path.join(
             os.path.dirname(__file__), "../../recoverai/persistence/migrations"
@@ -27,7 +29,10 @@ def setup_db():
 
 
 def sign_payload(payload: str, secret: str) -> str:
-    return hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.new(
+        secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+
 
 def test_invalid_hmac_rejected():
     payload = json.dumps({"event": "payment.failed"})
@@ -35,19 +40,28 @@ def test_invalid_hmac_rejected():
     resp = client.post("/webhooks/razorpay/test_merchant", content=payload)
     assert resp.status_code == 400
     assert "Missing signature" in resp.json()["detail"]
-    
+
     # Invalid signature
-    resp = client.post("/webhooks/razorpay/test_merchant", content=payload, headers={"X-Razorpay-Signature": "invalid", "X-Razorpay-Event-Id": "evt_123"})
+    resp = client.post(
+        "/webhooks/razorpay/test_merchant",
+        content=payload,
+        headers={"X-Razorpay-Signature": "invalid", "X-Razorpay-Event-Id": "evt_123"},
+    )
     assert resp.status_code == 400
     assert "Signature mismatch" in resp.json()["detail"]
+
 
 def test_tampered_payload_rejected():
     secret = settings.razorpay_webhook_secret or "secret"
     payload = json.dumps({"event": "payment.failed", "amount": 1000})
     signature = sign_payload(payload, secret)
-    
+
     # Tampered body
     tampered_payload = json.dumps({"event": "payment.failed", "amount": 90000})
-    resp = client.post("/webhooks/razorpay/test_merchant", content=tampered_payload, headers={"X-Razorpay-Signature": signature, "X-Razorpay-Event-Id": "evt_123"})
+    resp = client.post(
+        "/webhooks/razorpay/test_merchant",
+        content=tampered_payload,
+        headers={"X-Razorpay-Signature": signature, "X-Razorpay-Event-Id": "evt_123"},
+    )
     assert resp.status_code == 400
     assert "Signature mismatch" in resp.json()["detail"]

@@ -25,7 +25,6 @@ class CauseCategory(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-
 @dataclass(frozen=True)
 class RiskAssessment:
     assessment_id: str

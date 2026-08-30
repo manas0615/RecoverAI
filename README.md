@@ -118,15 +118,19 @@ uv run scripts/seed_demo_data.py
 ```
 
 **Evaluation:**
-Run the P14 synthetic batch evaluation (where supported):
+Run the P25 synthetic batch evaluation:
 ```powershell
-uv run python -m recoverai.evaluation.runner
+uv run python scratch/run_evaluation.py
 ```
 
 ## Safety Guarantees
 - **No Fabricated Data:** AI does not invent case context or recommendations prior to explicit "Analyze Case" interactions.
 - **UNKNOWN Safety:** Provider uncertainties (e.g. timeouts) result in `UNKNOWN` state, preventing blind retry loops.
 - **No Client-Side Execution:** The frontend cannot mutate financial state directly.
+
+
+## Evaluation & Robustness (P25)
+We evaluated RecoverAI on a reproducible 1,500-scenario synthetic benchmark against no intervention and a transparent simple-rule baseline. RecoverAI did not maximize gross recovery: at the baseline configuration it recovered ₹3.16M versus ₹3.36M for the simple rule. Instead, it reduced failed interventions from 558 to 506 and escalated 121 chronic-failure cases. A predeclared sensitivity sweep showed that this recovery-versus-intervention tradeoff remained directionally stable across reasonable parameter changes. These are synthetic evaluation results, not claims of production recovery performance.
 
 ## Limitations
 - Currency exchange calculation is not implemented; metrics are strictly partitioned by currency.

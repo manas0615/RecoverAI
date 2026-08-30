@@ -7,7 +7,7 @@
 `9318acab622610b2b13b584ecacadd90b1d05df6` (with working tree modifications for bug fixes and test scripts)
 
 ## 3. Test Mode Confirmation
-The execution environment strictly used Razorpay Test Mode credentials (`rzp_test_TURMnQDelKdhAj`). No live credentials were used. Test Mode was positively established before financial action.
+The execution environment strictly used Razorpay Test Mode credentials (`rzp_test_***`). No live credentials were used. Test Mode was positively established before financial action.
 
 ## 4. Dedicated Case ID
 `case_INR_9`
