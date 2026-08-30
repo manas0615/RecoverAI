@@ -1,5 +1,3 @@
-import sys
-
 with open("recoverai/api/main.py", "r") as f:
     lines = f.readlines()
 

@@ -214,14 +214,14 @@ def test_currency_mismatch_fails_closed(
     policy_engine: PolicyEngine, default_context: PolicyContext, base_case: RecoveryCase
 ):
     """
-    Test: CURRENCY_MISMATCH_IN_POLICY
+    Test: CURRENCY_MISMATCH_WITH_CASE (Hard Safety Invariant)
     """
     base_case.amount_at_risk = RevenueAmount(Money(5000, CurrencyCode.USD))
     plan = build_plan(base_case.case_id, ActionType.CREATE_PAYMENT_LINK)
 
     decision = policy_engine.evaluate(default_context, base_case, plan, [])
-    assert decision.decision == PolicyDecisionValue.ESCALATE
-    assert "CURRENCY_MISMATCH_IN_POLICY" in decision.reason_codes
+    assert decision.decision == PolicyDecisionValue.DENY
+    assert "CANDIDATE_CURRENCY_MISMATCH" in decision.reason_codes
 
 
 def test_precedence_conflict_terminal_over_high_value(

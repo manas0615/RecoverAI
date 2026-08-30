@@ -228,6 +228,7 @@ def get_case(case_id: str):
                 "currency": e.amount.currency.value if e.amount else None,
                 "occurred_at": e.occurred_at.isoformat(),
                 "external_reference": e.external_reference,
+                "metadata": e.metadata,
             }
             for e in events
             if e
@@ -287,24 +288,28 @@ async def analyze_case(case_id: str):
                     timestamp=datetime.now(UTC),
                     metadata={
                         "recommended_action": plan.selected_action_type.value
-                        if plan.selected_action_type
+                        if plan and plan.selected_action_type
                         else "UNKNOWN",
-                        "reasoning": plan.selection_reason,
+                        "reasoning": plan.selection_reason
+                        if plan
+                        else "Analysis completed without forming an intervention plan.",
                         "confidence": cause.confidence.value if cause else None,
                         "cause_category": cause.category if cause else None,
-                        "recovery_probability": risk.recovery_probability.value,
+                        "recovery_probability": risk.recovery_probability.value
+                        if risk
+                        else 0.0,
                         "expected_recovery_amount": plan.expected_recovery_value.amount_minor
-                        if plan.expected_recovery_value
+                        if plan and plan.expected_recovery_value
                         else (
                             risk.expected_recovery_value.amount_minor
-                            if risk.expected_recovery_value
+                            if risk and risk.expected_recovery_value
                             else 0
                         ),
                         "expected_recovery_currency": plan.expected_recovery_value.currency.value
-                        if plan.expected_recovery_value
+                        if plan and plan.expected_recovery_value
                         else (
                             risk.expected_recovery_value.currency.value
-                            if risk.expected_recovery_value
+                            if risk and risk.expected_recovery_value
                             else "USD"
                         ),
                         "analysis_source": "Gemini"
@@ -317,8 +322,10 @@ async def analyze_case(case_id: str):
                             risk.recovery_probability,
                             "reasoning",
                             "Derived from historical failure count and systemic signals",
-                        ),
-                        "model_version": risk.model_version,
+                        )
+                        if risk
+                        else "No risk assessment available",
+                        "model_version": risk.model_version if risk else "UNKNOWN",
                     },
                 )
             )
@@ -347,27 +354,33 @@ async def analyze_case(case_id: str):
             return {
                 "status": "success",
                 "recommendation": plan.selected_action_type.value
-                if plan.selected_action_type
+                if plan and plan.selected_action_type
                 else "UNKNOWN",
-                "recommendation_reason": plan.selection_reason,
+                "recommendation_reason": plan.selection_reason
+                if plan
+                else "Analysis completed without forming an intervention plan.",
                 "expected_recovery_value": plan.expected_recovery_value.amount_minor
-                if plan.expected_recovery_value
+                if plan and plan.expected_recovery_value
                 else (
                     risk.expected_recovery_value.amount_minor
-                    if risk.expected_recovery_value
+                    if risk and risk.expected_recovery_value
                     else 0
                 ),
-                "recovery_probability": risk.recovery_probability.value,
+                "recovery_probability": risk.recovery_probability.value
+                if risk
+                else 0.0,
                 "probability_meaning": getattr(
                     risk.recovery_probability,
                     "reasoning",
                     "Derived from historical failure count and systemic signals",
-                ),
+                )
+                if risk
+                else "No risk assessment available",
                 "cause_category": cause.category if cause else "UNKNOWN",
                 "cause_confidence": cause.confidence.value if cause else 0.0,
-                "policy_decision": decision.decision.value,
-                "policy_reasons": decision.reason_codes,
-                "model_version": risk.model_version,
+                "policy_decision": decision.decision.value if decision else "UNKNOWN",
+                "policy_reasons": decision.reason_codes if decision else [],
+                "model_version": risk.model_version if risk else "UNKNOWN",
             }
     except Exception as e:  # noqa: BLE001
         import logging

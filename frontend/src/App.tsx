@@ -8,10 +8,13 @@ import { FixtureHarness } from './pages/FixtureHarness';
 
 import { NotFound } from './pages/NotFound';
 
+import { ErrorBoundary } from './components/feedback/ErrorBoundary';
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppShell>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppShell>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/cases" element={<CaseList />} />
@@ -22,5 +25,6 @@ export default function App() {
         </Routes>
       </AppShell>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }

@@ -88,18 +88,13 @@ def create_base_case(
 def add_audit(conn, event_type, case_id, action_id=None, metadata=None, timestamp=None):
     if timestamp is None:
         timestamp = datetime.now(UTC)
-    meta = dict(metadata or {})
-    new_state = meta.pop("new_state", None)
-    previous_state = meta.pop("previous_state", None)
     AuditRepository(conn).append(
         AuditEvent(
             event_type=event_type,
             actor=AuditActor(type=AuditActorType.SYSTEM, id="seed"),
             case_id=case_id,
             action_id=action_id,
-            new_state=new_state,
-            previous_state=previous_state,
-            metadata=meta,
+            metadata=metadata or {},
             timestamp=timestamp,
         )
     )
@@ -233,8 +228,7 @@ def seed_data():
             AuditEventType.VERIFICATION_COMPLETED,
             case_a.case_id,
             action_a.action_id,
-            {"new_state": "VERIFIED_SUCCESS"},
-            t_a + timedelta(minutes=5),
+            timestamp=t_a + timedelta(minutes=5),
         )
         add_audit(
             conn,
@@ -275,12 +269,6 @@ def seed_data():
         action_b.failure_reason = "Validation Error"
         action_repo.save(action_b)
 
-        case_b.advance_workflow(
-            CaseWorkflowState.VERIFYING, t_b + timedelta(minutes=1, seconds=30)
-        )
-        case_b.close(RecoveryOutcomeValue.NOT_RECOVERED, t_b + timedelta(minutes=2))
-        case_repo.save(case_b)
-
         add_audit(conn, AuditEventType.CASE_CREATED, case_b.case_id, timestamp=t_b)
         add_audit(
             conn,
@@ -292,10 +280,10 @@ def seed_data():
         )
         add_audit(
             conn,
-            AuditEventType.VERIFICATION_COMPLETED,
+            AuditEventType.ACTION_EXECUTION_UNKNOWN,
             case_b.case_id,
             action_b.action_id,
-            {"new_state": "VERIFIED_FAILURE", "error": "Validation Error"},
+            {"error": "Validation Error"},
             t_b + timedelta(minutes=2),
         )
 
@@ -328,11 +316,7 @@ def seed_data():
             ActionStatus.EXECUTION_UNKNOWN, t_c + timedelta(minutes=2)
         )
         action_c.failure_reason = "Timeout"
-
         action_repo.save(action_c)
-
-        case_c.advance_workflow(CaseWorkflowState.UNKNOWN, t_c + timedelta(minutes=2))
-        case_repo.save(case_c)
 
         add_audit(conn, AuditEventType.CASE_CREATED, case_c.case_id, timestamp=t_c)
         add_audit(
@@ -371,11 +355,7 @@ def seed_data():
         )
         # Denied by policy, so we skip authorize/execution and just record cancellation
         action_d.record_verification(ActionStatus.CANCELLED, t_d + timedelta(minutes=1))
-
         action_repo.save(action_d)
-
-        case_d.close(RecoveryOutcomeValue.SUPPRESSED, t_d + timedelta(minutes=1))
-        case_repo.save(case_d)
 
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
@@ -403,17 +383,15 @@ def seed_data():
         )
 
         # SCENARIO E — HUMAN ESCALATION
-
         case_e, t_e = create_base_case(conn, "ESCALATION", 80000, 40)
         action_e = RecoveryAction(
             action_id=RecoveryActionId("act_ESCALATION"),
             case_id=case_e.case_id,
-            action_type=ActionType.CREATE_PAYMENT_LINK,
+            action_type=ActionType.ESCALATE,
             status=ActionStatus.PROPOSED,
             requested_at=t_e,
         )
-
-        # Policy escalates it
+        action_e.authorize(PolicyDecisionId("dec_ESCALATE"), t_e)
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -428,7 +406,8 @@ def seed_data():
                 t_e.isoformat(),
             ),
         )
-        # It stays proposed/escalated, no execution yet
+        action_e.begin_execution(t_e + timedelta(minutes=1))
+        action_e.record_verification(ActionStatus.ESCALATED, t_e + timedelta(minutes=2))
         action_repo.save(action_e)
 
         case_e.advance_workflow(

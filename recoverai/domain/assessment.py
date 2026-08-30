@@ -15,6 +15,17 @@ class AnalysisType(Enum):
     HYBRID = "HYBRID"
 
 
+class CauseCategory(str, Enum):
+    SYSTEMIC_DEGRADATION = "SYSTEMIC_DEGRADATION"
+    INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
+    CUSTOMER_SPECIFIC = "CUSTOMER_SPECIFIC"
+    CARD_EXPIRED = "CARD_EXPIRED"
+    AUTHENTICATION_FAILED = "AUTHENTICATION_FAILED"
+    TECHNICAL_ERROR = "TECHNICAL_ERROR"
+    UNKNOWN = "UNKNOWN"
+
+
+
 @dataclass(frozen=True)
 class RiskAssessment:
     assessment_id: str

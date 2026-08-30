@@ -7,6 +7,7 @@ from recoverai.domain.assessment import AnalysisType, CauseAssessment, RiskAsses
 from recoverai.domain.case import RecoveryCase
 from recoverai.domain.event import RevenueEvent
 from recoverai.domain.evidence import EvidenceReference, Probability
+from recoverai.domain.money import RevenueAmount
 from recoverai.domain.plan import (
     CandidateStatus,
     InterventionCandidate,
@@ -22,6 +23,16 @@ class RevenueIntelligenceAnalyzer:
 
     def __init__(self, llm_gateway: LLMGateway | None = None):
         self.llm_gateway = llm_gateway
+
+    @staticmethod
+    def calculate_expected_recovery_value(
+        amount_at_risk: RevenueAmount,
+        probability: Probability,
+    ) -> RevenueAmount:
+        from recoverai.domain.money import Money, RevenueAmount
+        ev_minor = int(round(amount_at_risk.amount_minor * probability.value))
+        ev_minor = max(0, min(amount_at_risk.amount_minor, ev_minor))
+        return RevenueAmount(Money(ev_minor, amount_at_risk.currency))
 
     def analyze(
         self,
@@ -135,13 +146,14 @@ class RevenueIntelligenceAnalyzer:
         # Clamp
         prob_val = max(0.0, min(1.0, prob_val))
 
+        prob = Probability(
+            prob_val, "Derived from historical failure count and systemic signals"
+        )
         return RiskAssessment(
             assessment_id=f"risk_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
-            recovery_probability=Probability(
-                prob_val, "Derived from historical failure count and systemic signals"
-            ),
-            expected_recovery_value=case.amount_at_risk,
+            recovery_probability=prob,
+            expected_recovery_value=self.calculate_expected_recovery_value(case.amount_at_risk, prob),
             model_name="deterministic_baseline",
             model_version="1.0",
             created_at=datetime.now(UTC),
@@ -192,23 +204,36 @@ class RevenueIntelligenceAnalyzer:
         reason = ""
         expected_value = case.amount_at_risk
 
-        # Simple selection: max expected value * prob
+        hydrated_candidates = []
         for cand in candidates:
-            if cand.eligibility_status == CandidateStatus.PROPOSED:
-                ev = (
-                    float(cand.expected_recovery_value.amount_minor)
-                    * cand.expected_recovery_probability.value
-                )
-                if ev > best_ev:
-                    best_ev = ev
-                    selected = cand.action_type
-                    reason = cand.reason
-                    expected_value = cand.expected_recovery_value
+            # Deterministically calculate EV
+            calculated_ev = self.calculate_expected_recovery_value(
+                case.amount_at_risk, cand.expected_recovery_probability
+            )
+            hydrated = InterventionCandidate(
+                candidate_id=cand.candidate_id,
+                case_id=cand.case_id,
+                action_type=cand.action_type,
+                expected_recovery_probability=cand.expected_recovery_probability,
+                expected_recovery_value=calculated_ev,
+                eligibility_status=cand.eligibility_status,
+                reason=cand.reason,
+                evidence_references=cand.evidence_references
+            )
+            hydrated_candidates.append(hydrated)
+
+            if hydrated.eligibility_status == CandidateStatus.PROPOSED:
+                ev_val = float(hydrated.expected_recovery_value.amount_minor)
+                if ev_val > best_ev:
+                    best_ev = ev_val
+                    selected = hydrated.action_type
+                    reason = hydrated.reason or ""
+                    expected_value = hydrated.expected_recovery_value
 
         return InterventionPlan(
             plan_id=f"plan_{uuid.uuid4().hex[:8]}",
             case_id=case.case_id,
-            candidates=candidates,
+            candidates=hydrated_candidates,
             selected_action_type=selected,
             selection_reason=reason or "Highest expected value",
             selection_model_version=version,

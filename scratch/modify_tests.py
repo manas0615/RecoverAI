@@ -1,5 +1,3 @@
-import sys
-
 with open("tests/unit/api/test_api.py", "r") as f:
     lines = f.readlines()
 

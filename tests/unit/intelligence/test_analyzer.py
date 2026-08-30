@@ -243,3 +243,60 @@ def test_evidence_reference_validation():
 
     # Analyzer should have sanitized out the hallucinated evidence reference
     assert len(cause.evidence_references) == 0
+
+
+def test_systemic_degradation_via_error_code_metadata():
+    analyzer = RevenueIntelligenceAnalyzer()
+    case = create_dummy_case()
+    event = create_dummy_event()
+    object.__setattr__(
+        event,
+        "metadata",
+        {"error_code": "GATEWAY_ERROR", "provider_status": "DOWN"}
+    )
+
+    risk, cause, plan = analyzer.analyze(case, [event], {})
+
+    assert risk.recovery_probability.value == 0.25
+    assert cause.category == "SYSTEMIC_DEGRADATION"
+    assert cause.confidence.value == 0.95
+    assert plan.selected_action_type == ActionType.WAIT
+    expected_ev = int(case.amount_at_risk.amount_minor * 0.9)
+    assert plan.expected_recovery_value.amount_minor == expected_ev
+
+
+def test_unknown_state_empty_events_safe_execution():
+    analyzer = RevenueIntelligenceAnalyzer()
+    case = create_dummy_case()
+
+    risk, cause, plan = analyzer.analyze(case, [], {})
+
+    assert risk.recovery_probability.value == 0.85
+    assert cause.category == "CUSTOMER_SPECIFIC"
+    assert len(cause.evidence_references) == 0
+    assert plan.selected_action_type == ActionType.CREATE_PAYMENT_LINK
+    assert len(plan.candidates[0].evidence_references) == 0
+
+
+def test_all_candidates_ineligible_plan_safety_p22_regression():
+    case = create_dummy_case()
+    ineligible_candidate = InterventionCandidate(
+        candidate_id="cand_ineligible",
+        case_id=case.case_id,
+        action_type=ActionType.WAIT,
+        expected_recovery_probability=Probability(0.5, "test"),
+        expected_recovery_value=case.amount_at_risk,
+        eligibility_status=CandidateStatus.INELIGIBLE,
+        reason="Candidate is marked ineligible",
+    )
+
+    class IneligibleCandidateGateway(MockLLMGateway):
+        def generate_intervention_candidates(self, case, events, context, cause):
+            return [ineligible_candidate]
+
+    analyzer = RevenueIntelligenceAnalyzer(llm_gateway=IneligibleCandidateGateway())
+    _risk, _cause, plan = analyzer.analyze(case, [create_dummy_event()], {})
+
+    assert plan is not None
+    assert plan.selected_action_type is None
+    assert plan.expected_recovery_value == case.amount_at_risk

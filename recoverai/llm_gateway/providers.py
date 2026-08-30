@@ -90,6 +90,8 @@ class GeminiAdapter(ProviderAdapter):
                 result = json.loads(response.read().decode())
                 return result["candidates"][0]["content"]["parts"][0]["text"]
         except urllib.error.HTTPError as e:
+            error_body = e.read().decode()
+            logger.error(f"Gemini HTTPError body: {error_body}")
             if e.code in (401, 403):
                 raise ConfigurationError(
                     f"Gemini Authentication/Configuration failed: {e.code}"
@@ -132,6 +134,8 @@ class GroqAdapter(ProviderAdapter):
                 result = json.loads(response.read().decode())
                 return result["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as e:
+            error_body = e.read().decode()
+            logger.error(f"Groq HTTPError body: {error_body}")
             if e.code in (401, 403):
                 raise ConfigurationError(
                     f"Groq Authentication/Configuration failed: {e.code}"

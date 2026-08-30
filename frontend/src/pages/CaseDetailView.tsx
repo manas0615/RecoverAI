@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ArrowLeft, ArrowDown, Brain, Shield, Zap, AlertTriangle, PlayCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowDown, Brain, Shield, Zap, AlertTriangle, PlayCircle, CheckCircle, CheckCircle2 } from 'lucide-react';
 import type { Case, TimelineEvent } from '../types/domain';
 import { MoneyValue } from '../components/financial/MoneyValue';
 import { StatusBadge } from '../components/status/StatusBadge';
@@ -13,6 +13,39 @@ interface CaseDetailViewProps {
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
   analyzeError?: string | null;
+}
+
+function sanitizeErrorMessage(error: string | null | undefined): string {
+  if (!error) return 'Analysis could not be safely completed.';
+  if (
+    error.includes('Traceback') || 
+    error.includes('File "') || 
+    error.includes('line ') || 
+    error.includes('ValidationError') || 
+    error.includes('Exception:') ||
+    error.includes('Internal Server Error') ||
+    error.includes('500')
+  ) {
+    return 'Analysis could not be safely validated. Safe fallback policies applied.';
+  }
+  return error;
+}
+
+type ProvenanceStatus = 'gemini_validated' | 'deterministic_fallback' | 'validation_rejected';
+
+function getProvenanceStatus(metadata: Record<string, any> | undefined): ProvenanceStatus {
+  if (!metadata) return 'deterministic_fallback';
+  if (metadata.validation_status === 'REJECTED' || metadata.validation_passed === false) {
+    return 'validation_rejected';
+  }
+  if (
+    metadata.deterministic_fallback === true || 
+    metadata.analysis_source === 'Deterministic Fallback' || 
+    metadata.model_version?.toLowerCase().includes('deterministic')
+  ) {
+    return 'deterministic_fallback';
+  }
+  return 'gemini_validated';
 }
 
 export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyzing, analyzeError }: CaseDetailViewProps) {
@@ -34,17 +67,20 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
     const execEvent = events.find(e => e.event_type.startsWith('ACTION_'));
     const verifyEvent = events.find(e => e.event_type.startsWith('VERIFICATION_'));
 
+    const provenanceStatus = getProvenanceStatus(aiEvent?.metadata);
+
     return {
       currentState,
       aiEvent,
       policyEvent,
       execEvent,
       verifyEvent,
-      needsApproval: currentState === 'WAITING_APPROVAL' || currentState === 'ESCALATED'
+      needsApproval: currentState === 'WAITING_APPROVAL' || currentState === 'ESCALATED',
+      provenanceStatus,
     };
   }, [caseData, timeline]);
 
-  const { currentState, aiEvent, policyEvent, execEvent, verifyEvent, needsApproval } = derivedData;
+  const { currentState, aiEvent, policyEvent, execEvent, verifyEvent, needsApproval, provenanceStatus } = derivedData;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -158,12 +194,27 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
                           <span className="text-xs text-[var(--color-text-muted)]">{new Date(ev.occurred_at).toLocaleString()}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="block text-xs text-[var(--color-text-muted)]">Amount</span>
-                            <span className="block font-medium text-[var(--color-text-primary)]">
-                              {(ev.amount_minor / 100).toLocaleString(undefined, { style: 'currency', currency: ev.currency })}
-                            </span>
-                          </div>
+                          {ev.amount_minor !== undefined && ev.amount_minor !== null ? (
+                            <div>
+                              <span className="block text-xs text-[var(--color-text-muted)]">Amount</span>
+                              <span className="block font-medium text-[var(--color-text-primary)]">
+                                {ev.currency ? (
+                                  (ev.amount_minor / 100).toLocaleString(undefined, { style: 'currency', currency: ev.currency })
+                                ) : (
+                                  (ev.amount_minor / 100).toFixed(2)
+                                )}
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="block text-xs text-[var(--color-text-muted)]">Event Details</span>
+                              <span className="block text-xs text-[var(--color-text-secondary)] italic">
+                                {ev.metadata && Object.keys(ev.metadata).length > 0 
+                                  ? JSON.stringify(ev.metadata) 
+                                  : 'Amount unavailable'}
+                              </span>
+                            </div>
+                          )}
                           {ev.external_reference && (
                             <div>
                               <span className="block text-xs text-[var(--color-text-muted)]">Reference</span>
@@ -188,12 +239,14 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
           {!aiEvent && !isAnalyzing && onAnalyze && (
             <section className="w-full flex flex-col items-center py-4">
               {analyzeError && (
-                <div className="mb-4 p-4 rounded-lg bg-[var(--color-surface-secondary)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] text-center max-w-lg shadow-sm">
-                  <div className="flex items-center justify-center gap-2 text-[var(--color-warning)] font-bold mb-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    Analysis Unavailable
+                <div className="mb-4 p-4 rounded-xl bg-[var(--color-warning-bg)] border border-[var(--color-warning)]/30 text-sm text-[var(--color-text-primary)] text-center max-w-lg shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center justify-center gap-2 text-[var(--color-warning)] font-bold mb-1">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Analysis could not be safely validated</span>
                   </div>
-                  {analyzeError}
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                    {sanitizeErrorMessage(analyzeError)}
+                  </p>
                 </div>
               )}
               <button
@@ -219,89 +272,177 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
           </section>
         )}
 
-        <section className="w-full flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Brain className="w-5 h-5 text-[var(--color-info)]" />
-            <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] uppercase tracking-wider">AI Suggests</h2>
+        {/* RECOVERY INTELLIGENCE & ASSESSMENT */}
+        <section className="w-full flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--color-border-subtle)]">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-[var(--color-info)]" />
+              <h2 className="text-sm font-bold font-display text-[var(--color-text-primary)] uppercase tracking-wider">
+                Recovery Intelligence
+              </h2>
+            </div>
+            {aiEvent && (
+              <div>
+                {provenanceStatus === 'gemini_validated' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)]/30">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-info)]" />
+                    Source: Gemini (Validated)
+                  </span>
+                )}
+                {provenanceStatus === 'deterministic_fallback' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+                    <Shield className="w-3.5 h-3.5 text-[var(--color-neutral)]" />
+                    Source: Deterministic Fallback
+                  </span>
+                )}
+                {provenanceStatus === 'validation_rejected' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[var(--color-warning-bg)] text-[var(--color-warning)] border border-[var(--color-warning)]/40">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[var(--color-warning)]" />
+                    Validation: REJECTED
+                  </span>
+                )}
+              </div>
+            )}
           </div>
+
           {aiEvent ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-[var(--color-info-bg)] rounded-xl border border-[var(--color-info)]/20 shadow-sm">
-                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-info)]">Proposed Action</span>
-                <p className="mt-1 font-mono text-base font-bold text-[var(--color-text-primary)]">{aiEvent.metadata?.recommended_action || aiEvent.metadata?.recommendation || aiEvent.metadata?.intervention_type || 'Unknown'}</p>
-                
-                {/* Why this recommendation? */}
-                <div className="mt-4 pt-4 border-t border-[var(--color-info)]/20">
-                  <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Why this recommendation?</span>
-                  <p className="text-sm text-[var(--color-text-secondary)] mt-2">
-                    {aiEvent.metadata?.reasoning || aiEvent.metadata?.recommendation_reason || 'No reasoning provided.'}
-                  </p>
+            <div className="space-y-6">
+              {provenanceStatus === 'validation_rejected' && (
+                <div className="flex items-start gap-3 p-4 bg-[var(--color-warning-bg)] border border-[var(--color-warning)]/30 rounded-xl">
+                  <AlertTriangle className="w-5 h-5 text-[var(--color-warning)] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-[var(--color-warning)]">
+                      Analysis could not be safely validated
+                    </h4>
+                    <p className="text-xs text-[var(--color-warning)]/90 leading-relaxed">
+                      The AI assessment was rejected because it failed strict schema or evidence grounding checks.
+                      The system automatically defaulted to safe deterministic values. No unverified action was taken.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                    AI Qualitative Assessment (Hypothesis & Recommendations)
+                  </span>
+                  <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                    Model: {aiEvent.metadata?.model_version || 'Unknown'}
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[var(--color-info-bg)] rounded-xl border border-[var(--color-info)]/20 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-info)]">
+                      Proposed Action
+                    </span>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/70 text-[var(--color-info)] border border-[var(--color-info)]/20 font-bold">
+                      {aiEvent.metadata?.recommended_action || aiEvent.metadata?.recommendation || aiEvent.metadata?.intervention_type || 'REVIEW_REQUIRED'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                      Reasoning & Narrative
+                    </span>
+                    <p className="text-sm text-[var(--color-text-secondary)] mt-1 leading-relaxed">
+                      {aiEvent.metadata?.reasoning || aiEvent.metadata?.recommendation_reason || 'No reasoning provided.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                    <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
+                      Predicted Cause Category
+                    </span>
+                    <span className="text-sm font-bold font-mono text-[var(--color-text-primary)]">
+                      {aiEvent.metadata?.cause_category || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
+                    <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
+                      AI Confidence Score
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+                        {aiEvent.metadata?.cause_confidence !== undefined || aiEvent.metadata?.confidence !== undefined
+                          ? `${((aiEvent.metadata?.cause_confidence ?? aiEvent.metadata?.confidence) * 100).toFixed(0)}%` 
+                          : 'Unavailable'}
+                      </span>
+                      <span className="text-xs text-[var(--color-text-secondary)]">qualitative score</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Intelligence Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* Recovery Probability */}
-                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
-                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Recovery Probability</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-[var(--color-text-primary)]">
-                      {aiEvent.metadata?.recovery_probability !== undefined 
-                        ? `${(aiEvent.metadata.recovery_probability * 100).toFixed(0)}%` 
-                        : 'Unavailable'}
-                    </span>
-                  </div>
-                  {aiEvent.metadata?.probability_meaning && (
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-2">{aiEvent.metadata.probability_meaning}</p>
-                  )}
+              <div className="pt-4 border-t border-[var(--color-border-subtle)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+                    Application-Derived Values (Deterministic Financial Calculations)
+                  </span>
+                  <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
+                    Strict Backend Calculation
+                  </span>
                 </div>
 
-                {/* Expected Recovery Value */}
-                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
-                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Expected Value</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-[var(--color-text-primary)]">
-                      {aiEvent.metadata?.expected_recovery_amount !== undefined || aiEvent.metadata?.expected_recovery_value !== undefined ? (
-                        <MoneyValue 
-                          amountMinor={aiEvent.metadata.expected_recovery_amount ?? aiEvent.metadata.expected_recovery_value} 
-                          currency={aiEvent.metadata?.expected_recovery_currency || 'USD'} 
-                        />
-                      ) : 'Unavailable'}
-                    </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">
+                          Expected Recovery Value
+                        </span>
+                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--color-border)]/50 text-[var(--color-text-secondary)]">
+                          Calculated
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold text-[var(--color-text-primary)] mt-1">
+                        {aiEvent.metadata?.expected_recovery_amount !== undefined || aiEvent.metadata?.expected_recovery_value !== undefined ? (
+                          <MoneyValue 
+                            amountMinor={aiEvent.metadata.expected_recovery_amount ?? aiEvent.metadata.expected_recovery_value} 
+                            currency={aiEvent.metadata?.expected_recovery_currency || caseData.currency || 'USD'} 
+                          />
+                        ) : (
+                          <span className="text-sm font-mono text-[var(--color-text-muted)]">Unavailable</span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-secondary)] mt-2 italic">
+                      Computed as: Amount at Risk × Recovery Probability
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">
+                          Recovery Probability
+                        </span>
+                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--color-border)]/50 text-[var(--color-text-secondary)]">
+                          Empirical
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold font-mono text-[var(--color-text-primary)] mt-1">
+                        {aiEvent.metadata?.recovery_probability !== undefined 
+                          ? `${(aiEvent.metadata.recovery_probability * 100).toFixed(0)}%` 
+                          : 'Unavailable'}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-secondary)] mt-2">
+                      {aiEvent.metadata?.probability_meaning || 'Calculated from historical retry signals and case characteristics.'}
+                    </p>
                   </div>
                 </div>
-
-                {/* Cause */}
-                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
-                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Predicted Cause</span>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-bold text-[var(--color-text-primary)]">{aiEvent.metadata?.cause_category || 'Unknown'}</span>
-                    <span className="text-xs text-[var(--color-text-secondary)]">
-                      Confidence: {aiEvent.metadata?.cause_confidence !== undefined || aiEvent.metadata?.confidence !== undefined
-                        ? `${((aiEvent.metadata.cause_confidence ?? aiEvent.metadata.confidence) * 100).toFixed(0)}%` 
-                        : 'Unavailable'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* AI Provenance */}
-                <div className="p-4 bg-[var(--color-surface-secondary)] rounded-xl border border-[var(--color-border-subtle)]">
-                  <span className="block text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-2">AI Provenance</span>
-                  <div className="flex flex-col items-start gap-2">
-                    <span className="text-xs font-mono bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-2 py-1 rounded border border-[var(--color-primary)]/20">
-                      {aiEvent.metadata?.analysis_source || (aiEvent.metadata?.model_version?.includes('deterministic') ? 'Deterministic Fallback' : 'Gemini LLM')}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-secondary)] truncate w-full" title={aiEvent.metadata?.model_version}>
-                      Model: {aiEvent.metadata?.model_version || 'Unknown'}
-                    </span>
-                  </div>
-                </div>
-
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
+                  * Financial metrics are calculated via deterministic policy rules and arithmetic models; they are never hallucinated by generative language models.
+                </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[var(--color-text-muted)] italic">No AI recommendation event found in timeline.</p>
+            <p className="text-sm text-[var(--color-text-muted)] italic">
+              No AI recommendation or recovery intelligence recorded for this case.
+            </p>
           )}
         </section>
 

@@ -50,6 +50,7 @@ def test_successful_structured_response(dummy_case, dummy_event):
         {
             "category": "INSUFFICIENT_FUNDS",
             "confidence": 0.95,
+            "reasoning": "Sufficient evidence available",
             "evidence_references": [{"source_id": "evt_1"}],
         }
     )
@@ -66,7 +67,7 @@ def test_successful_structured_response(dummy_case, dummy_event):
 
 
 def test_fallback_behavior_on_provider_error(dummy_case, dummy_event):
-    valid_json = json.dumps({"category": "INSUFFICIENT_FUNDS", "confidence": 0.95})
+    valid_json = json.dumps({"category": "INSUFFICIENT_FUNDS", "confidence": 0.95, "reasoning": "Valid", "evidence_references": []})
     p1 = MockProvider("mock1", fail_count=1)
     p2 = MockProvider("mock2", [valid_json])
 
@@ -89,7 +90,7 @@ def test_all_providers_fail(dummy_case):
 
 def test_invalid_schema_triggers_fallback(dummy_case, dummy_event):
     invalid_json = '{"confidence": 0.95}'
-    valid_json = json.dumps({"category": "CARD_EXPIRED", "confidence": 0.8})
+    valid_json = json.dumps({"category": "CARD_EXPIRED", "confidence": 0.8, "reasoning": "Valid", "evidence_references": []})
 
     p1 = MockProvider("mock1", [invalid_json])
     p2 = MockProvider("mock2", [valid_json])
@@ -105,14 +106,14 @@ def test_invalid_schema_triggers_fallback(dummy_case, dummy_event):
 
 def test_malformed_json(dummy_case, dummy_event):
     malformed = "{ broken json"
-    valid = json.dumps({"category": "EXPIRED", "confidence": 1.0})
+    valid = json.dumps({"category": "CARD_EXPIRED", "confidence": 1.0, "reasoning": "Valid", "evidence_references": []})
 
     p1 = MockProvider("mock1", [malformed])
     p2 = MockProvider("mock2", [valid])
     gateway = ConcreteLLMGateway(GatewayConfig(), providers=[p1, p2])
 
     cause = gateway.synthesize_cause(dummy_case, [dummy_event], {})
-    assert cause.category == "EXPIRED"
+    assert cause.category == "CARD_EXPIRED"
 
 
 def test_invalid_enum_fails_safely(dummy_case):
@@ -122,8 +123,8 @@ def test_invalid_enum_fails_safely(dummy_case):
                 {
                     "action_type": "HACK_SYSTEM",
                     "confidence": 0.5,
-                    "expected_recovery_value_minor": 1000,
-                    "expected_recovery_currency": "INR",
+                    "reasoning": "Invalid",
+                    "evidence_references": []
                 }
             ]
         }
@@ -136,7 +137,7 @@ def test_invalid_enum_fails_safely(dummy_case):
 
 
 def test_invalid_probability_fails_safely(dummy_case):
-    invalid_prob = json.dumps({"category": "FOO", "confidence": 1.5})
+    invalid_prob = json.dumps({"category": "FOO", "confidence": 1.5, "reasoning": "Invalid", "evidence_references": []})
     p1 = MockProvider("mock1", [invalid_prob])
     gateway = ConcreteLLMGateway(GatewayConfig(), providers=[p1])
     with pytest.raises(GatewayError):
@@ -150,8 +151,8 @@ def test_generate_intervention_candidates_success(dummy_case):
                 {
                     "action_type": "CREATE_PAYMENT_LINK",
                     "confidence": 0.8,
-                    "expected_recovery_value_minor": 1000,
-                    "expected_recovery_currency": "INR",
+                    "reasoning": "Appropriate action",
+                    "evidence_references": []
                 }
             ]
         }
@@ -162,4 +163,22 @@ def test_generate_intervention_candidates_success(dummy_case):
     candidates = gateway.generate_intervention_candidates(dummy_case, [], {}, None)
     assert len(candidates) == 1
     assert candidates[0].action_type == ActionType.CREATE_PAYMENT_LINK
-    assert candidates[0].expected_recovery_value.money.amount_minor == 1000
+    assert candidates[0].expected_recovery_value == dummy_case.amount_at_risk
+
+def test_llm_currency_hallucination_mismatch(dummy_case, dummy_event):
+    invalid_currency_json = json.dumps({
+        "candidates": [
+            {
+                "action_type": "CREATE_PAYMENT_LINK",
+                "confidence": 0.85,
+                "expected_recovery_value_minor": 1000,
+                "expected_recovery_currency": "INVALID_CURRENCY",
+                "evidence_references": [],
+            }
+        ]
+    })
+    p1 = MockProvider("mock_bad_currency", [invalid_currency_json])
+    gateway = ConcreteLLMGateway(GatewayConfig(), providers=[p1])
+
+    with pytest.raises(GatewayError, match="All providers failed"):
+        gateway.generate_intervention_candidates(dummy_case, [dummy_event], {}, None)
