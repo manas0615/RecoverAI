@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from recoverai.api.security import require_frontend_key, require_n8n_key
 from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
-from recoverai.ingestion.exceptions import EventIngestionError
+from recoverai.ingestion.exceptions import EventIngestionError, DuplicateWebhookEvent
 from recoverai.ingestion.razorpay.normalizer import RazorpayNormalizer
 from recoverai.ingestion.razorpay.service import WebhookIngestionService
 from recoverai.ingestion.razorpay.signature import WebhookVerifier
@@ -406,6 +406,8 @@ async def razorpay_webhook(merchant_id: str, request: Request):
             source_event_id=event_id,
             received_at=datetime.now(UTC),
         )
+    except DuplicateWebhookEvent:
+        return {"status": "duplicate"}
     except EventIngestionError as e:
         # Catch exception from verifier
         raise HTTPException(status_code=400, detail=f"Webhook validation failed: {e}")
@@ -443,6 +445,7 @@ async def razorpay_webhook(merchant_id: str, request: Request):
                             container.verification.reconcile_case(
                                 case, datetime.now(UTC)
                             )
+                            container.global_conn.commit()
     except Exception as e:  # noqa: BLE001  # noqa: BLE001
         import logging
 
