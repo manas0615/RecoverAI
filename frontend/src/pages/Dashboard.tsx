@@ -11,7 +11,7 @@ export function Dashboard() {
   const { data, loading, error, refetch } = useCases();
 
   const metrics = useMemo(() => {
-    if (!data) return { activeCases: 0, revenueAtRisk: {}, openCases: [] };
+    if (!data) return { activeCases: 0, revenueAtRisk: {}, verifiedRecovered: {}, openCases: [] };
     
     const open = data.cases.filter(c => c.status === 'OPEN');
     const revenueByCurrency = open.reduce((acc, c) => {
@@ -19,9 +19,21 @@ export function Dashboard() {
       return acc;
     }, {} as Record<string, number>);
 
+    const recoveredByCurrency = data.cases.reduce((acc, c) => {
+      const isRecovered = c.outcome_type === 'RECOVERED' || c.outcome_type === 'SUCCESS' || c.workflow_state === 'RECOVERED' || (c.recovered_amount_minor !== undefined && c.recovered_amount_minor > 0);
+      if (isRecovered) {
+        const amt = c.recovered_amount_minor ?? c.amount_minor;
+        if (amt > 0) {
+          acc[c.currency] = (acc[c.currency] || 0) + amt;
+        }
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
     return {
       activeCases: open.length,
       revenueAtRisk: revenueByCurrency,
+      verifiedRecovered: recoveredByCurrency,
       openCases: open
     };
   }, [data]);
@@ -32,15 +44,22 @@ export function Dashboard() {
 
   // Handle multi-currency for the hero metric
   // If multiple currencies exist, we show a breakdown or just primary if only one.
-  const currencies = Object.keys(metrics.revenueAtRisk);
-  const revenueDisplay = currencies.length > 0 ? (
+  const openCurrencies = Object.keys(metrics.revenueAtRisk);
+  const revenueDisplay = (
     <div className="flex flex-col gap-1">
-      {currencies.map(curr => (
+      {openCurrencies.map(curr => (
         <MoneyValue key={curr} amountMinor={metrics.revenueAtRisk[curr]} currency={curr} />
       ))}
     </div>
-  ) : (
-    <MoneyValue amountMinor={0} currency="INR" />
+  );
+
+  const recoveredCurrencies = Object.keys(metrics.verifiedRecovered);
+  const recoveredDisplay = (
+    <div className="flex flex-col gap-1">
+      {recoveredCurrencies.map(curr => (
+        <MoneyValue key={curr} amountMinor={metrics.verifiedRecovered[curr]} currency={curr} />
+      ))}
+    </div>
   );
 
   return (
@@ -51,17 +70,30 @@ export function Dashboard() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          label="Open Revenue at Risk" 
-          value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : revenueDisplay}
-        />
+        {loading || openCurrencies.length > 0 ? (
+          <MetricCard 
+            label="Open Revenue at Risk" 
+            value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : revenueDisplay}
+          />
+        ) : (
+          <UnavailableMetric label="Open Revenue at Risk" />
+        )}
+
         <MetricCard 
           label="Active Cases" 
           value={loading ? <div className="h-9 w-12 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : metrics.activeCases}
         />
         
+        {loading || recoveredCurrencies.length > 0 ? (
+          <MetricCard 
+            label="Verified Recovered" 
+            value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : recoveredDisplay}
+          />
+        ) : (
+          <UnavailableMetric label="Verified Recovered" />
+        )}
+        
         {/* Visually secondary unavailable metrics per architectural plan */}
-        <UnavailableMetric label="Verified Recovered" />
         <UnavailableMetric label="Recovery Rate" />
       </div>
 

@@ -168,7 +168,6 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
           </section>
         )}
 
-        {/* AI SUGGESTS */}
         <section className="w-full flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Brain className="w-5 h-5 text-[var(--color-info)]" />
@@ -186,6 +185,52 @@ export function CaseDetailView({ caseData, timeline, onBack, onAnalyze, isAnalyz
                   <p className="text-sm text-[var(--color-text-secondary)] mt-1">{aiEvent.metadata.reasoning}</p>
                 </div>
               )}
+              
+              <details className="mt-4 group border border-[var(--color-border-subtle)] rounded-lg overflow-hidden">
+                <summary className="flex items-center justify-between cursor-pointer p-3 bg-[var(--color-surface-secondary)] text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]/80 transition-colors">
+                  Why this recommendation?
+                  <span className="text-[var(--color-text-muted)] text-xs group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-4 bg-[var(--color-surface)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-[var(--color-text-muted)]">Analysis Source</span>
+                    <span className="text-xs font-mono bg-[var(--color-info-bg)] text-[var(--color-info)] px-2 py-1 rounded border border-[var(--color-info)]/20">
+                      {aiEvent.metadata?.analysis_source || (aiEvent.metadata?.deterministic_fallback ? 'Deterministic Fallback' : 'Gemini')}
+                    </span>
+                  </div>
+
+                  {aiEvent.evidence_references && aiEvent.evidence_references.length > 0 && (
+                    <div>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] block mb-1">Evidence References</span>
+                      <ul className="list-disc list-inside text-xs text-[var(--color-text-secondary)] space-y-1">
+                        {aiEvent.evidence_references.map((ref: string, idx: number) => (
+                          <li key={idx} className="font-mono">{ref}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {aiEvent.metadata && (
+                    <div>
+                      <span className="text-xs font-medium text-[var(--color-text-muted)] block mb-2">Case Context & Signals</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {Object.entries(aiEvent.metadata)
+                          .filter(([k]) => !['recommended_action', 'intervention_type', 'reasoning', 'analysis_source', 'deterministic_fallback'].includes(k))
+                          .map(([k, v]) => (
+                            <div key={k} className="p-2 bg-[var(--color-bg)] rounded border border-[var(--color-border-subtle)]">
+                              <span className="block text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
+                                {k.replace(/_/g, ' ')}
+                              </span>
+                              <span className="block text-xs font-medium text-[var(--color-text-primary)] truncate" title={typeof v === 'object' ? JSON.stringify(v) : String(v)}>
+                                {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
             </div>
           ) : (
             <p className="text-sm text-[var(--color-text-muted)] italic">No AI recommendation event found in timeline.</p>

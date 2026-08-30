@@ -185,8 +185,11 @@ def handle_create_payment_link(
 
     with ctx.tm.transaction() as conn:
         from recoverai.persistence.repositories.event import RevenueEventRepository
-        events = [RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids]
-    
+
+        events = [
+            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
+        ]
+
     # Generate real intelligence plan
     _, _, plan = ctx.intelligence.analyze(case, events)
     action._real_plan = plan
@@ -271,8 +274,11 @@ def handle_resume_recovery_action(
 
     with ctx.tm.transaction() as conn:
         from recoverai.persistence.repositories.event import RevenueEventRepository
-        events = [RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids]
-        
+
+        events = [
+            RevenueEventRepository(conn).get(eid) for eid in case.source_event_ids
+        ]
+
     # Generate real intelligence plan
     _, _, plan = ctx.intelligence.analyze(case, events)
     action._real_plan = plan

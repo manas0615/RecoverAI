@@ -45,7 +45,9 @@ def mem_db():
         "CREATE TABLE revenue_events (event_id TEXT PRIMARY KEY, event_type TEXT, source_type TEXT, source_event_id TEXT, merchant_id TEXT, customer_id TEXT, amount_minor INTEGER, currency TEXT, external_reference TEXT, metadata JSON, schema_version TEXT, occurred_at TEXT, received_at TEXT)"
     )
     conn.execute("CREATE TABLE case_source_events (case_id TEXT, event_id TEXT)")
-    conn.execute("INSERT INTO revenue_events (event_id, event_type, source_type, merchant_id, schema_version, occurred_at, received_at, metadata) VALUES ('evt_1', 'PAYMENT_FAILED', 'RAZORPAY_WEBHOOK', 'm_1', '1.0', '2026-08-29T00:00:00Z', '2026-08-29T00:00:00Z', '{}')")
+    conn.execute(
+        "INSERT INTO revenue_events (event_id, event_type, source_type, merchant_id, schema_version, occurred_at, received_at, metadata) VALUES ('evt_1', 'PAYMENT_FAILED', 'RAZORPAY_WEBHOOK', 'm_1', '1.0', '2026-08-29T00:00:00Z', '2026-08-29T00:00:00Z', '{}')"
+    )
     yield conn
     conn.close()
 
@@ -102,11 +104,15 @@ def mcp_ctx(mem_db):
 
     class DummyIntelligence:
         def analyze(self, case, events, context=None):
-            from recoverai.domain.plan import InterventionPlan, InterventionCandidate, CandidateStatus
-            from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
-            from recoverai.domain.evidence import Probability
             from recoverai.domain.action import ActionType
-            
+            from recoverai.domain.evidence import Probability
+            from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
+            from recoverai.domain.plan import (
+                CandidateStatus,
+                InterventionCandidate,
+                InterventionPlan,
+            )
+
             dummy_candidate = InterventionCandidate(
                 candidate_id="cand_1",
                 case_id=case.case_id,

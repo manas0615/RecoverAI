@@ -356,7 +356,7 @@ def seed_data():
         # Denied by policy, so we skip authorize/execution and just record cancellation
         action_d.record_verification(ActionStatus.CANCELLED, t_d + timedelta(minutes=1))
         action_repo.save(action_d)
-        
+
         conn.execute(
             """INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -439,6 +439,27 @@ def seed_data():
             action_e.action_id,
             timestamp=t_e + timedelta(minutes=1),
         )
+
+        # SCENARIO F — DUPLICATE/IDEMPOTENCY
+        case_f, t_f = create_base_case(conn, "DUPLICATE", 2000, 30)
+
+        # Simulate receiving a duplicate webhook. It fails to insert (idempotency),
+        # so the system only logs an audit event indicating a duplicate was received.
+        add_audit(conn, AuditEventType.CASE_CREATED, case_f.case_id, timestamp=t_f)
+        add_audit(
+            conn,
+            AuditEventType.WEBHOOK_DUPLICATE,
+            case_f.case_id,
+            None,
+            {"duplicate_of": "evt_DUPLICATE"},
+            t_f + timedelta(minutes=5),
+        )
+
+        # SCENARIO G — LIVE DETECTED/ANALYZE
+        case_g, t_g = create_base_case(conn, "LIVE", 1500, 10)
+        # We explicitly DO NOT add an LLM recommendation or proposed action.
+        # The UI will let the user click "Analyze Case" to trigger one.
+        add_audit(conn, AuditEventType.CASE_CREATED, case_g.case_id, timestamp=t_g)
 
         print("Seeded Demo Data successfully.")
 

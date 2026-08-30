@@ -7,6 +7,9 @@ export interface Case {
   amount_minor: number;
   currency: string;
   verification_count: number;
+  outcome_type?: string;
+  recovered_amount_minor?: number;
+  workflow_state?: string;
 }
 
 export interface Actor {

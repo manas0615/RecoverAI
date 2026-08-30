@@ -58,7 +58,7 @@ class RecoveryAction:
     started_at: datetime | None = None
     completed_at: datetime | None = None
     failure_reason: str | None = None
-    
+
     # Internal context
     _real_plan: "Any | None" = field(default=None, repr=False, compare=False)
 

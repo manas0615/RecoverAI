@@ -186,6 +186,11 @@ def case_to_dict(case) -> dict:
         "amount_minor": case.amount_at_risk.amount_minor,
         "currency": case.amount_at_risk.currency.value,
         "verification_count": 0,
+        "workflow_state": case.workflow_state.value,
+        "outcome_type": case.outcome_type.value if case.outcome_type else None,
+        "recovered_amount_minor": case.recovered_amount.amount_minor
+        if case.recovered_amount
+        else None,
     }
 
 

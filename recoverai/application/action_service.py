@@ -60,7 +60,9 @@ class RecoveryActionService:
             if getattr(action, "_real_plan", None) is not None:
                 plan = action._real_plan
             else:
-                raise ValueError("Financial execution requires a real Intelligence InterventionPlan.")
+                raise ValueError(
+                    "Financial execution requires a real Intelligence InterventionPlan."
+                )
 
             decision = self.policy_engine.evaluate(policy_context, case, plan, [])  # type: ignore
 
