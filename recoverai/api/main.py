@@ -322,6 +322,15 @@ async def analyze_case(case_id: str):
                 "recommendation": plan.selected_action_type.value
                 if plan.selected_action_type
                 else "UNKNOWN",
+                "recommendation_reason": plan.selection_reason,
+                "expected_recovery_value": plan.expected_recovery_value.amount_minor,
+                "recovery_probability": risk.recovery_probability.value,
+                "probability_meaning": risk.recovery_probability.meaning,
+                "cause_category": cause.category if cause else "UNKNOWN",
+                "cause_confidence": cause.confidence.value if cause else 0.0,
+                "policy_decision": decision.decision.value,
+                "policy_reasons": decision.reason_codes,
+                "model_version": plan.selection_model_version,
             }
     except Exception as e:  # noqa: BLE001
         import logging
@@ -391,3 +400,104 @@ async def razorpay_webhook(merchant_id: str, request: Request):
         # Return 200 so webhook is not retried if it's an internal error; it will be picked up by reconciliation
 
     return {"status": "processed"}
+
+
+@app.get("/analytics", dependencies=[Depends(require_frontend_key)])
+def get_analytics():
+    with container.tm.transaction() as conn:
+        repo = RecoveryCaseRepository(conn)
+        cur = conn.execute("SELECT case_id FROM recovery_cases")
+        cases = []
+        for row in cur.fetchall():
+            c = repo.get(RecoveryCaseId(row["case_id"]))
+            if c:
+                cases.append(c)
+
+        revenue_at_risk = {}
+        verified_recovered = {}
+        unknown_exposure = {}
+        active_cases = 0
+        outcome_distribution = {
+            "RECOVERED": 0,
+            "FAILED": 0,
+            "UNKNOWN": 0,
+            "DENIED": 0,
+            "ESCALATED": 0,
+        }
+        funnel = {
+            "DETECTED": len(cases),
+            "ANALYZED": 0,
+            "APPROVED": 0,
+            "EXECUTING": 0,
+            "VERIFIED": 0,
+        }
+
+        for case in cases:
+            curr = case.amount_at_risk.currency.value
+            for d in (revenue_at_risk, verified_recovered, unknown_exposure):
+                if curr not in d:
+                    d[curr] = 0
+
+            if case.status.value == "OPEN":
+                revenue_at_risk[curr] += case.amount_at_risk.amount_minor
+                active_cases += 1
+                unknown_exposure[curr] += case.amount_at_risk.amount_minor
+
+            if case.outcome_type:
+                out = case.outcome_type.value
+                if out == "RECOVERED":
+                    outcome_distribution["RECOVERED"] += 1
+                    verified_recovered[curr] += (
+                        case.recovered_amount.amount_minor
+                        if case.recovered_amount
+                        else case.amount_at_risk.amount_minor
+                    )
+                elif out == "FAILED_PERMANENTLY":
+                    outcome_distribution["FAILED"] += 1
+                elif out == "UNKNOWN_OR_MANUAL":
+                    outcome_distribution["UNKNOWN"] += 1
+                    unknown_exposure[curr] += case.amount_at_risk.amount_minor
+                elif out == "DENIED":
+                    outcome_distribution["DENIED"] += 1
+                elif out == "ESCALATED":
+                    outcome_distribution["ESCALATED"] += 1
+                else:
+                    outcome_distribution["UNKNOWN"] += 1
+
+            state = case.workflow_state.value
+            if state in (
+                "ANALYZING",
+                "POLICY_REVIEW",
+                "PENDING_EXECUTION",
+                "EXECUTING",
+                "VERIFYING",
+                "CLOSED",
+            ):
+                funnel["ANALYZED"] += 1
+            if state in ("PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED"):
+                if not (
+                    case.outcome_type
+                    and case.outcome_type.value in ("DENIED", "ESCALATED")
+                ):
+                    funnel["APPROVED"] += 1
+            if state in ("EXECUTING", "VERIFYING", "CLOSED"):
+                if not (
+                    case.outcome_type
+                    and case.outcome_type.value in ("DENIED", "ESCALATED")
+                ):
+                    funnel["EXECUTING"] += 1
+            if (
+                state == "CLOSED"
+                and case.outcome_type
+                and case.outcome_type.value == "RECOVERED"
+            ):
+                funnel["VERIFIED"] += 1
+
+        return {
+            "revenue_at_risk": revenue_at_risk,
+            "verified_recovered": verified_recovered,
+            "active_cases": active_cases,
+            "unknown_exposure": unknown_exposure,
+            "outcome_distribution": outcome_distribution,
+            "recovery_funnel": funnel,
+        }

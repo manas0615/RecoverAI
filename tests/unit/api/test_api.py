@@ -125,3 +125,24 @@ def test_webhook_api_key_does_not_bypass():
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Missing signature"
+
+
+def test_analytics_no_key():
+    response = client.get("/analytics")
+    assert response.status_code == 401
+
+def test_analytics():
+    response = client.get("/analytics", headers=FRONTEND_HEADERS)
+    assert response.status_code == 200
+    data = response.json()
+    assert "revenue_at_risk" in data
+    assert "verified_recovered" in data
+    assert "active_cases" in data
+    assert "unknown_exposure" in data
+    assert "outcome_distribution" in data
+    assert "recovery_funnel" in data
+
+def test_analyze_case_not_found():
+    response = client.post("/recovery-cases/missing/analyze", headers=FRONTEND_HEADERS)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Case not found"
