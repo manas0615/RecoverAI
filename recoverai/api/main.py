@@ -226,8 +226,8 @@ def list_cases():
                 audit_repo = AuditRepository(conn)
                 audit_events = audit_repo.get_by_case(case_id_val)
                 for ae in audit_events:
-                    if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata and "action" in ae.metadata:
-                        d["recommendation"] = ae.metadata["action"]
+                    if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata and "recommended_action" in ae.metadata:
+                        d["recommendation"] = ae.metadata["recommended_action"]
 
                 # Determine updated_at
                 updated_at = c.updated_at or c.opened_at
@@ -236,14 +236,14 @@ def list_cases():
                 # Fetch latest action details for execution monitoring
                 from recoverai.persistence.repositories.action import RecoveryActionRepository
                 action_repo = RecoveryActionRepository(conn)
-                actions = action_repo.get_by_case(case_id_val)
+                actions = action_repo.get_by_case(RecoveryCaseId(case_id_val))
                 if actions:
                     latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
                     d["action_type"] = latest_action.action_type.value
                     d["action_status"] = latest_action.status.value
                     d["action_id"] = latest_action.action_id.value
-                    d["provider"] = latest_action.provider
-                    d["external_reference"] = latest_action.external_reference
+                    d["provider"] = getattr(latest_action, "provider", None)
+                    d["external_reference"] = getattr(latest_action, "external_reference", None)
                 else:
                     d["action_type"] = None
                     d["action_status"] = None
@@ -312,8 +312,8 @@ def get_case(case_id: str):
         audit_events = audit_repo.get_by_case(case_id)
         for ae in audit_events:
             if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata:
-                if "action" in ae.metadata:
-                    result["recommendation"] = ae.metadata["action"]
+                if "recommended_action" in ae.metadata:
+                    result["recommendation"] = ae.metadata["recommended_action"]
                 if "confidence" in ae.metadata:
                     result["confidence"] = ae.metadata["confidence"]
                 if "reasoning" in ae.metadata:
@@ -334,20 +334,19 @@ def get_case(case_id: str):
         try:
             from recoverai.persistence.repositories.action import RecoveryActionRepository
             from recoverai.persistence.repositories.verification import VerificationRecordRepository
-            from recoverai.domain.identifiers import RecoveryCaseId
             action_repo = RecoveryActionRepository(conn)
             ver_repo = VerificationRecordRepository(conn)
             
-            actions = action_repo.get_by_case(case_id)
+            actions = action_repo.get_by_case(RecoveryCaseId(case_id))
             if actions:
                 latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
                 result["action_type"] = latest_action.action_type.value
                 result["action_status"] = latest_action.status.value
                 result["action_id"] = latest_action.action_id.value
-                result["provider"] = latest_action.provider
-                result["external_reference"] = latest_action.external_reference
+                result["provider"] = getattr(latest_action, "provider", None)
+                result["external_reference"] = getattr(latest_action, "external_reference", None)
                 result["action_requested_at"] = latest_action.requested_at.isoformat() if latest_action.requested_at else None
-                result["action_executed_at"] = latest_action.executed_at.isoformat() if latest_action.executed_at else None
+                result["action_executed_at"] = latest_action.started_at.isoformat() if latest_action.started_at else None
                 
                 # Verification Details
                 records = ver_repo.get_by_case(RecoveryCaseId(case_id))
@@ -365,20 +364,21 @@ def get_case(case_id: str):
                                 result["observed_event_type"] = ev.event_type.value
                                 result["observed_amount_minor"] = ev.amount.amount_minor if ev.amount else None
                                 result["observed_currency"] = ev.amount.currency.value if ev.amount else None
-                                result["observed_reference"] = ev.external_reference
+                                result["observed_reference"] = getattr(ev, "external_reference", None)
                                 break
-                    elif latest_action.idempotency_key:
+                    elif getattr(latest_action, "idempotency_key", None):
                         events = event_repo.get_by_merchant_and_type(case.merchant_id, "PAYMENT_LINK_PAID")
                         for ev in events:
                             # Mock extract ref
                             result["observed_event_type"] = ev.event_type.value
                             result["observed_amount_minor"] = ev.amount.amount_minor if ev.amount else None
                             result["observed_currency"] = ev.amount.currency.value if ev.amount else None
-                            result["observed_reference"] = ev.external_reference
+                            result["observed_reference"] = getattr(ev, "external_reference", None)
                             break
                             
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to enrich case details for {case_id}: {e}")
 
         return result
 
@@ -610,10 +610,12 @@ def get_analytics():
     with container.tm.transaction() as conn:
         from recoverai.persistence.repositories.action import RecoveryActionRepository
         from recoverai.persistence.repositories.verification import VerificationRecordRepository
+        from recoverai.persistence.repositories.audit import AuditRepository
         
         repo = RecoveryCaseRepository(conn)
         action_repo = RecoveryActionRepository(conn)
         verif_repo = VerificationRecordRepository(conn)
+        audit_repo = AuditRepository(conn)
         
         cur = conn.execute("SELECT case_id FROM recovery_cases")
         cases = []
@@ -710,13 +712,27 @@ def get_analytics():
             elif st in ("VERIFYING", "VERIFICATION_PENDING", "VERIFICATION_STARTED"):
                 outcome_distribution["VERIF_PENDING"] += 1
                 
+            # Audit info extraction
+            audit_events = audit_repo.get_by_case(case.case_id.value)
+            provenance = None
+            requires_human_approval = False
+            for ae in audit_events:
+                if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata:
+                    actor_id = ae.actor.id if ae.actor else "UNKNOWN"
+                    if "gemini" in actor_id.lower() or "gemini" in str(ae.metadata).lower():
+                        provenance = "Gemini"
+                    else:
+                        provenance = "Deterministic Fallback"
+                elif ae.event_type.value == "CASE_ESCALATED" or (ae.event_type.value == "POLICY_DECISION_CREATED" and ae.metadata and ae.metadata.get("decision") == "ESCALATE"):
+                    requires_human_approval = True
+                
             # Funnel Logic
             if st in ("ANALYZING", "POLICY_REVIEW", "WAITING_APPROVAL", "PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED", "ESCALATED"):
                 funnel["ANALYZED"] += 1
-                if case.provenance:
+                if provenance:
                     funnel["RECOMMENDED"] += 1
                     
-            if st in ("WAITING_APPROVAL", "PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED", "ESCALATED") and (case.rules_matched and any(r.action == "REQUIRE_APPROVAL" for r in case.rules_matched)):
+            if st in ("WAITING_APPROVAL", "PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED", "ESCALATED") and requires_human_approval:
                 funnel["HUMAN_APPROVAL"] += 1
                 
             if st in ("PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED") and out_type not in ("DENIED", "ESCALATED"):
@@ -730,32 +746,32 @@ def get_analytics():
                 funnel["VERIFIED"] += 1
                 
             # Provenance
-            if case.provenance == "Gemini":
+            if provenance == "Gemini":
                 recommendation_source["Gemini"] += 1
-            elif case.provenance == "Deterministic Fallback":
+            elif provenance == "Deterministic Fallback":
                 recommendation_source["Deterministic Fallback"] += 1
                 
             # Actions for intervention
-            actions = action_repo.get_by_case(case.id.value)
+            actions = action_repo.get_by_case(case.case_id)
             for action in actions:
-                s_type = action.strategy_type.value if hasattr(action.strategy_type, 'value') else str(action.strategy_type)
+                s_type = action.action_type.value if hasattr(action.action_type, 'value') else str(action.action_type)
                 if s_type not in intervention_perf:
                     intervention_perf[s_type] = {"cases": 0, "recovered": 0, "failed": 0, "pending": 0}
                 intervention_perf[s_type]["cases"] += 1
                 
                 ast = action.status.value if hasattr(action.status, 'value') else str(action.status)
-                if ast == "FAILED":
+                if ast in ("VERIFIED_FAILURE", "EXECUTION_UNKNOWN", "CANCELLED"):
                     intervention_perf[s_type]["failed"] += 1
                     # Failure cause
                     cause = action.failure_reason or "Unknown Error"
                     failure_causes[cause] = failure_causes.get(cause, 0) + 1
-                elif ast == "COMPLETED" and out_type == "RECOVERED":
+                elif ast == "VERIFIED_SUCCESS" or (ast == "COMPLETED" and out_type == "RECOVERED"):
                     intervention_perf[s_type]["recovered"] += 1
                 else:
                     intervention_perf[s_type]["pending"] += 1
                     
             # Verification logic
-            verifs = verif_repo.get_by_case(case.id.value)
+            verifs = verif_repo.get_by_case(case.case_id)
             if verifs:
                 total_verifications += 1
                 v_st = verifs[0].verified_state.value if hasattr(verifs[0].verified_state, 'value') else str(verifs[0].verified_state)
