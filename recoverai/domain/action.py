@@ -112,7 +112,6 @@ class RecoveryAction:
             ActionStatus.VERIFIED_SUCCESS,
             ActionStatus.VERIFIED_FAILURE,
             ActionStatus.CANCELLED,
-            ActionStatus.ESCALATED,
         }
         if self.status in valid_terminal:
             raise ValueError("Action is already in a terminal state")
@@ -120,6 +119,7 @@ class RecoveryAction:
             new_status not in valid_terminal
             and new_status != ActionStatus.VERIFICATION_PENDING
             and new_status != ActionStatus.EXECUTION_UNKNOWN
+            and new_status != ActionStatus.ESCALATED
         ):
             raise ValueError("Invalid verification status transition")
         if not timestamp.tzinfo:

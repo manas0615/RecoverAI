@@ -58,20 +58,16 @@ export const apiClient = {
   abortExecution: (caseId: string) => fetchJson<{ status: string; message: string }>(`/api/recovery-cases/${caseId}/abort`, { method: 'POST' }),
 
   approveAction: async (caseId: string, actionId: string) => {
-    const response = await fetch(`${API_BASE}/api/mcp/execute`, {
+    const response = await fetch(`${API_BASE}/api/recovery-cases/${caseId}/actions/${actionId}/approve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': 'test_n8n_key_default'
-      },
-      body: JSON.stringify({
-        tool: 'resume_recovery_action',
-        args: { case_id: caseId, action_id: actionId }
-      })
+        'X-API-Key': 'test_frontend_key_default'
+      }
     });
     if (!response.ok) {
       throw new ApiError(response.status, `API Error: ${response.statusText}`);
     }
     return response.json();
-  }
+  },
 };

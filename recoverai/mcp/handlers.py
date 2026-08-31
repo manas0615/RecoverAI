@@ -282,10 +282,7 @@ def handle_resume_recovery_action(
         if not action:
             raise ValueError(f"Action {args.action_id} not found")
 
-        if action.status not in {
-            ActionStatus.ESCALATED,
-            ActionStatus.PROPOSED,
-        }:
+        if action.status != ActionStatus.ESCALATED:
             raise MCPError(
                 f"Action cannot be resumed from status {action.status.name}",
                 "INVALID_STATE",
@@ -296,7 +293,6 @@ def handle_resume_recovery_action(
         raise MCPError("Original intervention plan snapshot not found", "MISSING_PLAN")
 
     import json
-
     from recoverai.domain.plan import InterventionPlan
 
     try:

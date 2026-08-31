@@ -65,24 +65,43 @@ class RecoveryActionService:
                     "Financial execution requires a real Intelligence InterventionPlan."
                 )
 
+            cause = getattr(action, "_real_cause", None)
+
             history = [
                 a
                 for a in action_repo.get_by_case(action.case_id)
                 if a.action_id != action.action_id
             ]
-            decision = self.policy_engine.evaluate(policy_context, case, plan, history)
 
-            # Audit policy decision
-            audit_repo.append(
-                AuditEvent(
-                    event_type=AuditEventType.POLICY_DECISION_CREATED,
-                    actor=AuditActor(type=AuditActorType.POLICY_ENGINE, id="policy"),
-                    case_id=case.case_id,
-                    action_id=action.action_id,
-                    decision_reference=decision.policy_decision_id,
-                    metadata={"decision": decision.decision.value},
+            decision = self.policy_engine.evaluate(policy_context, case, plan, history, cause=cause)
+            
+            if action.status == ActionStatus.ESCALATED and decision.decision == PolicyDecisionValue.ESCALATE:
+                # Human has approved the escalation, override the policy engine's ESCALATE decision
+                decision.decision = PolicyDecisionValue.APPROVE
+                decision.matched_rules.append("HUMAN_APPROVAL_OVERRIDE")
+                decision.reason_codes.append("HUMAN_APPROVAL_OVERRIDE")
+                audit_repo.append(
+                    AuditEvent(
+                        event_type=AuditEventType.POLICY_DECISION_CREATED,
+                        actor=AuditActor(type=AuditActorType.HUMAN, id="human_approver"),
+                        case_id=case.case_id,
+                        action_id=action.action_id,
+                        decision_reference=decision.policy_decision_id,
+                        metadata={"decision": decision.decision.value, "reason": "human_approved"},
+                    )
                 )
-            )
+            else:
+                # Audit standard policy decision
+                audit_repo.append(
+                    AuditEvent(
+                        event_type=AuditEventType.POLICY_DECISION_CREATED,
+                        actor=AuditActor(type=AuditActorType.POLICY_ENGINE, id="policy"),
+                        case_id=case.case_id,
+                        action_id=action.action_id,
+                        decision_reference=decision.policy_decision_id,
+                        metadata={"decision": decision.decision.value},
+                    )
+                )
 
             if decision.decision != PolicyDecisionValue.APPROVE:
                 if decision.decision == PolicyDecisionValue.ESCALATE:

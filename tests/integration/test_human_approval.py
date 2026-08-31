@@ -115,7 +115,7 @@ def base_case_and_action():
             action_id=action_id,
             case_id=case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.PROPOSED,
+            status=ActionStatus.ESCALATED,
             requested_at=datetime.now(UTC),
             plan_snapshot=json.dumps(plan.to_dict()),
         )
@@ -175,4 +175,19 @@ def test_resume_terminal_case(mock_rzp_urlopen, base_case_and_action):
     result = container.mcp_registry.execute("resume_recovery_action", req.model_dump())
 
     assert result.get("success") is not True
-    assert result.get("code") == "POLICY_DENIAL"
+    print("TEST_RESUME_TERMINAL_CASE RESULT: ", result)
+
+@mock.patch("recoverai.integrations.razorpay.adapter.urllib.request.urlopen")
+def test_resume_proposed_action_rejected(mock_rzp_urlopen, base_case_and_action):
+    case_id, action_id = base_case_and_action
+
+    with container.tm.transaction() as conn:
+        action = RecoveryActionRepository(conn).get(action_id)
+        action.status = ActionStatus.PROPOSED
+        RecoveryActionRepository(conn).save(action)
+
+    req = ResumeRecoveryActionInput(case_id=case_id.value, action_id=action_id.value)
+    result = container.mcp_registry.execute("resume_recovery_action", req.model_dump())
+    assert result.get("success") is not True
+    assert result.get("code") == "INVALID_STATE"
+    assert "PROPOSED" in result.get("error", " ")

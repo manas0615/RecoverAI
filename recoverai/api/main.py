@@ -831,6 +831,19 @@ def get_analytics():
             "verification_outcomes": verification_outcomes
         }
 
+@app.post("/recovery-cases/{case_id}/actions/{action_id}/approve", dependencies=[Depends(require_frontend_key)])
+def approve_action(case_id: str, action_id: str):
+    try:
+        result = container.mcp_registry.execute(
+            "resume_recovery_action", {"case_id": case_id, "action_id": action_id}
+        )
+        return {"status": "success", "result": result}
+    except Exception as e:
+        if "INVALID_STATE" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/recovery-cases/{case_id}/abort", dependencies=[Depends(require_frontend_key)])
 def abort_execution(case_id: str):
     with container.tm.transaction() as conn:
