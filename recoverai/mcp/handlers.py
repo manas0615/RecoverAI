@@ -207,11 +207,12 @@ def handle_create_payment_link(
         ]
 
     # Generate real intelligence plan
-    _, _, plan = ctx.intelligence.analyze(case, events)
+    _, cause, plan = ctx.intelligence.analyze(case, events)
     import json
 
     action.plan_snapshot = json.dumps(plan.to_dict())
     action._real_plan = plan
+    action._real_cause = cause
 
     # Now OUTSIDE the transaction, execute the action. ActionService will start its own transaction.
     action = ctx.action_service.execute_action(action)

@@ -483,7 +483,7 @@ async def analyze_case(case_id: str):
             )
             action_history = RecoveryActionRepository(conn).get_by_case(case.case_id)
             decision = container.policy.evaluate(
-                policy_context, case, plan, action_history
+                policy_context, case, plan, action_history, cause=cause
             )
 
             audit_repo.append(
