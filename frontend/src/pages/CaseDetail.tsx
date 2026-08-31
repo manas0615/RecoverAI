@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCaseDetails } from '../hooks/useCases';
+import { useCaseDetails } from '../hooks/useApi';
 import { AccessBoundary } from '../components/feedback/AccessBoundary';
 import { LoadingSkeleton } from '../components/feedback/LoadingSkeleton';
 import { CaseDetailView } from './CaseDetailView';

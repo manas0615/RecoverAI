@@ -1,5 +1,5 @@
 import { PageHeader } from '../components/layout/PageHeader';
-import { useHealth } from '../hooks/useCases';
+import { useHealth } from '../hooks/useApi';
 import { ErrorState } from '../components/feedback/ErrorState';
 import { CheckCircle2, XCircle } from 'lucide-react';
 

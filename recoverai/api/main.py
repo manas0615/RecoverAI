@@ -197,11 +197,62 @@ def list_cases():
     with container.tm.transaction() as conn:
         cur = conn.execute("SELECT case_id FROM recovery_cases ORDER BY opened_at DESC")
         repo = RecoveryCaseRepository(conn)
+        
+        # We need failure codes and recommendations
         cases = []
         for row in cur.fetchall():
-            c = repo.get(RecoveryCaseId(row["case_id"]))
+            case_id_val = row["case_id"]
+            c = repo.get(RecoveryCaseId(case_id_val))
             if c:
-                cases.append(case_to_dict(c))
+                d = case_to_dict(c)
+                
+                # Fetch failure code from events
+                d["failure_code"] = "UNKNOWN"
+                from recoverai.persistence.repositories.event import RevenueEventRepository
+                event_repo = RevenueEventRepository(conn)
+                
+                events = [event_repo.get(eid) for eid in c.source_event_ids]
+                for e in events:
+                    if e and e.metadata.get("error_code"):
+                        d["failure_code"] = e.metadata["error_code"]
+                        break
+                    if e and e.metadata.get("failure_reason"):
+                        d["failure_code"] = e.metadata["failure_reason"]
+                        break
+                        
+                # Fetch recommendation from audit log
+                d["recommendation"] = "N/A"
+                from recoverai.persistence.repositories.audit import AuditRepository
+                audit_repo = AuditRepository(conn)
+                audit_events = audit_repo.get_by_case(case_id_val)
+                for ae in audit_events:
+                    if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata and "action" in ae.metadata:
+                        d["recommendation"] = ae.metadata["action"]
+
+                # Determine updated_at
+                updated_at = c.updated_at or c.opened_at
+                d["updated_at"] = updated_at.isoformat()
+                
+                # Fetch latest action details for execution monitoring
+                from recoverai.persistence.repositories.action import RecoveryActionRepository
+                action_repo = RecoveryActionRepository(conn)
+                actions = action_repo.get_by_case(case_id_val)
+                if actions:
+                    latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
+                    d["action_type"] = latest_action.action_type.value
+                    d["action_status"] = latest_action.status.value
+                    d["action_id"] = latest_action.action_id.value
+                    d["provider"] = latest_action.provider
+                    d["external_reference"] = latest_action.external_reference
+                else:
+                    d["action_type"] = None
+                    d["action_status"] = None
+                    d["action_id"] = None
+                    d["provider"] = None
+                    d["external_reference"] = None
+
+                cases.append(d)
+                
         return {"cases": cases}
 
 
@@ -209,9 +260,12 @@ def list_cases():
 def get_case(case_id: str):
     with container.tm.transaction() as conn:
         from recoverai.persistence.repositories.event import RevenueEventRepository
-
+        from recoverai.persistence.repositories.audit import AuditRepository
+        
         repo = RecoveryCaseRepository(conn)
         event_repo = RevenueEventRepository(conn)
+        audit_repo = AuditRepository(conn)
+        
         try:
             case = repo.get(RecoveryCaseId(case_id))
         except (ValueError, TypeError):
@@ -221,7 +275,9 @@ def get_case(case_id: str):
 
         events = [event_repo.get(eid) for eid in case.source_event_ids]
 
+        audit_events = audit_repo.get_by_case(case_id)
         result = case_to_dict(case)
+        result["timeline"] = [e.to_dict() for e in audit_events]
         result["events"] = [
             {
                 "event_id": e.event_id.value,
@@ -235,6 +291,95 @@ def get_case(case_id: str):
             for e in events
             if e
         ]
+        
+        # Gather evidence
+        result["failure_code"] = "UNKNOWN"
+        result["historical_failure_count"] = len([e for e in events if e and "FAIL" in e.event_type.value])
+        for e in events:
+            if e and e.metadata.get("error_code"):
+                result["failure_code"] = e.metadata["error_code"]
+                break
+            if e and e.metadata.get("failure_reason"):
+                result["failure_code"] = e.metadata["failure_reason"]
+                break
+                
+        # Gather Recommendation
+        result["recommendation"] = "N/A"
+        result["confidence"] = None
+        result["reasoning"] = None
+        result["provenance"] = None
+        
+        audit_events = audit_repo.get_by_case(case_id)
+        for ae in audit_events:
+            if ae.event_type.value == "LLM_RECOMMENDATION_CREATED" and ae.metadata:
+                if "action" in ae.metadata:
+                    result["recommendation"] = ae.metadata["action"]
+                if "confidence" in ae.metadata:
+                    result["confidence"] = ae.metadata["confidence"]
+                if "reasoning" in ae.metadata:
+                    result["reasoning"] = ae.metadata["reasoning"]
+                
+                # Provenance
+                actor_id = ae.actor.id if ae.actor else "UNKNOWN"
+                if "gemini" in actor_id.lower() or "gemini" in str(ae.metadata).lower():
+                    result["provenance"] = "Gemini"
+                else:
+                    result["provenance"] = "Deterministic Fallback"
+                    
+            if ae.event_type.value == "POLICY_DECISION_RECORDED" and ae.metadata:
+                result["policy_decision"] = ae.metadata.get("decision")
+                result["policy_reasons"] = ae.metadata.get("reasons", [])
+                
+        # Find action details and verification details for execution & verification UI
+        try:
+            from recoverai.persistence.repositories.action import RecoveryActionRepository
+            from recoverai.persistence.repositories.verification import VerificationRecordRepository
+            from recoverai.domain.identifiers import RecoveryCaseId
+            action_repo = RecoveryActionRepository(conn)
+            ver_repo = VerificationRecordRepository(conn)
+            
+            actions = action_repo.get_by_case(case_id)
+            if actions:
+                latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
+                result["action_type"] = latest_action.action_type.value
+                result["action_status"] = latest_action.status.value
+                result["action_id"] = latest_action.action_id.value
+                result["provider"] = latest_action.provider
+                result["external_reference"] = latest_action.external_reference
+                result["action_requested_at"] = latest_action.requested_at.isoformat() if latest_action.requested_at else None
+                result["action_executed_at"] = latest_action.executed_at.isoformat() if latest_action.executed_at else None
+                
+                # Verification Details
+                records = ver_repo.get_by_case(RecoveryCaseId(case_id))
+                if records:
+                    latest_record = records[0]
+                    result["verification_state"] = latest_record.verified_state.value
+                    result["verification_source"] = latest_record.verification_source.value
+                    result["verification_checked_at"] = latest_record.checked_at.isoformat()
+                    
+                    # Gather observed evidence details if available
+                    if latest_action.external_reference:
+                        events = event_repo.get_by_external_reference(latest_action.external_reference)
+                        for ev in events:
+                            if ev.event_type.value == "PAYMENT_LINK_PAID":
+                                result["observed_event_type"] = ev.event_type.value
+                                result["observed_amount_minor"] = ev.amount.amount_minor if ev.amount else None
+                                result["observed_currency"] = ev.amount.currency.value if ev.amount else None
+                                result["observed_reference"] = ev.external_reference
+                                break
+                    elif latest_action.idempotency_key:
+                        events = event_repo.get_by_merchant_and_type(case.merchant_id, "PAYMENT_LINK_PAID")
+                        for ev in events:
+                            # Mock extract ref
+                            result["observed_event_type"] = ev.event_type.value
+                            result["observed_amount_minor"] = ev.amount.amount_minor if ev.amount else None
+                            result["observed_currency"] = ev.amount.currency.value if ev.amount else None
+                            result["observed_reference"] = ev.external_reference
+                            break
+                            
+        except Exception:
+            pass
+
         return result
 
 
@@ -463,7 +608,13 @@ async def razorpay_webhook(merchant_id: str, request: Request):
 @app.get("/analytics", dependencies=[Depends(require_frontend_key)])
 def get_analytics():
     with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.action import RecoveryActionRepository
+        from recoverai.persistence.repositories.verification import VerificationRecordRepository
+        
         repo = RecoveryCaseRepository(conn)
+        action_repo = RecoveryActionRepository(conn)
+        verif_repo = VerificationRecordRepository(conn)
+        
         cur = conn.execute("SELECT case_id FROM recovery_cases")
         cases = []
         for row in cur.fetchall():
@@ -471,93 +622,224 @@ def get_analytics():
             if c:
                 cases.append(c)
 
-        revenue_at_risk = {}
-        verified_recovered = {}
-        unknown_exposure = {}
-        active_cases = 0
+        revenue_at_risk = {"INR": 0}
+        verified_recovered = {"INR": 0}
+        
         outcome_distribution = {
             "RECOVERED": 0,
-            "FAILED": 0,
-            "UNKNOWN": 0,
-            "DENIED": 0,
+            "EXECUTING": 0,
+            "AWAITING_APPROVAL": 0,
             "ESCALATED": 0,
+            "UNRECOVERABLE": 0,
+            "VERIF_PENDING": 0,
         }
+        
         funnel = {
             "DETECTED": len(cases),
             "ANALYZED": 0,
-            "APPROVED": 0,
+            "RECOMMENDED": 0,
+            "HUMAN_APPROVAL": 0,
             "EXECUTING": 0,
+            "RESPONDED": 0,
+            "VERIFYING": 0,
             "VERIFIED": 0,
         }
 
+        # Provenance
+        recommendation_source = {
+            "Gemini": 0,
+            "Deterministic Fallback": 0
+        }
+        
+        # Failure Causes
+        failure_causes = {}
+        
+        # Verification Outcomes
+        verification_outcomes = {
+            "Provider Matched": 0,
+            "Mismatch Detected": 0,
+            "Verification Pending": 0
+        }
+
+        # Intervention Strategies
+        intervention_perf = {}
+
+        total_eligible = 0
+        total_verified_cases = 0
+        
+        total_verifications = 0
+        total_verifications_matched = 0
+
+        from datetime import datetime, UTC, timedelta
+        now = datetime.now(UTC)
+        performance_7d = []
+        for i in range(6, -1, -1):
+            target_date = (now - timedelta(days=i)).date()
+            performance_7d.append({
+                "date": target_date.isoformat(),
+                "recovered": 0,
+                "at_risk": 0
+            })
+
         for case in cases:
             curr = case.amount_at_risk.currency.value
-            for d in (revenue_at_risk, verified_recovered, unknown_exposure):
-                if curr not in d:
-                    d[curr] = 0
+            if curr not in revenue_at_risk:
+                revenue_at_risk[curr] = 0
+            if curr not in verified_recovered:
+                verified_recovered[curr] = 0
 
             if case.status.value == "OPEN":
                 revenue_at_risk[curr] += case.amount_at_risk.amount_minor
-                active_cases += 1
-                unknown_exposure[curr] += case.amount_at_risk.amount_minor
-
-            if case.outcome_type:
-                out = case.outcome_type.value
-                if out == "RECOVERED":
-                    outcome_distribution["RECOVERED"] += 1
-                    verified_recovered[curr] += (
-                        case.recovered_amount.amount_minor
-                        if case.recovered_amount
-                        else case.amount_at_risk.amount_minor
-                    )
-                elif out == "FAILED_PERMANENTLY":
-                    outcome_distribution["FAILED"] += 1
-                elif out == "UNKNOWN_OR_MANUAL":
-                    outcome_distribution["UNKNOWN"] += 1
-                    unknown_exposure[curr] += case.amount_at_risk.amount_minor
-                elif out == "DENIED":
-                    outcome_distribution["DENIED"] += 1
-                elif out == "ESCALATED":
-                    outcome_distribution["ESCALATED"] += 1
-                else:
-                    outcome_distribution["UNKNOWN"] += 1
-
-            state = case.workflow_state.value
-            if state in (
-                "ANALYZING",
-                "POLICY_REVIEW",
-                "PENDING_EXECUTION",
-                "EXECUTING",
-                "VERIFYING",
-                "CLOSED",
-            ):
+                
+            # Recovery Outcomes logic
+            st = case.workflow_state.value
+            out_type = case.outcome_type.value if case.outcome_type else None
+            
+            if out_type == "RECOVERED":
+                outcome_distribution["RECOVERED"] += 1
+                verified_recovered[curr] += (case.recovered_amount.amount_minor if case.recovered_amount else case.amount_at_risk.amount_minor)
+                total_verified_cases += 1
+            elif out_type in ("FAILED_PERMANENTLY", "DENIED"):
+                outcome_distribution["UNRECOVERABLE"] += 1
+            elif out_type == "ESCALATED" or st == "ESCALATED":
+                outcome_distribution["ESCALATED"] += 1
+            elif st == "WAITING_APPROVAL":
+                outcome_distribution["AWAITING_APPROVAL"] += 1
+            elif st in ("EXECUTING", "PENDING_EXECUTION"):
+                outcome_distribution["EXECUTING"] += 1
+            elif st in ("VERIFYING", "VERIFICATION_PENDING", "VERIFICATION_STARTED"):
+                outcome_distribution["VERIF_PENDING"] += 1
+                
+            # Funnel Logic
+            if st in ("ANALYZING", "POLICY_REVIEW", "WAITING_APPROVAL", "PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED", "ESCALATED"):
                 funnel["ANALYZED"] += 1
-            if state in ("PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED"):
-                if not (
-                    case.outcome_type
-                    and case.outcome_type.value in ("DENIED", "ESCALATED")
-                ):
-                    funnel["APPROVED"] += 1
-            if state in ("EXECUTING", "VERIFYING", "CLOSED"):
-                if not (
-                    case.outcome_type
-                    and case.outcome_type.value in ("DENIED", "ESCALATED")
-                ):
-                    funnel["EXECUTING"] += 1
-            if (
-                state == "CLOSED"
-                and case.outcome_type
-                and case.outcome_type.value == "RECOVERED"
-            ):
+                if case.provenance:
+                    funnel["RECOMMENDED"] += 1
+                    
+            if st in ("WAITING_APPROVAL", "PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED", "ESCALATED") and (case.rules_matched and any(r.action == "REQUIRE_APPROVAL" for r in case.rules_matched)):
+                funnel["HUMAN_APPROVAL"] += 1
+                
+            if st in ("PENDING_EXECUTION", "EXECUTING", "VERIFYING", "CLOSED") and out_type not in ("DENIED", "ESCALATED"):
+                funnel["EXECUTING"] += 1
+                if st in ("VERIFYING", "CLOSED"):
+                    funnel["RESPONDED"] += 1
+                if st in ("VERIFYING", "CLOSED") and out_type != "FAILED_PERMANENTLY":
+                    funnel["VERIFYING"] += 1
+                    
+            if out_type == "RECOVERED":
                 funnel["VERIFIED"] += 1
+                
+            # Provenance
+            if case.provenance == "Gemini":
+                recommendation_source["Gemini"] += 1
+            elif case.provenance == "Deterministic Fallback":
+                recommendation_source["Deterministic Fallback"] += 1
+                
+            # Actions for intervention
+            actions = action_repo.get_by_case(case.id.value)
+            for action in actions:
+                s_type = action.strategy_type.value if hasattr(action.strategy_type, 'value') else str(action.strategy_type)
+                if s_type not in intervention_perf:
+                    intervention_perf[s_type] = {"cases": 0, "recovered": 0, "failed": 0, "pending": 0}
+                intervention_perf[s_type]["cases"] += 1
+                
+                ast = action.status.value if hasattr(action.status, 'value') else str(action.status)
+                if ast == "FAILED":
+                    intervention_perf[s_type]["failed"] += 1
+                    # Failure cause
+                    cause = action.failure_reason or "Unknown Error"
+                    failure_causes[cause] = failure_causes.get(cause, 0) + 1
+                elif ast == "COMPLETED" and out_type == "RECOVERED":
+                    intervention_perf[s_type]["recovered"] += 1
+                else:
+                    intervention_perf[s_type]["pending"] += 1
+                    
+            # Verification logic
+            verifs = verif_repo.get_by_case(case.id.value)
+            if verifs:
+                total_verifications += 1
+                v_st = verifs[0].verified_state.value if hasattr(verifs[0].verified_state, 'value') else str(verifs[0].verified_state)
+                if v_st == "SUCCESS":
+                    verification_outcomes["Provider Matched"] += 1
+                    total_verifications_matched += 1
+                elif v_st == "FAILURE":
+                    verification_outcomes["Mismatch Detected"] += 1
+                else:
+                    verification_outcomes["Verification Pending"] += 1
+            elif st in ("VERIFYING", "VERIFICATION_PENDING"):
+                verification_outcomes["Verification Pending"] += 1
+
+            if case.status.value != "OPEN" and out_type not in ("UNKNOWN_OR_MANUAL", "ESCALATED"):
+                total_eligible += 1
+
+            # Performance Chart
+            if case.status.value == "OPEN":
+                case_date = case.opened_at.date()
+                for day in performance_7d:
+                    if day["date"] == case_date.isoformat():
+                        day["at_risk"] += case.amount_at_risk.amount_minor
+                        
+            if out_type == "RECOVERED":
+                recovery_dt = case.closed_at or case.updated_at or case.opened_at
+                recovery_date = recovery_dt.date()
+                for day in performance_7d:
+                    if day["date"] == recovery_date.isoformat():
+                        day["recovered"] += case.recovered_amount.amount_minor if case.recovered_amount else case.amount_at_risk.amount_minor
+
+        rec_rate = (total_verified_cases / total_eligible * 100) if total_eligible > 0 else None
+        verif_rate = (total_verifications_matched / total_verifications * 100) if total_verifications > 0 else None
+
+        int_perf_list = []
+        for s_type, perf in intervention_perf.items():
+            r_rate = (perf["recovered"] / perf["cases"] * 100) if perf["cases"] > 0 else 0
+            int_perf_list.append({
+                "strategy": s_type,
+                "cases": perf["cases"],
+                "recovered": perf["recovered"],
+                "failed": perf["failed"],
+                "pending": perf["pending"],
+                "recovery_rate": round(r_rate, 1)
+            })
 
         return {
+            "recovery_rate": round(rec_rate, 1) if rec_rate is not None else None,
+            "verification_rate": round(verif_rate, 1) if verif_rate is not None else None,
             "revenue_at_risk": revenue_at_risk,
             "verified_recovered": verified_recovered,
-            "active_cases": active_cases,
-            "unknown_exposure": unknown_exposure,
-            "outcomeDistribution": [
-                {"name": k, "value": v} for k, v in outcome_distribution.items()
-            ],
-            "funnel": [{"stage": k.title(), "count": v} for k, v in funnel.items()],
+            "performance_7d": performance_7d,
+            "recovery_outcomes": outcome_distribution,
+            "intervention_performance": int_perf_list,
+            "recommendation_source": recommendation_source,
+            "lifecycle": [{"stage": k, "count": v} for k, v in funnel.items()],
+            "failure_causes": [{"cause": k, "count": v} for k, v in failure_causes.items()],
+            "verification_outcomes": verification_outcomes
         }
+
+@app.post("/recovery-cases/{case_id}/abort", dependencies=[Depends(require_frontend_key)])
+def abort_execution(case_id: str):
+    with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.action import RecoveryActionRepository
+        from recoverai.domain.action import ActionStatus
+        
+        action_repo = RecoveryActionRepository(conn)
+        actions = action_repo.get_by_case(case_id)
+        if not actions:
+            raise HTTPException(status_code=404, detail="No action found to abort")
+            
+        latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
+        
+        if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED]:
+            latest_action.status = ActionStatus.CANCELLED
+            action_repo.update(latest_action)
+            conn.commit()
+            return {"status": "success", "message": "Execution aborted"}
+        else:
+            raise HTTPException(status_code=400, detail="Cannot abort action in current state")
+
+@app.get("/audit", dependencies=[Depends(require_frontend_key)])
+async def get_audit_events():
+    with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.audit import AuditRepository
+        audit_repo = AuditRepository(conn)
+        events = audit_repo.get_all(limit=1000)
+        return {"events": [e.to_dict() for e in events]}

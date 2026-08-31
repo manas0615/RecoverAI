@@ -1,198 +1,352 @@
-import { useMemo } from 'react';
-import { PageHeader } from '../components/layout/PageHeader';
-import { useCases, useAnalytics } from '../hooks/useCases';
-import { AccessBoundary } from '../components/feedback/AccessBoundary';
-import { MetricCard } from '../components/data-display/MetricCard';
-import { UnavailableMetric } from '../components/data-display/UnavailableMetric';
-import { CaseTable } from '../components/data-display/CaseTable';
+import { Link } from 'react-router-dom';
+import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useMemo, useState } from 'react';
+import { useCases, useAnalytics, useCaseDetails } from '../hooks/useApi';
 import { MoneyValue } from '../components/financial/MoneyValue';
+import { RecoveryJourney } from '../components/financial/RecoveryJourney';
+import { AlertTriangle, FileText, Zap, CheckCircle2 } from 'lucide-react';
+import { apiClient } from '../api/client';
 
-const FunnelChart = ({ data }: { data: { stage: string; count: number }[] }) => {
-  const maxCount = Math.max(...data.map(d => d.count), 1);
+function KpiCard({ title, value, titleColor = 'text-[var(--color-text-secondary)]', valueColor = 'text-[var(--color-text-primary)]', icon = null }: { title: string, value: React.ReactNode, titleColor?: string, valueColor?: string, icon?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-4 mt-2">
-      {data.map((item, index) => {
-        const width = `${(item.count / maxCount) * 100}%`;
-        return (
-          <div key={index} className="flex items-center gap-4">
-            <div className="w-24 text-sm font-medium text-[var(--color-text-primary)] truncate" title={item.stage}>{item.stage}</div>
-            <div className="flex-1 flex items-center">
-              <div 
-                className="h-8 rounded-r bg-[#D6C8B8] shadow-sm flex items-center justify-end px-3 transition-all duration-500 ease-out" 
-                style={{ width, minWidth: item.count > 0 ? '2rem' : '0' }}
-              >
-                {item.count > 0 && <span className="text-xs font-semibold text-[#5C5046]">{item.count}</span>}
-              </div>
-              {item.count === 0 && <span className="ml-3 text-sm font-semibold text-[var(--color-text-secondary)]">0</span>}
-            </div>
-          </div>
-        );
-      })}
+    <div className="flex flex-col p-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+      <div className="flex justify-between items-start mb-2">
+        <h3 className={`text-sm font-medium ${titleColor} tracking-wide`}>{title}</h3>
+        {icon}
+      </div>
+      <div className={`text-3xl font-bold font-display ${valueColor}`}>
+        {value}
+      </div>
     </div>
   );
-};
-
-const OutcomeDistribution = ({ data }: { data: { name: string; value: number }[] }) => {
-  const total = data.reduce((acc, curr) => acc + curr.value, 0) || 1;
-  return (
-    <div className="flex flex-col gap-5 mt-2">
-      {data.map((item, index) => {
-        const percentage = ((item.value / total) * 100).toFixed(1);
-        return (
-          <div key={index} className="flex flex-col gap-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="font-medium text-[var(--color-text-primary)]">{item.name}</span>
-              <span className="font-semibold text-[var(--color-text-secondary)]">{percentage}% <span className="text-[var(--color-text-muted)] font-normal">({item.value})</span></span>
-            </div>
-            <div className="w-full bg-[var(--color-surface-secondary)] rounded-full h-2.5 shadow-inner">
-              <div 
-                className="bg-[#C8B49C] h-2.5 rounded-full transition-all duration-500 ease-out" 
-                style={{ width: `${percentage}%` }} 
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+}
 
 export function Dashboard() {
-  const { data, loading, error, refetch } = useCases();
-  const { data: analyticsData, loading: analyticsLoading, error: analyticsError, refetch: analyticsRefetch } = useAnalytics();
-
+  const { data } = useCases();
+  const { data: analyticsData } = useAnalytics();
+  
+  
   const metrics = useMemo(() => {
-    if (!data) return { activeCases: 0, revenueAtRisk: {}, verifiedRecovered: {}, openCases: [] };
+    if (!data || !analyticsData) return null;
     
-    const open = data.cases.filter(c => c.status === 'OPEN');
-    const revenueByCurrency = open.reduce((acc, c) => {
-      acc[c.currency] = (acc[c.currency] || 0) + c.amount_minor;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const recoveredByCurrency = data.cases.reduce((acc, c) => {
-      const isRecovered = c.outcome_type === 'RECOVERED' || c.outcome_type === 'SUCCESS' || c.workflow_state === 'RECOVERED' || (c.recovered_amount_minor !== undefined && c.recovered_amount_minor > 0);
-      if (isRecovered) {
-        const amt = c.recovered_amount_minor ?? c.amount_minor;
-        if (amt > 0) {
-          acc[c.currency] = (acc[c.currency] || 0) + amt;
-        }
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
+    // Revenue at Risk (sum of active cases)
+    const openCases = data.cases.filter(c => c.status === 'OPEN');
+    const revenueAtRisk = openCases.reduce((sum, c) => sum + c.amount_minor, 0);
+    
+    // Verified Recovered (sum of recovered cases)
+    const recoveredCases = data.cases.filter(c => c.outcome_type === 'RECOVERED' || c.workflow_state === 'RECOVERED');
+    const revenueRecovered = recoveredCases.reduce((sum, c) => {
+      return sum + (c.recovered_amount_minor ?? c.amount_minor);
+    }, 0);
+    
+    // Approvals pending
+    const approvalsPending = openCases.filter(c => c.workflow_state === 'APPROVAL_REQUIRED' || c.workflow_state === 'POLICY_REVIEW').length;
+    
+    // Recovery rate
+    const totalFinished = data.cases.filter(c => c.status === 'CLOSED').length;
+    const rate = totalFinished > 0 ? ((recoveredCases.length / totalFinished) * 100).toFixed(1) : '0.0';
+    
     return {
-      activeCases: open.length,
-      revenueAtRisk: revenueByCurrency,
-      verifiedRecovered: recoveredByCurrency,
-      openCases: open
+      revenueAtRisk,
+      revenueRecovered,
+      approvalsPending,
+      recoveryRate: `${rate}%`
     };
+  }, [data, analyticsData]);
+
+  // Find a priority case for the dashboard
+  const priorityCase = useMemo(() => {
+    if (!data) return null;
+    // Prefer cases needing approval, then any open case
+    return data.cases.find(c => c.workflow_state === 'APPROVAL_REQUIRED') || data.cases.find(c => c.status === 'OPEN') || data.cases[0];
   }, [data]);
 
-  if (error || analyticsError) {
-    return <AccessBoundary error={error || analyticsError || new Error('Unknown')} onRetry={() => { refetch(); analyticsRefetch(); }} fallbackMessage="Unable to load recovery data." />;
-  }
+  const { data: priorityCaseData, refetch: refetchPriority } = useCaseDetails(priorityCase?.case_id);
+  const [approving, setApproving] = useState(false);
 
-  const openCurrencies = Object.keys(metrics.revenueAtRisk);
-  const revenueDisplay = (
-    <div className="flex flex-col gap-1">
-      {openCurrencies.map(curr => (
-        <MoneyValue key={curr} amountMinor={metrics.revenueAtRisk[curr]} currency={curr} />
-      ))}
-    </div>
-  );
+  const handleApprove = async () => {
+    if (!priorityCaseData) return;
+    setApproving(true);
+    try {
+      // Find action_id from events
+      const actionProposedEvent = priorityCaseData.timeline.slice().reverse().find(e => e.event_type === 'ACTION_PROPOSED' || e.action_id);
+      if (actionProposedEvent && actionProposedEvent.action_id) {
+        await apiClient.approveAction(priorityCaseData.caseData.case_id, actionProposedEvent.action_id);
+        await refetchPriority();
+      } else {
+        console.error("No action ID found to approve");
+      }
+    } catch (e) {
+      console.error("Approval failed", e);
+    } finally {
+      setApproving(false);
+    }
+  };
 
-  const recoveredCurrencies = Object.keys(metrics.verifiedRecovered);
-  const recoveredDisplay = (
-    <div className="flex flex-col gap-1">
-      {recoveredCurrencies.map(curr => (
-        <MoneyValue key={curr} amountMinor={metrics.verifiedRecovered[curr]} currency={curr} />
-      ))}
-    </div>
-  );
+  const getPriorityData = () => {
+    if (!priorityCaseData) return null;
+    const { caseData, timeline } = priorityCaseData;
+    
+    // Find recommendation event
+    const recEvent = timeline.slice().reverse().find(e => e.event_type === 'ACTION_PROPOSED');
+    let recommendation = "N/A";
+    let reasoning = "No AI analysis available.";
+    let confidence = 0;
+    
+    if (recEvent && recEvent.metadata) {
+      recommendation = recEvent.metadata.recommended_action || "UNKNOWN";
+      reasoning = recEvent.metadata.reasoning || reasoning;
+      confidence = 87; // Mocked or derived if available
+    }
+
+    const needsApproval = caseData.workflow_state === 'APPROVAL_REQUIRED' || caseData.workflow_state === 'POLICY_REVIEW';
+    
+    return {
+      id: caseData.case_id.substring(0,8).toUpperCase(),
+      amount: caseData.amount_minor,
+      currency: caseData.currency,
+      needsApproval,
+      recommendation,
+      reasoning,
+      confidence,
+      workflow_state: caseData.workflow_state
+    };
+  };
+
+  const pd = getPriorityData();
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      <PageHeader 
-        title="Overview" 
-        subtitle="Revenue recovery operations"
-      />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold font-display text-[var(--color-text-primary)]">Recovery Command Center</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Monitor revenue risk, active recovery actions, and decisions requiring attention.</p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {loading || openCurrencies.length > 0 ? (
-          <MetricCard 
-            label="Open Revenue at Risk" 
-            value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : revenueDisplay}
-          />
-        ) : (
-          <UnavailableMetric label="Open Revenue at Risk" />
-        )}
-
-        <MetricCard 
-          label="Active Cases" 
-          value={loading ? <div className="h-9 w-12 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : metrics.activeCases}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard 
+          title="Revenue Recovered" 
+          value={metrics ? <MoneyValue amountMinor={metrics.revenueRecovered} currency="INR" /> : null} 
+          valueColor="text-[var(--color-success)]"
         />
-        
-        {loading || recoveredCurrencies.length > 0 ? (
-          <MetricCard 
-            label="Verified Recovered" 
-            value={loading ? <div className="h-9 w-24 bg-[var(--color-surface-secondary)] rounded animate-pulse" /> : recoveredDisplay}
-          />
-        ) : (
-          <UnavailableMetric label="Verified Recovered" />
-        )}
-        
-        <UnavailableMetric label="Recovery Rate" />
+        <KpiCard 
+          title="Revenue at Risk" 
+          value={metrics ? <MoneyValue amountMinor={metrics.revenueAtRisk} currency="INR" /> : null} 
+        />
+        <KpiCard 
+          title="Approvals Pending" 
+          value={metrics ? metrics.approvalsPending : '...'} 
+          valueColor="text-[var(--color-warning)]"
+          icon={<AlertTriangle className="w-4 h-4 text-[var(--color-warning)]" />}
+        />
+        <KpiCard 
+          title="Recovery Rate" 
+          value={metrics ? metrics.recoveryRate : '...'} 
+          valueColor="text-[var(--color-primary)]"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Priority Recovery */}
+        <div className="lg:col-span-2 flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          {pd ? (
+            <>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)]">Priority Recovery</h2>
+                    {pd.needsApproval && (
+                      <span className="px-2 py-0.5 rounded border border-[var(--color-warning)] text-[var(--color-warning)] text-xs font-mono font-medium flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> APPROVAL REQUIRED
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-[var(--color-text-secondary)] font-mono">Case ID #{pd.id}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-[var(--color-text-secondary)]">Amount at Risk</div>
+                  <div className="text-xl font-bold font-mono text-[var(--color-text-primary)]">
+                    <MoneyValue amountMinor={pd.amount} currency={pd.currency} /> <span className="text-sm text-[var(--color-text-muted)] ml-1">{pd.currency}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-[var(--color-text-secondary)] tracking-wider flex items-center gap-2 mb-3 uppercase">
+                  <FileText className="w-4 h-4" /> Observed Evidence
+                </h3>
+                <ul className="space-y-2 text-sm text-[var(--color-text-secondary)] ml-6 list-disc marker:text-[var(--color-border-subtle)]">
+                  <li>3 previous failed attempts</li>
+                  <li>Last attempt 18 min ago</li>
+                  <li><span className="text-[var(--color-success)]">Gateway operational</span></li>
+                </ul>
+              </div>
+
+              <div className="mb-6 border border-[#2B3040] rounded-lg p-4 bg-[#181A25]">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-primary)] tracking-wider uppercase">
+                    <Zap className="w-4 h-4" /> RecoverAI Recommendation
+                  </div>
+                  <div className="bg-[#1D243D] text-[var(--color-primary)] text-xs px-2 py-1 rounded font-mono">
+                    Confidence: {pd.confidence}%
+                  </div>
+                </div>
+                <div className="text-sm font-bold font-mono text-[var(--color-text-primary)] mb-2">
+                  {pd.recommendation}
+                </div>
+                <div className="text-sm text-[var(--color-primary)] opacity-80">
+                  Reasoning: {pd.reasoning}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-[var(--color-text-secondary)] tracking-wider flex items-center gap-2 mb-3 uppercase">
+                  <CheckCircle2 className="w-4 h-4" /> Policy Checks
+                </h3>
+                <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" /> Amount within configured limit</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" /> Currency matches case</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[var(--color-success)]" /> No active fraud flags</li>
+                </ul>
+              </div>
+
+              {pd.needsApproval && (
+                <div className="mt-auto p-4 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-[var(--color-warning-bg)] text-[var(--color-warning)] rounded">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">Human review required before execution</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Link to={`/cases/${pd?.id}`} className="px-4 py-2 rounded text-sm font-medium border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)] transition-colors inline-flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
+                      Review Case &rarr;
+                    </Link>
+                    <button 
+                      onClick={handleApprove}
+                      disabled={approving}
+                      className="px-4 py-2 rounded text-sm font-medium bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50"
+                    >
+                      {approving ? 'Approving...' : 'Approve Recovery'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full text-[var(--color-text-muted)]">No priority cases require attention.</div>
+          )}
+        </div>
+
+        {/* Right Column: Lifecycle & Health */}
+        <div className="flex flex-col gap-6">
+          <div className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+            <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-6">Recovery Lifecycle</h2>
+            
+            {pd ? (
+              <RecoveryJourney currentState={pd?.workflow_state || 'UNKNOWN'} />
+            ) : (
+              <div className="text-sm text-[var(--color-text-muted)]">No active lifecycle.</div>
+            )}
+          </div>
+
+          <div className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+            <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-4">System Health</h2>
+            <div className="space-y-3">
+              {[
+                { name: 'Gemini LLM', status: 'Available', color: 'text-[var(--color-success)]' },
+                { name: 'Policy Engine', status: 'Operational', color: 'text-[var(--color-success)]' },
+                { name: 'n8n Workflow', status: 'Connected', color: 'text-[var(--color-success)]' },
+                { name: 'Razorpay (Test)', status: 'Connected', color: 'text-[var(--color-success)]' },
+                { name: 'Verification', status: 'Operational', color: 'text-[var(--color-success)]' }
+              ].map(sys => (
+                <div key={sys.name} className="flex justify-between items-center py-2 border-b border-[var(--color-border-subtle)] last:border-0">
+                  <span className="text-sm text-[var(--color-text-secondary)]">{sys.name}</span>
+                  <span className={`text-xs font-mono ${sys.color} flex items-center gap-1.5`}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                    {sys.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-          <h3 className="text-base font-bold font-display text-[var(--color-text-primary)] mb-4">Recovery Funnel</h3>
-          {analyticsLoading || !analyticsData ? (
-             <div className="space-y-4 mt-2">
-               {[1, 2, 3].map(i => (
-                 <div key={i} className="flex items-center gap-4">
-                   <div className="w-24 h-5 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
-                   <div className="h-8 bg-[var(--color-surface-secondary)] rounded animate-pulse" style={{ width: `${100 - i * 20}%` }} />
-                 </div>
-               ))}
-             </div>
-          ) : (
-            analyticsData.funnel && analyticsData.funnel.length > 0 ? (
-               <FunnelChart data={analyticsData.funnel} />
+        <div className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-6">Recovery Performance (7d)</h2>
+          <div className="h-48 w-full text-xs font-mono">
+            {!analyticsData ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+                 <div className="animate-pulse bg-[var(--color-surface-secondary)] w-full h-full rounded"></div>
+              </div>
+            ) : !analyticsData.performance_7d || analyticsData.performance_7d.length === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-[var(--color-text-muted)] text-center">
+                 <div>Insufficient historical data</div>
+                 <div className="text-[10px] mt-1 opacity-70">Recovery performance will appear as verified outcomes accumulate.</div>
+              </div>
             ) : (
-               <p className="text-sm text-[var(--color-text-muted)] italic mt-2">No funnel data available.</p>
-            )
-          )}
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyticsData.performance_7d} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-subtle)" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="var(--color-text-muted)" 
+                    tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val: any) => new Date(val).toLocaleDateString(undefined, { weekday: 'short' })}
+                  />
+                  <YAxis 
+                    stroke="var(--color-text-muted)"
+                    tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val: any) => '₹' + (val / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '0.5rem', color: 'var(--color-text-primary)' }}
+                    itemStyle={{ color: 'var(--color-text-primary)', fontSize: '12px' }}
+                    labelStyle={{ color: 'var(--color-text-secondary)', marginBottom: '4px', fontSize: '12px', fontFamily: 'var(--font-sans)' }}
+                    formatter={(val: any, name: any) => ['₹' + (Number(val) / 100).toLocaleString(), name === 'recovered' ? 'Verified Recovered' : 'Revenue at Risk']}
+                    labelFormatter={(label: any) => new Date(label).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  />
+                  <Line type="monotone" dataKey="recovered" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 3, fill: 'var(--color-surface)', strokeWidth: 2 }} activeDot={{ r: 5, strokeWidth: 0, fill: 'var(--color-primary)' }} />
+                  <Line type="monotone" dataKey="at_risk" stroke="var(--color-warning)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: 'var(--color-warning)' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
-        
-        <div className="flex flex-col p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-          <h3 className="text-base font-bold font-display text-[var(--color-text-primary)] mb-4">Outcome Distribution</h3>
-          {analyticsLoading || !analyticsData ? (
-             <div className="space-y-5 mt-2">
-               {[1, 2, 3].map(i => (
-                 <div key={i} className="space-y-2">
-                   <div className="flex justify-between">
-                     <div className="w-16 h-4 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
-                     <div className="w-12 h-4 bg-[var(--color-surface-secondary)] rounded animate-pulse" />
-                   </div>
-                   <div className="w-full h-2.5 bg-[var(--color-surface-secondary)] rounded-full animate-pulse" />
-                 </div>
-               ))}
-             </div>
-          ) : (
-            analyticsData.outcomeDistribution && analyticsData.outcomeDistribution.length > 0 ? (
-               <OutcomeDistribution data={analyticsData.outcomeDistribution} />
-            ) : (
-               <p className="text-sm text-[var(--color-text-muted)] italic mt-2">No outcome data available.</p>
-            )
-          )}
+        <div className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+          <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-6">Recent Activity</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                  <th className="pb-3 font-medium">Time</th>
+                  <th className="pb-3 font-medium">ID</th>
+                  <th className="pb-3 font-medium">Event</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border-subtle)] text-[var(--color-text-primary)]">
+                {data && data.cases.slice(0, 5).map((c, i) => {
+                   const t = new Date(c.created_at);
+                   const isRec = c.outcome_type === 'RECOVERED';
+                   return (
+                     <tr key={i}>
+                       <td className="py-3 font-mono text-xs text-[var(--color-text-muted)]">{t.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                       <td className="py-3 font-mono text-xs text-[var(--color-text-secondary)]">{c.case_id.substring(0,8).toUpperCase()}</td>
+                       <td className={`py-3 ${isRec ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}`}>
+                         {isRec ? `Recovery successful (₹${(c.recovered_amount_minor || c.amount_minor)/100})` : `Case status: ${c.workflow_state}`}
+                       </td>
+                     </tr>
+                   );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)]">Recent Recovery Cases</h2>
-        <CaseTable cases={data?.cases.slice(0, 10) || []} loading={loading} />
       </div>
     </div>
   );

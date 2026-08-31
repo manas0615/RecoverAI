@@ -1,4 +1,4 @@
-import { useHealth } from '../../hooks/useCases';
+import { useHealth } from '../../hooks/useApi';
 
 export function SystemStatus() {
   const { data, loading, error } = useHealth();

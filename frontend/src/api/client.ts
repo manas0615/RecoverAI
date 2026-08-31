@@ -52,4 +52,26 @@ export const apiClient = {
   }>(`/api/recovery-cases/${caseId}/analyze`, { method: 'POST' }),
 
   getAnalytics: () => fetchJson<any>('/api/analytics'),
+  getAuditEvents: () => fetchJson<any>('/api/audit'),
+
+
+  abortExecution: (caseId: string) => fetchJson<{ status: string; message: string }>(`/api/recovery-cases/${caseId}/abort`, { method: 'POST' }),
+
+  approveAction: async (caseId: string, actionId: string) => {
+    const response = await fetch(`${API_BASE}/api/mcp/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'test_n8n_key_default'
+      },
+      body: JSON.stringify({
+        tool: 'resume_recovery_action',
+        args: { case_id: caseId, action_id: actionId }
+      })
+    });
+    if (!response.ok) {
+      throw new ApiError(response.status, `API Error: ${response.statusText}`);
+    }
+    return response.json();
+  }
 };

@@ -3,6 +3,11 @@ import { AppShell } from './components/layout/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { CaseList } from './pages/CaseList';
 import { CaseDetail } from './pages/CaseDetail';
+import { ApprovalQueue } from './pages/ApprovalQueue';
+import { ExecutionQueue } from './pages/ExecutionQueue';
+import { VerificationQueue } from './pages/VerificationQueue';
+import { AuditPage } from './pages/AuditPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SystemHealth } from './pages/SystemHealth';
 import { FixtureHarness } from './pages/FixtureHarness';
 
@@ -18,6 +23,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/cases" element={<CaseList />} />
+          <Route path="/approvals" element={<ApprovalQueue />} />
+          <Route path="/execution" element={<ExecutionQueue />} />
+          <Route path="/verification" element={<VerificationQueue />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/cases/:id" element={<CaseDetail />} />
           <Route path="/system" element={<SystemHealth />} />
           <Route path="/fixtures" element={<FixtureHarness />} />

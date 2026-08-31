@@ -1,4 +1,5 @@
 export interface Case {
+  timeline?: any[];
   case_id: string;
   merchant_id: string;
   customer_id: string;
@@ -10,6 +11,29 @@ export interface Case {
   outcome_type?: string;
   recovered_amount_minor?: number;
   workflow_state?: string;
+  updated_at?: string;
+  failure_code?: string;
+  historical_failure_count?: number;
+  recommendation?: string;
+  confidence?: number;
+  reasoning?: string;
+  provenance?: string;
+  policy_decision?: string;
+  policy_reasons?: string[];
+  action_type?: string;
+  action_status?: string;
+  provider?: string;
+  external_reference?: string;
+  verification_state?: string;
+  verification_source?: string;
+  verification_checked_at?: string;
+  observed_event_type?: string;
+  observed_amount_minor?: number;
+  observed_currency?: string;
+  observed_reference?: string;
+  action_requested_at?: string;
+  action_executed_at?: string;
+  action_id?: string;
   events?: any[];
 }
 

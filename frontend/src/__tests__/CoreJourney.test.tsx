@@ -5,7 +5,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { CaseDetail } from '../pages/CaseDetail';
 
 // Mock the API hooks
-vi.mock('../hooks/useCases', () => {
+vi.mock('../hooks/useApi', () => {
   return {
     useCases: () => ({
       data: {
