@@ -85,7 +85,7 @@ class VerificationRecordRepository:
             "SELECT * FROM verification_records WHERE case_id = ? ORDER BY checked_at DESC",
             (case_id.value,),
         ).fetchall()
-        
+
         records = []
         for row in rows:
             evidence_ref = None
@@ -97,14 +97,16 @@ class VerificationRecordRepository:
                     observed_at=datetime.fromisoformat(data["observed_at"]),
                     field=data.get("field"),
                 )
-            records.append(VerificationRecord(
-                verification_id=VerificationRecordId(row["verification_id"]),
-                action_id=RecoveryActionId(row["action_id"]),
-                case_id=RecoveryCaseId(row["case_id"]),
-                verification_source=VerificationSource(row["verification_source"]),
-                verified_state=VerifiedState(row["verified_state"]),
-                external_reference=row["external_reference"],
-                evidence_reference=evidence_ref,
-                checked_at=datetime.fromisoformat(row["checked_at"]),
-            ))
+            records.append(
+                VerificationRecord(
+                    verification_id=VerificationRecordId(row["verification_id"]),
+                    action_id=RecoveryActionId(row["action_id"]),
+                    case_id=RecoveryCaseId(row["case_id"]),
+                    verification_source=VerificationSource(row["verification_source"]),
+                    verified_state=VerifiedState(row["verified_state"]),
+                    external_reference=row["external_reference"],
+                    evidence_reference=evidence_ref,
+                    checked_at=datetime.fromisoformat(row["checked_at"]),
+                )
+            )
         return records

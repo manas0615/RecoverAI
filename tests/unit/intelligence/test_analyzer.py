@@ -76,16 +76,20 @@ class MockLLMGateway(LLMGateway):
     ) -> tuple[str, list[InterventionCandidate]]:
         if context.get("fail_candidates"):
             raise ValueError("Mock failure")
-        return ("MockLLM", [
-            InterventionCandidate(
-                candidate_id="cand_mock",
-                case_id=case.case_id,
-                action_type=ActionType.WAIT,
-                expected_recovery_probability=Probability(0.99, "mock cand prob"),
-                expected_recovery_value=case.amount_at_risk,
-                eligibility_status=CandidateStatus.PROPOSED,
-                reason="Mock generated",
-        )])
+        return (
+            "MockLLM",
+            [
+                InterventionCandidate(
+                    candidate_id="cand_mock",
+                    case_id=case.case_id,
+                    action_type=ActionType.WAIT,
+                    expected_recovery_probability=Probability(0.99, "mock cand prob"),
+                    expected_recovery_value=case.amount_at_risk,
+                    eligibility_status=CandidateStatus.PROPOSED,
+                    reason="Mock generated",
+                )
+            ],
+        )
 
 
 def test_deterministic_analyzer_systemic():

@@ -157,6 +157,7 @@ def test_analyze_case_not_found():
 
 def clear_db():
     from recoverai.api.main import container
+
     with container.tm.transaction() as conn:
         conn.execute("DELETE FROM verification_records")
         conn.execute("DELETE FROM recovery_actions")
@@ -168,87 +169,129 @@ def clear_db():
         conn.execute("DELETE FROM customers")
         conn.execute("DELETE FROM merchants")
 
+
 def test_populated_data_contracts():
     clear_db()
-    
+
+    from datetime import UTC, datetime
+
     from recoverai.api.main import container
-    from recoverai.domain.identifiers import RecoveryCaseId, MerchantId, RevenueEventId
+    from recoverai.domain.action import (
+        ActionStatus,
+        ActionType,
+        PolicyDecisionId,
+        RecoveryAction,
+        RecoveryActionId,
+    )
+    from recoverai.domain.audit import (
+        AuditActor,
+        AuditActorType,
+        AuditEvent,
+        AuditEventType,
+    )
     from recoverai.domain.case import RecoveryCase, RevenueSource
-    from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
-    from recoverai.domain.action import RecoveryAction, RecoveryActionId, ActionType, ActionStatus, PolicyDecisionId
-    from recoverai.domain.audit import AuditEvent, AuditEventType, AuditActor, AuditActorType
-    from datetime import datetime, UTC
-    
+    from recoverai.domain.identifiers import MerchantId, RecoveryCaseId, RevenueEventId
+    from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
+
     now = datetime.now(UTC)
-    
+
     case = RecoveryCase(
         case_id=RecoveryCaseId("case_populated"),
         merchant_id=MerchantId("merch_1"),
         revenue_source=RevenueSource.PAYMENT,
         amount_at_risk=RevenueAmount(Money(10000, CurrencyCode.INR)),
         opened_at=now,
-        source_event_ids={RevenueEventId("evt_1")}
+        source_event_ids={RevenueEventId("evt_1")},
     )
-    
+
     action = RecoveryAction(
         action_id=RecoveryActionId("act_1"),
         case_id=case.case_id,
         action_type=ActionType.CREATE_PAYMENT_LINK,
         requested_at=now,
         policy_decision_id=PolicyDecisionId("dec_1"),
-        status=ActionStatus.PROPOSED
+        status=ActionStatus.PROPOSED,
     )
-    
+
     audit_event = AuditEvent(
         event_type=AuditEventType.LLM_RECOMMENDATION_CREATED,
         actor=AuditActor(type=AuditActorType.LLM_AGENT, id="gemini-1.5"),
         case_id=case.case_id,
         timestamp=now,
-        metadata={"recommended_action": "CREATE_PAYMENT_LINK", "confidence": 0.95}
+        metadata={"recommended_action": "CREATE_PAYMENT_LINK", "confidence": 0.95},
     )
-    
-    from recoverai.domain.event import RevenueEvent, RevenueEventType, EventSource, EventSourceType
-    
+
+    from recoverai.domain.event import (
+        EventSource,
+        EventSourceType,
+        RevenueEvent,
+        RevenueEventType,
+    )
+
     event = RevenueEvent(
         event_id=RevenueEventId("evt_1"),
         event_type=RevenueEventType.PAYMENT_FAILED,
         merchant_id=MerchantId("merch_1"),
         occurred_at=now,
         received_at=now,
-        source=EventSource(source_type=EventSourceType.RAZORPAY_WEBHOOK, source_event_id="wh"),
-        amount=Money(10000, CurrencyCode.INR)
+        source=EventSource(
+            source_type=EventSourceType.RAZORPAY_WEBHOOK, source_event_id="wh"
+        ),
+        amount=Money(10000, CurrencyCode.INR),
     )
-    
+
     with container.tm.transaction() as conn:
-        conn.execute("INSERT INTO merchants (merchant_id, display_name, status, default_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                     ("merch_1", "Test Merchant", "ACTIVE", "INR", now.isoformat(), now.isoformat()))
-        
-        from recoverai.persistence.repositories.case import RecoveryCaseRepository
+        conn.execute(
+            "INSERT INTO merchants (merchant_id, display_name, status, default_currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "merch_1",
+                "Test Merchant",
+                "ACTIVE",
+                "INR",
+                now.isoformat(),
+                now.isoformat(),
+            ),
+        )
+
         from recoverai.persistence.repositories.action import RecoveryActionRepository
         from recoverai.persistence.repositories.audit import AuditRepository
+        from recoverai.persistence.repositories.case import RecoveryCaseRepository
         from recoverai.persistence.repositories.event import RevenueEventRepository
-        
+
         RevenueEventRepository(conn).save(event)
         RecoveryCaseRepository(conn).save(case)
-        
-        conn.execute("INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                     ("dec_1", "case_populated", "act_1", "APPROVE", "1.0", "[]", "[]", now.isoformat()))
-        
+
+        conn.execute(
+            "INSERT INTO policy_decisions (policy_decision_id, case_id, action_id_or_proposal_id, decision, policy_version, matched_rules_json, reason_codes_json, evaluated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "dec_1",
+                "case_populated",
+                "act_1",
+                "APPROVE",
+                "1.0",
+                "[]",
+                "[]",
+                now.isoformat(),
+            ),
+        )
+
         RecoveryActionRepository(conn).save(action)
         AuditRepository(conn).append(audit_event)
-        
+
     # Test case detail populated
-    response = client.get(f"/recovery-cases/{case.case_id.value}", headers=FRONTEND_HEADERS)
+    response = client.get(
+        f"/recovery-cases/{case.case_id.value}", headers=FRONTEND_HEADERS
+    )
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["recommendation"] == "CREATE_PAYMENT_LINK"
     assert data["provenance"] == "Gemini"
     assert data["action_id"] == "act_1"
-    
+
     # Test analytics populated
     response = client.get("/analytics", headers=FRONTEND_HEADERS)
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["recommendation_source"]["Gemini"] == 1
-    
+
     clear_db()

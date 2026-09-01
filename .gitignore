@@ -27,3 +27,4 @@ wheels/
 *.db-shm
 *.db-wal
 *.sqlite
+scratch/

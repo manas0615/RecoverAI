@@ -14,6 +14,7 @@ class GatewayConfig:
     @classmethod
     def from_env(cls) -> "GatewayConfig":
         from recoverai.config import settings
+
         return cls(
             gemini_api_key=os.getenv("GEMINI_API_KEY") or settings.gemini_api_key,
             groq_api_key=os.getenv("GROQ_API_KEY") or settings.groq_api_key,

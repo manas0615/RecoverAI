@@ -177,6 +177,7 @@ def test_resume_terminal_case(mock_rzp_urlopen, base_case_and_action):
     assert result.get("success") is not True
     print("TEST_RESUME_TERMINAL_CASE RESULT: ", result)
 
+
 @mock.patch("recoverai.integrations.razorpay.adapter.urllib.request.urlopen")
 def test_resume_proposed_action_rejected(mock_rzp_urlopen, base_case_and_action):
     case_id, action_id = base_case_and_action

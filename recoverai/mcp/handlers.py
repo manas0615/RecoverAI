@@ -294,6 +294,7 @@ def handle_resume_recovery_action(
         raise MCPError("Original intervention plan snapshot not found", "MISSING_PLAN")
 
     import json
+
     from recoverai.domain.plan import InterventionPlan
 
     try:
@@ -317,4 +318,3 @@ def handle_resume_recovery_action(
         "provider_reference": action.external_reference,
         "status": action.status.name,
     }
-

@@ -4,10 +4,10 @@ from recoverai.domain.money import CurrencyCode, Money
 from recoverai.evaluation.evaluator import Evaluator, ObservedOutcome
 from recoverai.evaluation.metrics import EvaluationMetrics
 from recoverai.evaluation.simulator import (
+    HiddenOutcomeTruth,
+    ObservableCaseEvidence,
     SyntheticScenario,
     SyntheticScenarioGenerator,
-    ObservableCaseEvidence,
-    HiddenOutcomeTruth,
 )
 
 

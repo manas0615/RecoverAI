@@ -1,20 +1,19 @@
-import pytest
-from unittest.mock import patch, MagicMock
 from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
+from recoverai.application.action_service import RecoveryActionService
 from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction
-from recoverai.domain.case import RecoveryCase, RevenueSource, CaseWorkflowState
+from recoverai.domain.audit import AuditEventType
+from recoverai.domain.case import RecoveryCase, RevenueSource
 from recoverai.domain.identifiers import (
     MerchantId,
+    PolicyDecisionId,
     RecoveryActionId,
     RecoveryCaseId,
     RevenueEventId,
-    PolicyDecisionId,
 )
 from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
 from recoverai.domain.policy import PolicyDecision, PolicyDecisionValue
-from recoverai.domain.audit import AuditEventType
-from recoverai.application.action_service import RecoveryActionService
 from recoverai.persistence.repositories.action import RecoveryActionRepository
 from recoverai.persistence.repositories.audit import AuditRepository
 from recoverai.persistence.repositories.case import RecoveryCaseRepository
@@ -56,12 +55,12 @@ def test_n8n_trigger_failure_writes_failed_event(tm):
             policy_version="1.0",
             evaluated_at=datetime.now(UTC),
         )
-        from recoverai.domain.plan import (
-            InterventionPlan,
-            InterventionCandidate,
-            CandidateStatus,
-        )
         from recoverai.domain.evidence import Probability
+        from recoverai.domain.plan import (
+            CandidateStatus,
+            InterventionCandidate,
+            InterventionPlan,
+        )
 
         plan = InterventionPlan(
             plan_id="plan_1",
@@ -85,8 +84,8 @@ def test_n8n_trigger_failure_writes_failed_event(tm):
         )
         action._real_plan = plan
 
-        from recoverai.policy.engine import PolicyEngine
         from recoverai.integrations.razorpay.adapter import RazorpayAdapter
+        from recoverai.policy.engine import PolicyEngine
 
         mock_policy = MagicMock(spec=PolicyEngine)
         mock_policy.evaluate.return_value = decision

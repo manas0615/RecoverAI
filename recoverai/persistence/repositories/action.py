@@ -144,7 +144,6 @@ class RecoveryActionRepository:
         )
         return [self._map_row(dict(row)) for row in cur.fetchall()]
 
-    
     def claim_for_execution(
         self, action_id: RecoveryActionId, from_statuses: list[ActionStatus]
     ) -> bool:
@@ -155,7 +154,7 @@ class RecoveryActionRepository:
         """
         status_placeholders = ",".join("?" for _ in from_statuses)
         params = ["AUTHORIZED", action_id.value] + [s.value for s in from_statuses]
-        
+
         cur = self.conn.execute(
             f"UPDATE recovery_actions SET status = ? WHERE action_id = ? AND status IN ({status_placeholders})",
             tuple(params),
@@ -181,4 +180,3 @@ class RecoveryActionRepository:
             failure_reason=row["failure_reason"],
             plan_snapshot=row.get("plan_snapshot"),
         )
-

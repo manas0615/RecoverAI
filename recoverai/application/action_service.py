@@ -73,9 +73,14 @@ class RecoveryActionService:
                 if a.action_id != action.action_id
             ]
 
-            decision = self.policy_engine.evaluate(policy_context, case, plan, history, cause=cause)
-            
-            if action.status == ActionStatus.ESCALATED and decision.decision == PolicyDecisionValue.ESCALATE:
+            decision = self.policy_engine.evaluate(
+                policy_context, case, plan, history, cause=cause
+            )
+
+            if (
+                action.status == ActionStatus.ESCALATED
+                and decision.decision == PolicyDecisionValue.ESCALATE
+            ):
                 # Human has approved the escalation, override the policy engine's ESCALATE decision
                 decision.decision = PolicyDecisionValue.APPROVE
                 decision.matched_rules.append("HUMAN_APPROVAL_OVERRIDE")
@@ -83,11 +88,16 @@ class RecoveryActionService:
                 audit_repo.append(
                     AuditEvent(
                         event_type=AuditEventType.POLICY_DECISION_CREATED,
-                        actor=AuditActor(type=AuditActorType.HUMAN, id="human_approver"),
+                        actor=AuditActor(
+                            type=AuditActorType.HUMAN, id="human_approver"
+                        ),
                         case_id=case.case_id,
                         action_id=action.action_id,
                         decision_reference=decision.policy_decision_id,
-                        metadata={"decision": decision.decision.value, "reason": "human_approved"},
+                        metadata={
+                            "decision": decision.decision.value,
+                            "reason": "human_approved",
+                        },
                     )
                 )
             else:
@@ -95,7 +105,9 @@ class RecoveryActionService:
                 audit_repo.append(
                     AuditEvent(
                         event_type=AuditEventType.POLICY_DECISION_CREATED,
-                        actor=AuditActor(type=AuditActorType.POLICY_ENGINE, id="policy"),
+                        actor=AuditActor(
+                            type=AuditActorType.POLICY_ENGINE, id="policy"
+                        ),
                         case_id=case.case_id,
                         action_id=action.action_id,
                         decision_reference=decision.policy_decision_id,
@@ -144,8 +156,12 @@ class RecoveryActionService:
                 return action
 
             # APPROVE Path
-            if not action_repo.claim_for_execution(action.action_id, [ActionStatus.PROPOSED, ActionStatus.ESCALATED]):
-                raise RuntimeError("Concurrency violation: Action already claimed by another process.")
+            if not action_repo.claim_for_execution(
+                action.action_id, [ActionStatus.PROPOSED, ActionStatus.ESCALATED]
+            ):
+                raise RuntimeError(
+                    "Concurrency violation: Action already claimed by another process."
+                )
             audit_repo.append(
                 AuditEvent(
                     event_type=AuditEventType.ACTION_AUTHORIZED,
@@ -263,4 +279,3 @@ class RecoveryActionService:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to trigger n8n workflow {workflow_name}: {e}")
             return False
-
