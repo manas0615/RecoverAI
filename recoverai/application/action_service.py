@@ -61,7 +61,9 @@ class RecoveryActionService:
 
             plan = getattr(action, "_real_plan", None)
             if not isinstance(plan, InterventionPlan):
-                raise TypeError("Financial execution requires a real Intelligence InterventionPlan.")
+                raise TypeError(
+                    "Financial execution requires a real Intelligence InterventionPlan."
+                )
 
             cause = getattr(action, "_real_cause", None)
 
