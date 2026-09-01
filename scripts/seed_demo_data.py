@@ -481,6 +481,7 @@ def seed_data():
         # We explicitly DO NOT add an LLM recommendation or proposed action.
         # The UI will let the user click "Analyze Case" to trigger one.
         add_audit(conn, AuditEventType.CASE_CREATED, case_g.case_id, timestamp=t_g)
+        add_audit(conn, AuditEventType.WEBHOOK_RECEIVED, case_g.case_id, None, {'event_type': 'payment.failed'}, t_g + timedelta(seconds=2))
 
         print("Seeded Demo Data successfully.")
 

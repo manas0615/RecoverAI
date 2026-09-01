@@ -4,7 +4,7 @@ import type { Case, TimelineEvent } from '../types/domain';
 import { StatusBadge } from '../components/status/StatusBadge';
 import { MoneyValue } from '../components/financial/MoneyValue';
 import { RecoveryJourney } from '../components/financial/RecoveryJourney';
-import { CheckCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { CheckCircle, AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface CaseDetailViewProps {
@@ -16,7 +16,7 @@ interface CaseDetailViewProps {
   analyzeError?: string | null;
 }
 
-export function CaseDetailView({ caseData, timeline }: CaseDetailViewProps) {
+export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, analyzeError }: CaseDetailViewProps) {
   const [approving, setApproving] = useState(false);
 
   const handleApprove = async () => {
@@ -158,8 +158,10 @@ export function CaseDetailView({ caseData, timeline }: CaseDetailViewProps) {
           {/* Recovery Recommendation */}
           <section className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)]">RECOVERY RECOMMENDATION</h2>
-              {caseData.provenance ? (
+              <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)]">
+                {isAnalyzing ? "ANALYZING CASE" : "RECOVERY RECOMMENDATION"}
+              </h2>
+              {caseData.provenance && !isAnalyzing ? (
                 <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${
                   caseData.provenance === 'Gemini' 
                     ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)] border border-[var(--color-primary)]/20' 
@@ -170,82 +172,155 @@ export function CaseDetailView({ caseData, timeline }: CaseDetailViewProps) {
               ) : null}
             </div>
 
-            <div className="flex justify-between items-end mb-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">RECOMMENDED ACTION</div>
-                <div className="font-mono text-[var(--color-primary)] text-lg">
-                  {caseData.recommendation || 'N/A'}
+            {isAnalyzing ? (
+              <div className="space-y-4 my-8">
+                <div className="w-full h-3 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden relative">
+                  <div className="absolute top-0 bottom-0 left-0 bg-[var(--color-primary)] animate-pulse w-full rounded-full"></div>
+                </div>
+                <div className="text-sm text-[var(--color-text-secondary)] text-center animate-pulse">
+                  Running recovery analysis...
                 </div>
               </div>
-              {caseData.confidence && (
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">CONFIDENCE</div>
-                  <div className="font-bold text-[var(--color-success)] text-xl">
-                    {Math.round(caseData.confidence * 100)}%
+            ) : analyzeError ? (
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-[var(--color-danger)] uppercase">ANALYSIS FAILED</h3>
+                <p className="text-sm text-[var(--color-text-primary)]">{analyzeError}</p>
+                <button 
+                  onClick={onAnalyze}
+                  disabled={isAnalyzing}
+                  className="px-4 py-2 text-sm font-medium border border-[var(--color-border-subtle)] rounded hover:bg-[var(--color-surface-secondary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                >
+                  Analyze Again
+                </button>
+              </div>
+            ) : (caseData.recommendation === 'N/A' || !caseData.recommendation) && !caseData.policy_decision ? (
+              <div className="space-y-6">
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Analysis not yet run.<br/>
+                  Review the observed evidence and run the recovery analysis.
+                </p>
+                <button 
+                  onClick={onAnalyze}
+                  disabled={isAnalyzing}
+                  className="px-6 py-2 text-sm font-medium bg-[var(--color-primary)] text-white rounded hover:bg-[var(--color-primary)]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Analyze Case
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-end mb-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">RECOMMENDED ACTION</div>
+                    <div className="font-mono text-[var(--color-primary)] text-lg">
+                      {caseData.recommendation || 'N/A'}
+                    </div>
                   </div>
+                  {caseData.confidence && (
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">CONFIDENCE</div>
+                      <div className="font-bold text-[var(--color-success)] text-xl">
+                        {Math.round(caseData.confidence * 100)}%
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="bg-[var(--color-bg)] p-4 rounded-lg border border-[var(--color-border-subtle)] mb-4">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">REASONING</div>
-              <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">
-                {caseData.reasoning || 'No intelligence reasoning available.'}
-              </p>
-            </div>
+                <div className="bg-[var(--color-bg)] p-4 rounded-lg border border-[var(--color-border-subtle)] mb-4">
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">REASONING</div>
+                  <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">
+                    {caseData.reasoning || 'No intelligence reasoning available.'}
+                  </p>
+                </div>
 
-            <p className="text-[11px] text-[var(--color-text-muted)] italic">
-              AI recommendation is subject to policy validation and, when required, human approval.
-            </p>
+                <p className="text-[11px] text-[var(--color-text-muted)] italic">
+                  AI recommendation is subject to policy validation and, when required, human approval.
+                </p>
+              </>
+            )}
           </section>
 
           {/* Policy Checks */}
           <section className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)]">POLICY CHECKS</h2>
-              {caseData.policy_decision === 'APPROVE' || caseData.policy_decision === 'REQUIRE_APPROVAL' ? (
+              {isAnalyzing ? (
+                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                  CHECKING
+                </span>
+              ) : !caseData.policy_decision ? (
+                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                  NOT EVALUATED
+                </span>
+              ) : caseData.policy_decision === 'APPROVE' ? (
                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-success)]/30 text-[var(--color-success)]">
                   <CheckCircle className="w-3 h-3" />
-                  POLICY VALIDATED
+                  APPROVED
+                </span>
+              ) : caseData.policy_decision === 'ESCALATE' ? (
+                <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-warning)]/30 text-[var(--color-warning)]">
+                  <AlertTriangle className="w-3 h-3" />
+                  ESCALATED
+                </span>
+              ) : caseData.policy_decision === 'DENY' || caseData.policy_decision === 'SUPPRESS' ? (
+                <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-danger)]/30 text-[var(--color-danger)]">
+                  <X className="w-3 h-3" />
+                  {caseData.policy_decision}
                 </span>
               ) : (
                 <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-text-secondary)]">
-                  {caseData.policy_decision || 'PENDING'}
+                  {caseData.policy_decision}
                 </span>
               )}
             </div>
             
             <div className="space-y-3">
-              {caseData.policy_reasons && caseData.policy_reasons.length > 0 ? (
-                caseData.policy_reasons.map((reason: string, i: number) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
-                    <span className="text-sm text-[var(--color-text-secondary)]">{reason}</span>
-                  </div>
-                ))
-              ) : (
+              {isAnalyzing ? (
                 <>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
                     <span className="text-sm text-[var(--color-text-secondary)]">Amount within limit</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
                     <span className="text-sm text-[var(--color-text-secondary)]">Currency matches</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
-                    <span className="text-sm text-[var(--color-text-secondary)]">No active fraud flags</span>
+                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
+                    <span className="text-sm text-[var(--color-text-secondary)]">Attempt limit</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
-                    <span className="text-sm text-[var(--color-text-secondary)]">Recovery attempt within policy</span>
+                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
+                    <span className="text-sm text-[var(--color-text-secondary)]">Systemic degradation</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
-                    <span className="text-sm text-[var(--color-text-secondary)]">No conflicting active recovery</span>
+                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
+                    <span className="text-sm text-[var(--color-text-secondary)]">Conflicting recovery</span>
                   </div>
                 </>
+              ) : !caseData.policy_decision ? (
+                <div className="text-sm text-[var(--color-text-secondary)]">
+                  Policy evaluation has not run yet.
+                </div>
+              ) : caseData.policy_reasons && caseData.policy_reasons.length > 0 ? (
+                caseData.policy_reasons.map((reason: string, i: number) => {
+                  let Icon = CheckCircle;
+                  let colorClass = 'text-[var(--color-success)]';
+                  if (caseData.policy_decision === 'ESCALATE' || caseData.policy_decision === 'DENY' || caseData.policy_decision === 'SUPPRESS') {
+                      Icon = X;
+                      colorClass = 'text-[var(--color-danger)]';
+                  }
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 ${colorClass} shrink-0`} />
+                      <span className="text-sm text-[var(--color-text-secondary)]">{reason}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-sm text-[var(--color-text-secondary)]">
+                  No explicit policy reasons returned.
+                </div>
               )}
             </div>
           </section>

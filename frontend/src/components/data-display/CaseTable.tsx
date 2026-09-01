@@ -98,7 +98,7 @@ export function CaseTable({ cases, loading }: CaseTableProps) {
                         {c.recommendation}
                       </span>
                     ) : (
-                      <span className="text-xs text-[var(--color-text-muted)]">N/A</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">NOT ANALYZED</span>
                     )}
                   </td>
                   <td className="px-5 py-4">
