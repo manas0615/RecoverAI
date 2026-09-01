@@ -155,7 +155,7 @@ def test_concurrent_execution():
         except RuntimeError as e:
             if "Concurrency violation" not in str(e):
                 raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print("Worker exception:", type(e).__name__, e)
 
     threads = []

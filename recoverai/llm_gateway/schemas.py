@@ -68,7 +68,7 @@ class CauseAssessmentModel(BaseModel):
     @classmethod
     def validate_confidence(cls, v: float) -> float:
         if isinstance(v, bool) or not isinstance(v, (int, float)):
-            raise ValueError("Confidence must be a numeric float")
+            raise TypeError("Confidence must be a numeric float")
         if math.isnan(v) or math.isinf(v):
             raise ValueError("Confidence cannot be NaN or Infinity")
         if not (0.0 <= float(v) <= 1.0):
@@ -100,7 +100,7 @@ class InterventionCandidateModel(BaseModel):
     @classmethod
     def validate_confidence(cls, v: float) -> float:
         if isinstance(v, bool) or not isinstance(v, (int, float)):
-            raise ValueError("Confidence must be a numeric float")
+            raise TypeError("Confidence must be a numeric float")
         if math.isnan(v) or math.isinf(v):
             raise ValueError("Confidence cannot be NaN or Infinity")
         if not (0.0 <= float(v) <= 1.0):

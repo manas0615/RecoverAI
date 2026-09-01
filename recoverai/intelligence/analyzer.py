@@ -31,7 +31,7 @@ class RevenueIntelligenceAnalyzer:
     ) -> RevenueAmount:
         from recoverai.domain.money import Money, RevenueAmount
 
-        ev_minor = int(round(amount_at_risk.amount_minor * probability.value))
+        ev_minor = round(amount_at_risk.amount_minor * probability.value)
         ev_minor = max(0, min(amount_at_risk.amount_minor, ev_minor))
         return RevenueAmount(Money(ev_minor, amount_at_risk.currency))
 

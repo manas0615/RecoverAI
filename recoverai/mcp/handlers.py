@@ -299,7 +299,7 @@ def handle_resume_recovery_action(
 
     try:
         plan = InterventionPlan.from_dict(json.loads(action.plan_snapshot))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         raise MCPError(
             f"Failed to load intervention plan snapshot: {e}", "CORRUPTED_PLAN"
         )

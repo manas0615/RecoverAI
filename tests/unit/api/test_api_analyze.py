@@ -88,7 +88,7 @@ def test_analyze_case_plan_none():
 
             class MockDecision:
                 decision = MockDecisionValue()
-                reason_codes = ["MOCK_POLICY"]
+                reason_codes = ("MOCK_POLICY",)
 
             return MockDecision()
 

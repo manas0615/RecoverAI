@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
                 try:
                     container.case_manager.create_or_update_from_event(event)
                     container.global_conn.commit()
-                except Exception as e:  # noqa: BLE001  # noqa: BLE001
+                except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
                     import logging
 
                     logging.getLogger(__name__).error(
@@ -249,9 +249,7 @@ def list_cases():
                 action_repo = RecoveryActionRepository(conn)
                 actions = action_repo.get_by_case(RecoveryCaseId(case_id_val))
                 if actions:
-                    latest_action = sorted(
-                        actions, key=lambda x: x.requested_at, reverse=True
-                    )[0]
+                    latest_action = max(actions, key=lambda x: x.requested_at)
                     d["action_type"] = latest_action.action_type.value
                     d["action_status"] = latest_action.status.value
                     d["action_id"] = latest_action.action_id.value
@@ -368,9 +366,7 @@ def get_case(case_id: str):
 
             actions = action_repo.get_by_case(RecoveryCaseId(case_id))
             if actions:
-                latest_action = sorted(
-                    actions, key=lambda x: x.requested_at, reverse=True
-                )[0]
+                latest_action = max(actions, key=lambda x: x.requested_at)
                 result["action_type"] = latest_action.action_type.value
                 result["action_status"] = latest_action.status.value
                 result["action_id"] = latest_action.action_id.value
@@ -437,7 +433,7 @@ def get_case(case_id: str):
                             )
                             break
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             import logging
 
             logging.getLogger(__name__).warning(
@@ -631,7 +627,7 @@ async def analyze_case(case_id: str):
             "policy_reasons": decision.reason_codes if decision else [],
             "model_version": plan.selection_model_version if plan else "UNKNOWN",
         }
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).error(f"Analysis failed for {case_id}: {e}")
@@ -695,7 +691,7 @@ async def razorpay_webhook(merchant_id: str, request: Request):
                                 case, datetime.now(UTC)
                             )
                             container.global_conn.commit()
-    except Exception as e:  # noqa: BLE001  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
         import logging
 
         logging.getLogger(__name__).error(f"Error processing webhook event: {e}")
@@ -1017,7 +1013,7 @@ def approve_action(case_id: str, action_id: str):
             "resume_recovery_action", {"case_id": case_id, "action_id": action_id}
         )
         return {"status": "success", "result": result}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         if "INVALID_STATE" in str(e):
             raise HTTPException(status_code=400, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -1036,7 +1032,7 @@ def abort_execution(case_id: str):
         if not actions:
             raise HTTPException(status_code=404, detail="No action found to abort")
 
-        latest_action = sorted(actions, key=lambda x: x.requested_at, reverse=True)[0]
+        latest_action = max(actions, key=lambda x: x.requested_at)
 
         if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED]:
             latest_action.status = ActionStatus.CANCELLED

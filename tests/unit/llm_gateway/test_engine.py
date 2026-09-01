@@ -188,7 +188,7 @@ def test_generate_intervention_candidates_success(dummy_case):
     p1 = MockProvider("mock1", [valid_json])
     gateway = ConcreteLLMGateway(GatewayConfig(), providers=[p1])
 
-    provider, candidates = gateway.generate_intervention_candidates(
+    _provider, candidates = gateway.generate_intervention_candidates(
         dummy_case, [], {}, None
     )
     assert len(candidates) == 1
