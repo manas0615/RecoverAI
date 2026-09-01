@@ -8,16 +8,17 @@ class GatewayConfig:
     groq_api_key: str | None = None
     hf_api_key: str | None = None
     gemini_model: str = "gemini-3.6-flash"
-    groq_model: str = "llama3-70b-8192"
+    groq_model: str = "llama-3.3-70b-versatile"
     hf_model: str = "meta-llama/Meta-Llama-3-70B-Instruct"
 
     @classmethod
     def from_env(cls) -> "GatewayConfig":
+        from recoverai.config import settings
         return cls(
-            gemini_api_key=os.getenv("GEMINI_API_KEY"),
-            groq_api_key=os.getenv("GROQ_API_KEY"),
-            hf_api_key=os.getenv("HF_API_KEY"),
+            gemini_api_key=os.getenv("GEMINI_API_KEY") or settings.gemini_api_key,
+            groq_api_key=os.getenv("GROQ_API_KEY") or settings.groq_api_key,
+            hf_api_key=os.getenv("HF_API_KEY") or settings.hf_token,
             gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
-            groq_model=os.getenv("GROQ_MODEL", "llama3-70b-8192"),
+            groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
             hf_model=os.getenv("HF_MODEL", "meta-llama/Meta-Llama-3-70B-Instruct"),
         )

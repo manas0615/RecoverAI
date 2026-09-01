@@ -66,12 +66,12 @@ class RevenueIntelligenceAnalyzer:
         plan = None
         if self.llm_gateway:
             try:
-                candidates = self.llm_gateway.generate_intervention_candidates(
+                provider_name, candidates = self.llm_gateway.generate_intervention_candidates(
                     case, events, ctx, cause
                 )
                 if candidates:
                     self._sanitize_candidates_evidence(candidates, events)
-                    plan = self._build_plan_from_candidates(case, candidates, "LLM_1.0")
+                    plan = self._build_plan_from_candidates(case, candidates, provider_name)
             except (ValueError, GatewayError):
                 plan = None
 

@@ -73,10 +73,10 @@ class MockLLMGateway(LLMGateway):
         events: list[RevenueEvent],
         context: dict[str, Any],
         cause: CauseAssessment,
-    ) -> list[InterventionCandidate]:
+    ) -> tuple[str, list[InterventionCandidate]]:
         if context.get("fail_candidates"):
             raise ValueError("Mock failure")
-        return [
+        return ("MockLLM", [
             InterventionCandidate(
                 candidate_id="cand_mock",
                 case_id=case.case_id,
@@ -85,8 +85,7 @@ class MockLLMGateway(LLMGateway):
                 expected_recovery_value=case.amount_at_risk,
                 eligibility_status=CandidateStatus.PROPOSED,
                 reason="Mock generated",
-            )
-        ]
+        )])
 
 
 def test_deterministic_analyzer_systemic():
@@ -290,7 +289,7 @@ def test_all_candidates_ineligible_plan_safety_p22_regression():
 
     class IneligibleCandidateGateway(MockLLMGateway):
         def generate_intervention_candidates(self, case, events, context, cause):
-            return [ineligible_candidate]
+            return ("MockLLM", [ineligible_candidate])
 
     analyzer = RevenueIntelligenceAnalyzer(llm_gateway=IneligibleCandidateGateway())
     _risk, _cause, plan = analyzer.analyze(case, [create_dummy_event()], {})

@@ -188,7 +188,7 @@ def test_generate_intervention_candidates_success(dummy_case):
     p1 = MockProvider("mock1", [valid_json])
     gateway = ConcreteLLMGateway(GatewayConfig(), providers=[p1])
 
-    candidates = gateway.generate_intervention_candidates(dummy_case, [], {}, None)
+    provider, candidates = gateway.generate_intervention_candidates(dummy_case, [], {}, None)
     assert len(candidates) == 1
     assert candidates[0].action_type == ActionType.CREATE_PAYMENT_LINK
     assert candidates[0].expected_recovery_value == dummy_case.amount_at_risk

@@ -226,8 +226,13 @@ class PolicyEngine:
                 )
 
         # ---------------------------------------------------------------------
-        # 4. DEFAULT APPROVAL
+                # 4. DEFAULT APPROVAL / ACTION ROUTING
         # ---------------------------------------------------------------------
+        if proposed_action_type == ActionType.ESCALATE:
+            return self._build_decision(
+                context, case, plan, PolicyDecisionValue.ESCALATE, "AI_RECOMMENDED_ESCALATION"
+            )
+
         return self._build_decision(
             context, case, plan, PolicyDecisionValue.APPROVE, "POLICY_APPROVED"
         )

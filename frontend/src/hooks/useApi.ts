@@ -6,6 +6,7 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: any[] = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Full fetch: shows loading skeleton (used on initial mount only)
   const execute = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -19,11 +20,24 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: any[] = []) {
     }
   }, [fetcher, ...deps]);
 
+  // Background refetch: DOES NOT set loading=true so the UI doesn't flash/remount.
+  // Silently updates data in the background while keeping the current UI stable.
+  const refetch = useCallback(async () => {
+    setError(null);
+    try {
+      const result = await fetcher();
+      setData(result);
+    } catch (err) {
+      // Silently ignore background refetch errors (don't unmount the view)
+      console.warn('Background refetch failed:', err);
+    }
+  }, [fetcher, ...deps]);
+
   useEffect(() => {
     execute();
   }, [execute]);
 
-  return { data, loading, error, refetch: execute };
+  return { data, loading, error, refetch };
 }
 
 export function useHealth() {

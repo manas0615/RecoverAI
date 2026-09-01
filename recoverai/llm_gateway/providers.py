@@ -82,11 +82,12 @@ class GeminiAdapter(ProviderAdapter):
             ).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
+                "User-Agent": "RecoverAI/1.0",
                 "x-goog-api-key": self.api_key,
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:
                 result = json.loads(response.read().decode())
                 return result["candidates"][0]["content"]["parts"][0]["text"]
         except urllib.error.HTTPError as e:
@@ -98,7 +99,7 @@ class GeminiAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Gemini API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError("Gemini API failed: Generic Error") from e
+            raise ProviderError(f"Gemini API failed: {type(e).__name__} - {e}") from e
 
 
 class GroqAdapter(ProviderAdapter):
@@ -126,11 +127,12 @@ class GroqAdapter(ProviderAdapter):
             ).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
+                "User-Agent": "RecoverAI/1.0",
                 "Authorization": f"Bearer {self.api_key}",
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:
                 result = json.loads(response.read().decode())
                 return result["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as e:
@@ -142,7 +144,7 @@ class GroqAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Groq API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError("Groq API failed: Generic Error") from e
+            raise ProviderError(f"Groq API failed: {type(e).__name__} - {e}") from e
 
 
 class HuggingFaceAdapter(ProviderAdapter):
@@ -172,6 +174,7 @@ class HuggingFaceAdapter(ProviderAdapter):
             ).encode("utf-8"),
             headers={
                 "Content-Type": "application/json",
+                "User-Agent": "RecoverAI/1.0",
                 "Authorization": f"Bearer {self.api_key}",
             },
         )

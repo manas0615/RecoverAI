@@ -183,7 +183,7 @@ class ConcreteLLMGateway(LLMGateway):
         events: list[RevenueEvent],
         context: dict[str, Any],
         cause: CauseAssessment | None,
-    ) -> list[InterventionCandidate]:
+    ) -> tuple[str, list[InterventionCandidate]]:
         evidence_bundle = self._build_evidence_bundle(case, events, context)
         prompt = self._build_plan_prompt(evidence_bundle, cause)
         schema = {
@@ -243,7 +243,7 @@ class ConcreteLLMGateway(LLMGateway):
                             evidence_references=evidence,
                         )
                     )
-                return candidates
+                return (provider.name.capitalize(), candidates)
             except ConfigurationError as e:
                 logger.error(f"Provider {provider.name} configuration failed: {e}")
                 continue

@@ -163,25 +163,16 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
               </h2>
               {caseData.provenance && !isAnalyzing ? (
                 <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${
-                  caseData.provenance === 'Gemini' 
+                  caseData.provenance.toLowerCase().includes('gemini') 
                     ? 'bg-[var(--color-primary-bg)] text-[var(--color-primary)] border border-[var(--color-primary)]/20' 
                     : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]'
                 }`}>
-                  {caseData.provenance}
+                  {caseData.provenance === 'deterministic_1.0' ? 'Deterministic Fallback' : caseData.provenance.toLowerCase().includes('gemini') ? 'Gemini' : caseData.provenance.toLowerCase().includes('groq') ? 'Groq' : caseData.provenance}
                 </span>
               ) : null}
             </div>
 
-            {isAnalyzing ? (
-              <div className="space-y-4 my-8">
-                <div className="w-full h-3 bg-[var(--color-surface-secondary)] rounded-full overflow-hidden relative">
-                  <div className="absolute top-0 bottom-0 left-0 bg-[var(--color-primary)] animate-pulse w-full rounded-full"></div>
-                </div>
-                <div className="text-sm text-[var(--color-text-secondary)] text-center animate-pulse">
-                  Running recovery analysis...
-                </div>
-              </div>
-            ) : analyzeError ? (
+            { analyzeError ? (
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-[var(--color-danger)] uppercase">ANALYSIS FAILED</h3>
                 <p className="text-sm text-[var(--color-text-primary)]">{analyzeError}</p>
@@ -192,6 +183,13 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
                 >
                   Analyze Again
                 </button>
+              </div>
+            ) : caseData.status === 'CLOSED' ? (
+              <div className="space-y-6">
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">Analysis unavailable</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  This recovery case is closed and cannot be analyzed again.
+                </p>
               </div>
             ) : (caseData.recommendation === 'N/A' || !caseData.recommendation) && !caseData.policy_decision ? (
               <div className="space-y-6">
@@ -204,7 +202,7 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
                   disabled={isAnalyzing}
                   className="px-6 py-2 text-sm font-medium bg-[var(--color-primary)] text-white rounded hover:bg-[var(--color-primary)]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Analyze Case
+                  {isAnalyzing ? "Analyzing..." : "Analyze Case"}
                 </button>
               </div>
             ) : (
@@ -240,15 +238,24 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
             )}
           </section>
 
+          
+          {caseData.policy_decision && (
+            <section className="mb-8 p-6 rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface)] shadow-sm">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">STATUS</div>
+              <div className="text-lg font-bold text-[var(--color-text-primary)]">
+                {caseData.policy_decision === 'APPROVE' ? 'POLICY APPROVED — READY FOR EXECUTION' :
+                 caseData.policy_decision === 'ESCALATE' ? 'HUMAN APPROVAL REQUIRED' :
+                 caseData.policy_decision === 'DENY' ? 'RECOVERY STOPPED' :
+                 caseData.policy_decision === 'SUPPRESS' ? 'RECOVERY SUPPRESSED' : caseData.policy_decision}
+              </div>
+            </section>
+          )}
+
           {/* Policy Checks */}
           <section className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)]">POLICY CHECKS</h2>
-              {isAnalyzing ? (
-                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-text-secondary)]">
-                  CHECKING
-                </span>
-              ) : !caseData.policy_decision ? (
+              { !caseData.policy_decision ? (
                 <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-text-secondary)]">
                   NOT EVALUATED
                 </span>
@@ -275,30 +282,7 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
             </div>
             
             <div className="space-y-3">
-              {isAnalyzing ? (
-                <>
-                  <div className="flex items-center gap-3">
-                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">Amount within limit</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">Currency matches</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">Attempt limit</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">Systemic degradation</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="w-4 h-4 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-primary)] animate-spin shrink-0"></span>
-                    <span className="text-sm text-[var(--color-text-secondary)]">Conflicting recovery</span>
-                  </div>
-                </>
-              ) : !caseData.policy_decision ? (
+              { !caseData.policy_decision ? (
                 <div className="text-sm text-[var(--color-text-secondary)]">
                   Policy evaluation has not run yet.
                 </div>
@@ -310,10 +294,38 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
                       Icon = X;
                       colorClass = 'text-[var(--color-danger)]';
                   }
+                  
+                  if (reason === 'POLICY_APPROVED') {
+                    return (
+                      <div key={i} className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">Amount within limit</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">Currency matches</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">No active fraud flags</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">Recovery attempt within policy</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="w-4 h-4 text-[var(--color-success)] shrink-0" />
+                          <span className="text-sm text-[var(--color-text-secondary)]">No conflicting active recovery</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={i} className="flex items-center gap-3">
                       <Icon className={`w-4 h-4 ${colorClass} shrink-0`} />
-                      <span className="text-sm text-[var(--color-text-secondary)]">{reason}</span>
+                      <span className="text-sm text-[var(--color-text-secondary)]">{reason.replace(/_/g, ' ')}</span>
                     </div>
                   );
                 })
@@ -383,7 +395,7 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
               <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">
                 <span className="text-[var(--color-text-secondary)]">Gemini LLM</span>
                 <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Available
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Configured
                 </span>
               </div>
               <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">

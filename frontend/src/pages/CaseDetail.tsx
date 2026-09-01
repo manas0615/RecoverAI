@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCaseDetails } from '../hooks/useApi';
 import { AccessBoundary } from '../components/feedback/AccessBoundary';
@@ -13,8 +13,32 @@ export function CaseDetail() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
+  const handleAnalyze = useCallback(async () => {
+    if (!id || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      await apiClient.analyzeCase(id);
+      // Final refresh after analysis completes.
+      await refetch();
+    } catch (err) {
+      console.error('Failed to analyze case:', err);
+      setAnalyzeError(
+        'Analysis unavailable. The case could not be analyzed right now. No financial action was performed.'
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [id, isAnalyzing, refetch]);
+
   if (error) {
-    return <AccessBoundary error={error} onRetry={refetch} fallbackMessage="Case not found or unable to load details." />;
+    return (
+      <AccessBoundary
+        error={error}
+        onRetry={() => refetch()}
+        fallbackMessage="Case not found or unable to load details."
+      />
+    );
   }
 
   if (loading || !data) {
@@ -30,25 +54,10 @@ export function CaseDetail() {
     );
   }
 
-  const handleAnalyze = async () => {
-    if (!id) return;
-    setIsAnalyzing(true);
-    setAnalyzeError(null);
-    try {
-      await apiClient.analyzeCase(id);
-      await refetch();
-    } catch (err) {
-      console.error('Failed to analyze case:', err);
-      setAnalyzeError('Analysis unavailable. The case could not be analyzed right now. No financial action was performed.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   return (
-    <CaseDetailView 
-      caseData={data.caseData} 
-      timeline={data.timeline} 
+    <CaseDetailView
+      caseData={data.caseData}
+      timeline={data.timeline}
       onBack={() => navigate('/cases')}
       onAnalyze={handleAnalyze}
       isAnalyzing={isAnalyzing}
