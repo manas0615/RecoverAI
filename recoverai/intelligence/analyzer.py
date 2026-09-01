@@ -72,9 +72,11 @@ class RevenueIntelligenceAnalyzer:
                     )
                 )
                 if candidates:
-                    self._sanitize_candidates_evidence(candidates, events)
+                    self._sanitize_candidates_evidence(candidates, events)  # type: ignore
                     plan = self._build_plan_from_candidates(
-                        case, candidates, provider_name
+                        case,
+                        candidates,  # type: ignore
+                        provider_name,  # type: ignore
                     )
             except (ValueError, GatewayError):
                 plan = None

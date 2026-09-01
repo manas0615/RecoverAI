@@ -399,34 +399,35 @@ def get_case(case_id: str):
 
                     # Gather observed evidence details if available
                     if latest_action.external_reference:
-                        events = event_repo.get_by_external_reference(
+                        events = event_repo.get_by_external_reference(  # type: ignore
                             latest_action.external_reference
                         )
                         for ev in events:
-                            if ev.event_type.value == "PAYMENT_LINK_PAID":
-                                result["observed_event_type"] = ev.event_type.value
+                            if ev.event_type.value == "PAYMENT_LINK_PAID":  # type: ignore
+                                result["observed_event_type"] = ev.event_type.value  # type: ignore
                                 result["observed_amount_minor"] = (
-                                    ev.amount.amount_minor if ev.amount else None
+                                    ev.amount.amount_minor if ev.amount else None  # type: ignore
                                 )
                                 result["observed_currency"] = (
-                                    ev.amount.currency.value if ev.amount else None
+                                    ev.amount.currency.value if ev.amount else None  # type: ignore
                                 )
                                 result["observed_reference"] = getattr(
                                     ev, "external_reference", None
                                 )
                                 break
                     elif getattr(latest_action, "idempotency_key", None):
-                        events = event_repo.get_by_merchant_and_type(
-                            case.merchant_id, "PAYMENT_LINK_PAID"
+                        events = event_repo.get_by_merchant_and_type(  # type: ignore
+                            case.merchant_id,
+                            "PAYMENT_LINK_PAID",  # type: ignore
                         )
                         for ev in events:
                             # Mock extract ref
-                            result["observed_event_type"] = ev.event_type.value
+                            result["observed_event_type"] = ev.event_type.value  # type: ignore
                             result["observed_amount_minor"] = (
-                                ev.amount.amount_minor if ev.amount else None
+                                ev.amount.amount_minor if ev.amount else None  # type: ignore
                             )
                             result["observed_currency"] = (
-                                ev.amount.currency.value if ev.amount else None
+                                ev.amount.currency.value if ev.amount else None  # type: ignore
                             )
                             result["observed_reference"] = getattr(
                                 ev, "external_reference", None
@@ -1028,7 +1029,7 @@ def abort_execution(case_id: str):
         from recoverai.persistence.repositories.action import RecoveryActionRepository
 
         action_repo = RecoveryActionRepository(conn)
-        actions = action_repo.get_by_case(case_id)
+        actions = action_repo.get_by_case(case_id)  # type: ignore
         if not actions:
             raise HTTPException(status_code=404, detail="No action found to abort")
 
@@ -1036,7 +1037,7 @@ def abort_execution(case_id: str):
 
         if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED]:
             latest_action.status = ActionStatus.CANCELLED
-            action_repo.update(latest_action)
+            action_repo.update(latest_action)  # type: ignore
             conn.commit()
             return {"status": "success", "message": "Execution aborted"}
         else:

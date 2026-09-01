@@ -177,7 +177,7 @@ class ConcreteLLMGateway(LLMGateway):
 
         raise GatewayError("All providers failed to synthesize cause.")
 
-    def generate_intervention_candidates(
+    def generate_intervention_candidates(  # type: ignore
         self,
         case: RecoveryCase,
         events: list[RevenueEvent],

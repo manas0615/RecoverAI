@@ -82,7 +82,7 @@ class RecoveryActionService:
                 and decision.decision == PolicyDecisionValue.ESCALATE
             ):
                 # Human has approved the escalation, override the policy engine's ESCALATE decision
-                decision.decision = PolicyDecisionValue.APPROVE
+                decision.decision = PolicyDecisionValue.APPROVE  # type: ignore
                 decision.matched_rules.append("HUMAN_APPROVAL_OVERRIDE")
                 decision.reason_codes.append("HUMAN_APPROVAL_OVERRIDE")
                 audit_repo.append(

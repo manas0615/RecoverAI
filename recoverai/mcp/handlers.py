@@ -212,7 +212,7 @@ def handle_create_payment_link(
 
     action.plan_snapshot = json.dumps(plan.to_dict())
     action._real_plan = plan
-    action._real_cause = cause
+    action._real_cause = cause  # type: ignore
 
     # Now OUTSIDE the transaction, execute the action. ActionService will start its own transaction.
     action = ctx.action_service.execute_action(action)
