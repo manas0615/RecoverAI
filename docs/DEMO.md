@@ -6,9 +6,15 @@ This guide provides instructions to run a complete, end-to-end revenue recovery 
 Ensure the .env file contains the correct Razorpay credentials and the mode is set to test:
 `env
 RAZORPAY_MODE=test
+<<<<<<< HEAD
 RAZORPAY_KEY_ID=<YOUR_RAZORPAY_TEST_KEY_ID>
 RAZORPAY_KEY_SECRET=<YOUR_RAZORPAY_TEST_KEY_SECRET>
 RAZORPAY_WEBHOOK_SECRET=<YOUR_RAZORPAY_WEBHOOK_SECRET>
+=======
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+>>>>>>> f9a57940ec3b1880e3003cb4c2af558faa6e25af
 `
 
 ## Running the Automated End-to-End Test
