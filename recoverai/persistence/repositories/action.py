@@ -144,6 +144,24 @@ class RecoveryActionRepository:
         )
         return [self._map_row(dict(row)) for row in cur.fetchall()]
 
+    
+    def claim_for_execution(
+        self, action_id: RecoveryActionId, from_statuses: list[ActionStatus]
+    ) -> bool:
+        """
+        Atomically claims an action for execution by transitioning its status to AUTHORIZED,
+        only if its current status is one of the allowed rom_statuses.
+        Returns True if successful, False if the action was already claimed or not found.
+        """
+        status_placeholders = ",".join("?" for _ in from_statuses)
+        params = ["AUTHORIZED", action_id.value] + [s.value for s in from_statuses]
+        
+        cur = self.conn.execute(
+            f"UPDATE recovery_actions SET status = ? WHERE action_id = ? AND status IN ({status_placeholders})",
+            tuple(params),
+        )
+        return cur.rowcount > 0
+
     def _map_row(self, row: dict) -> RecoveryAction:
         return RecoveryAction(
             action_id=RecoveryActionId(row["action_id"]),
@@ -163,3 +181,4 @@ class RecoveryActionRepository:
             failure_reason=row["failure_reason"],
             plan_snapshot=row.get("plan_snapshot"),
         )
+

@@ -144,6 +144,8 @@ class RecoveryActionService:
                 return action
 
             # APPROVE Path
+            if not action_repo.claim_for_execution(action.action_id, [ActionStatus.PROPOSED, ActionStatus.ESCALATED]):
+                raise RuntimeError("Concurrency violation: Action already claimed by another process.")
             audit_repo.append(
                 AuditEvent(
                     event_type=AuditEventType.ACTION_AUTHORIZED,
@@ -261,3 +263,4 @@ class RecoveryActionService:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to trigger n8n workflow {workflow_name}: {e}")
             return False
+

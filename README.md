@@ -1,362 +1,335 @@
-# RecoverAI
+﻿# RecoverAI
 
-Evidence-first AI revenue recovery with bounded execution.
+## AI Revenue Recovery Agent
 
-**Razorpay AI Buildathon**  
-**Track 03 — AI Revenue Recovery**
+> Detect revenue at risk. Let AI determine the intervention. Recover it through bounded execution. Verify every outcome.
 
-[Demo](#demo-quick-start) | [Architecture](#system-architecture) | [Evaluation](#evaluation--robustness) | [Setup](#setup--installation-windows)
+AI • Policy Guardrails • Razorpay Test Mode • Verification • Audit • Analytics
 
----
+## Why RecoverAI?
 
-## The Problem
-When a customer's payment fails, the merchant's revenue is at risk. Blindly retrying the payment is unsafe and inefficient—it frustrates customers facing legitimate issues, incurs unnecessary gateway fees, and risks triggering fraud systems. Recovering this revenue safely requires understanding *why* it failed, determining whether intervention is appropriate, enforcing strict stopping rules, and verifying the outcome through authoritative providers.
+Revenue loss does not end at payment failure.
 
-## The Solution
-RecoverAI is an **evidence-first revenue recovery system**. It does not guess. It follows a strict, observable pipeline:
+A payment can fail, a checkout can degrade, or a recovery attempt can become unsafe or ambiguous.
 
-**Detect → Understand → Recommend → Decide → Execute → Verify → Audit**
+RecoverAI closes the loop:
 
-Unlike simple-retry logic or blind payment-link spam, RecoverAI uses AI to interpret the qualitative context of a failure, but relies on a deterministic policy engine to make the final financial safety decision. It sacrifices some aggressive gross recovery in exchange for preventing failed, friction-inducing interventions.
+detect → diagnose → decide → recover → verify.
 
----
+## Razorpay Buildathon — Track 03: AI Revenue Recovery
 
-## Why AI?
-RecoverAI uses Gemini to understand the *qualitative context* of payment failures. 
-
-**What Gemini DOES:**
-- Analyzes unstructured or complex failure codes.
-- Interprets observable failure context and recommends an intervention strategy based on the evidence available to the case.
-- Grounds all reasoning in observable evidence.
-
-**What Gemini DOES NOT DO:**
-- It does not dictate authoritative amounts or currencies.
-- It does not authorize financial execution.
-- It does not mutate Razorpay state directly.
-- It does not verify recovery success.
-
----
-
-## AI / Policy Trust Boundary
-
-RecoverAI enforces a strict boundary between AI recommendation and financial execution.
-
-```mermaid
-graph TD
-    subgraph AI Suggests
-        A[Analyze Case] --> B[Gemini Gateway]
-        B --> C["Qualitative Recommendation"]
-    end
-    
-    subgraph Deterministic Economics
-        C --> D[Application Economics]
-    end
-    
-    subgraph Policy Decides
-        D --> E{PolicyEngine}
-        E -->|DENY| F[Stop Execution]
-        E -->|ESCALATE| G[Require Human Approval]
-        E -->|APPROVE| H[RecoveryActionService]
-    end
-    
-    subgraph Execution
-        H --> I[Razorpay]
-    end
-```
-**The Boundary:** Gemini outputs structured recommendations. The application injects deterministic financial constraints (Amount at Risk, Currency). The `PolicyEngine` evaluates the complete package. Only an explicit `APPROVE` allows the `RecoveryActionService` to contact Razorpay.
-
----
+RecoverAI maps directly to the challenge requirements:
+- Detect revenue at risk
+- Diagnose the failure
+- Determine the right intervention
+- Execute a bounded recovery workflow
+- Verify the provider outcome
+- Measure recovered revenue
+- Maintain compliant escalation and stopping rules
+- Preserve an audit trail
 
 ## System Architecture
 
-```mermaid
-graph TD
-    UI[Frontend Dashboard] --> API[Backend API]
-    API --> IN[Ingestion Engine]
-    IN --> CM[Case Management]
-    
-    API --> RI[Revenue Intelligence]
-    RI --> LLM[LLM Gateway / Gemini]
-    
-    RI --> PE[Policy Engine]
-    PE --> RA[RecoveryActionService]
-    RA --> RZ[Razorpay Test Mode]
-    
-    RZ -.->|payment_link.paid| WH[Webhook Ingestion]
-    WH --> VE[Verification Engine]
-    
-    VE --> AU[Audit Timeline]
-    PE --> AU
-    RA --> AU
-    
-    N8N[n8n Orchestration] -.->|Human Approval| API
-```
+`mermaid
+flowchart LR
+    A[Revenue Event] --> B[Recovery Case]
+    B --> C[Evidence Context]
+    C --> D[AI Intelligence]
+    D --> E[Policy Engine]
 
----
+    E -->|APPROVE| F[RecoveryActionService]
+    E -->|ESCALATE| G[Human Approval]
+    E -->|DENY / SUPPRESS| H[Stop]
 
-## Recovery Lifecycle
+    G --> F
+    F --> I[Razorpay Test Mode]
+    I --> J[Provider Webhook]
+    J --> K[VerificationEngine]
+    K --> L[Verified Recovery]
+    L --> M[Audit + Analytics]
+`
 
-```mermaid
-stateDiagram-v2
-    [*] --> DETECT: Webhook / API
-    DETECT --> EVIDENCE: Gather Context
-    
-    state ANALYZE {
-        direction LR
-        Gemini
-        Deterministic_Fallback
-    }
-    EVIDENCE --> ANALYZE: Revenue Intelligence
-    ANALYZE --> POLICY: Recommend Action
-    
-    state POLICY {
-        direction LR
-        Evaluate --> DENY
-        Evaluate --> ESCALATE
-        Evaluate --> APPROVE
-    }
-    
-    DENY --> STOP: No Action Taken
-    ESCALATE --> HUMAN_APPROVAL: Wait for Agent
-    APPROVE --> EXECUTE: RecoveryActionService
-    
-    EXECUTE --> VERIFY: Wait for Provider Event
-    VERIFY --> RECOVERED: Match payment_link.paid
-    
-    RECOVERED --> AUDIT
-    STOP --> AUDIT
-    HUMAN_APPROVAL --> AUDIT
-```
-*Gemini is used when configured and available. The application has a deterministic fallback when the provider is unavailable or the output cannot be safely validated.*
+## How the Agent Thinks
 
----
+The AI layer in RecoverAI acts as an intelligent diagnostic and proposal engine.
+
+### AI receives
+* RecoveryCase facts
+* observable RevenueEvent evidence
+* relevant recovery context
+
+### AI produces
+* cause assessment
+* ranked intervention candidates
+* recommendation
+* confidence
+* reasoning
+
+### AI cannot
+* call Razorpay
+* write directly to the database
+* bypass PolicyEngine
+* directly execute financial recovery
+
+## AI and Policy Boundary
+
+`mermaid
+flowchart TD
+    A[Case Evidence] --> B[Gemini]
+    B --> C[Structured Intervention Plan]
+    C --> D[PolicyEngine]
+    D --> E[Bounded Execution]
+
+    B -. No financial credentials .-> F[No direct Razorpay access]
+    B -. No DB write access .-> G[No direct state mutation]
+`
+
+AI proposes. Deterministic policy decides what is allowed.
+
+## Provider & Fallback Model
+
+The system utilizes a defined fallback chain for continuous resilience:
+
+**Gemini → Groq → Hugging Face → Deterministic Fallback**
+
+* Gemini has been successfully used for real, live recommendations within the system.
+* Provider provenance is strictly tied to the provider that actually generated the intervention, visible in the UI and audit trail.
+* Deterministic fallback is a resilience path ensuring operational continuity, and is explicitly labelled, not disguised as an AI result.
+* Current Groq access may be restricted depending on credentials and project configuration.
 
 ## Execution Safety
 
-RecoverAI enforces a **Single Financial Authority**.
+The canonical financial execution path is tightly constrained:
+**Policy → RecoveryActionService → RazorpayAdapter → Razorpay Test Mode**
 
-```mermaid
-graph LR
-    AI[Gemini LLM] --X--> RZ[Razorpay]
-    FE[Frontend] --X--> RZ
-    N8[n8n Orchestration] --X--> RZ
-    
-    PE[Policy Engine] --> RA[RecoveryActionService]
-    RA --> RZ
-```
-*Razorpay mutations are restricted to the RecoveryActionService execution path; AI, the frontend, and n8n cannot directly authorize financial execution.*
+Execution is heavily guarded through:
+* strict authorization checks
+* action-state validation
+* idempotency keys
+* atomic execution claim
+* Test Mode fail-closed bounds
+* completely decoupled frontend containing no private Razorpay credentials
 
----
+> A recovery action is atomically claimed before crossing the financial provider boundary, preventing simultaneous execution attempts from creating duplicate provider actions.
 
-## Verification Architecture
+## State Machine
 
-RecoverAI relies exclusively on the payment provider (Razorpay) for financial truth.
+`mermaid
+stateDiagram-v2
+    [*] --> PROPOSED
+    PROPOSED --> AUTHORIZED
+    PROPOSED --> ESCALATED
+    PROPOSED --> CANCELLED
+    ESCALATED --> AUTHORIZED
+    AUTHORIZED --> EXECUTING
+    EXECUTING --> VERIFICATION_PENDING
+    VERIFICATION_PENDING --> VERIFIED_SUCCESS
+    VERIFICATION_PENDING --> VERIFIED_FAILURE
+    VERIFICATION_PENDING --> EXECUTION_UNKNOWN
+`
 
-```mermaid
-graph TD
-    RZ[Razorpay] -->|payment_link.paid| WH[Webhook Endpoint]
-    WH --> HMAC[HMAC Verification]
-    HMAC --> NORM[Event Normalization]
-    NORM --> CORR[Provider Correlation]
-    CORR --> VE[VerificationEngine P09]
-    VE --> VAL[Amount + Currency + Reference Validation]
-    VAL -->|Match| SUCC[VERIFIED_SUCCESS]
-    VAL -->|Mismatch| FAIL[UNKNOWN / VERIFICATION NOT CONFIRMED]
-    FAIL --> NOREC[NO RECOVERY CLAIM]
-```
-*A mismatch does not equal a verified recovery; the system fails conservatively, ensuring no false claims are made.*
+* **APPROVE** → transitions directly to bounded execution.
+* **ESCALATE** → blocks execution pending the human approval boundary.
+* **DENY/SUPPRESS** → halts the recovery attempt entirely.
+* **UNKNOWN** → fail-safe verification state protecting against ambiguous provider signals.
 
----
+## Verification
 
-## Uncertainty & Safety Flow
+A provider response alone does not equal recovery.
+The VerificationEngine independently checks provider evidence to validate the outcome.
 
-When the provider is unresponsive or the execution state is uncertain, RecoverAI fails safe.
+`mermaid
+flowchart LR
+    A[Provider Event] --> B{Reference Match?}
+    B -->|No| U[UNKNOWN]
+    B -->|Yes| C{Amount Match?}
+    C -->|No| U
+    C -->|Yes| D{Currency Match?}
+    D -->|No| U
+    D -->|Yes| E{Event Type Match?}
+    E -->|No| U
+    E -->|Yes| S[VERIFIED_SUCCESS]
+`
 
-```mermaid
-graph TD
-    RA[RecoveryActionService] --> RZ[Razorpay API]
-    RZ -.->|Timeout / 500| UNK[EXECUTION_UNKNOWN]
-    UNK --> STOP[Automatic Stop: No Retries]
-    STOP --> REC[Reconciliation Process]
-```
-*If an action yields an unknown outcome, the system halts to prevent infinite payment-link spam loops.*
+Mismatches remain UNKNOWN rather than prematurely registering as false successful recoveries.
 
----
+## Real Test Mode Proof
 
-## Evaluation Architecture (P25)
+RecoverAI proves end-to-end integration:
 
-Our P25 Evaluation explicitly prevents data leakage between what the AI/Policy sees and the actual simulated customer outcome.
+payment failure / revenue-risk event
+→ case creation
+→ AI recommendation
+→ policy
+→ Razorpay Test Mode
+→ real payment-link reference
+→ webhook ingestion
+→ independent verification
+→ recovered outcome
 
-```mermaid
-graph TD
-    GEN[Synthetic Scenario Generator]
-    
-    GEN --> OE[Observable Evidence]
-    GEN --> HT[Hidden Truth]
-    
-    OE --> SIM[Simple Rule]
-    OE --> REC[RecoverAI Policy]
-    
-    SIM --> OUT[Outcome Simulator]
-    REC --> OUT
-    
-    HT --> OUT
-    OUT --> MET[Metrics]
-```
-*Strategies see only observable evidence; the outcome simulator strictly applies the hidden truth. The hidden evaluation truth is not provided to the model.*
+> Razorpay integration is demonstrated in Test Mode, not against a production merchant account.
 
----
+## Operator Workflow
 
-## Evidence Hierarchy
+RecoverAI provides a complete operator UI journey:
 
-We do not blend our evidence layers. Each phase of RecoverAI proves a specific capability.
+* **01 Dashboard:** High-level overview of revenue risk and active operational metrics.
+* **02 Recovery Cases:** Tabular queue of all active and historically resolved recovery scenarios.
+* **03 Case Detail:** Deep-dive view of case facts, evidence, AI assessment, and timeline history.
+* **04 Approval Queue:** Dedicated interface for reviewing and resolving ESCALATED human-in-the-loop decisions.
+* **05 Execution Queue:** Real-time visibility into the bounded financial execution pipeline.
+* **06 Verification:** Visibility into the VerificationEngine matching logic and UNKNOWN event fallouts.
+* **07 Audit:** Immutable chronological record of system events, policy decisions, and state transitions.
+* **08 Operational Analytics:** Live charts tracking real runtime outcomes and system performance.
 
-| Evidence Layer | Type | What It Proves |
-|----------------|------|----------------|
-| **P23 Gemini Verification** | Real Provider-Backed Validation | AI grounding, structured output, and hallucination controls. |
-| **P24 Razorpay Verification** | Real Provider-Backed Validation | External execution in Razorpay Test Mode, HMAC validation, and P09 verification. |
-| **P25 Benchmark** | Synthetic Quantitative Benchmark | Quantitative safety/effectiveness tradeoff and deterministic policy behavior. |
+## What Is Real vs Synthetic?
 
----
+| Component              | Nature                                    |
+| ---------------------- | ----------------------------------------- |
+| Gemini recommendation  | Real provider output when Gemini succeeds |
+| Razorpay payment links | Real Razorpay Test Mode resources         |
+| Webhook ingestion      | Real application webhook endpoint         |
+| HMAC validation        | Real                                      |
+| VerificationEngine     | Real backend verification                 |
+| Operational analytics  | Runtime DB-derived outcomes               |
+| Seed/demo records      | Development/test fixtures                 |
+| P25 benchmark          | Synthetic, frozen, explicitly labelled    |
 
-## Evaluation & Robustness (P25)
+## Synthetic Evaluation Benchmark
 
-> **Important:** P25 evaluated our deterministic policy fallback (`AnalysisType.RULE_BASED`), not live Gemini intelligence (which was evaluated in P23/P24). 
+The system's deterministic policy bounds were evaluated via the frozen P25 synthetic benchmark:
 
-We evaluated RecoverAI on a reproducible 1,500-scenario synthetic benchmark against no intervention and a transparent simple-rule baseline. Simple Rule aggressively maximizes intervention coverage among non-systemically degraded cases.
+**P25 — SYNTHETIC QUANTITATIVE BENCHMARK**
 
-- **Simple Rule:** 785 recoveries, ₹3,362,181 gross recovery, 558 failed interventions, 0 escalations
-- **RecoverAI:** 727 recoveries, ₹3,159,057 gross recovery, 506 failed interventions, 121 escalations
-- **Difference:** RecoverAI produced 58 fewer recoveries (₹203,124 less gross recovery), but prevented 52 failed interventions and escalated 121 cases.
+**Recovery Rate (Case)**
+* Simple Rule: 52.3%
+* RecoverAI: 48.5%
 
-*Note: A "failed intervention" is an attempted intervention that did not recover the simulated case. A "false recovery claim" is claiming a recovery that the simulated outcome says did not occur. There were 0 false recovery claims across all strategies.*
+> These are synthetic benchmark results and are not operational Razorpay recovery metrics.
 
-RecoverAI demonstrates a tunable safety/effectiveness tradeoff within the synthetic benchmark. It prioritizes intervention precision and controlled escalation, accepting some gross-recovery loss in exchange for fewer failed interventions. Net merchant value is not modeled. No UNKNOWN strategy outcomes were produced by the synthetic benchmark.
+## Safety & Security Boundaries
 
-**The Sensitivity Frontier:**
-The threshold sweep shows a monotonic tradeoff in this benchmark: more aggressive intervention increases gross recovery while reducing escalation and increasing failed interventions:
-- **Threshold 2:** 701 recoveries, 484 failed interventions, 173 escalations.
-- **Threshold 3 (Baseline):** 727 recoveries, 506 failed interventions, 121 escalations.
-- **Threshold 4:** 760 recoveries, 528 failed interventions, 61 escalations.
+RecoverAI enforces strict security controls:
+* No provider secrets exist in the frontend browser environment.
+* Financial actions are strictly bounded to Razorpay Test Mode.
+* Inbound events require rigorous HMAC webhook validation.
+* Duplicate webhook protection ensures idempotent verification.
+* Action execution idempotency guarantees one logical action per attempt.
+* Atomic execution claim mathematically prevents simultaneous execution race conditions.
+* PolicyEngine enforcement evaluates all execution requests dynamically.
+* VerificationEngine exhibits fail-closed behavior under ambiguity.
+* Audit trails are strictly append-only.
+* The AI engine has absolutely no direct financial execution access.
 
-The qualitative safety/effectiveness tradeoff remained directionally stable across the predeclared sensitivity scenarios.
+## Questions a Judge Should Be Able to Answer Immediately
 
----
+**Can Gemini call Razorpay?**
+No. It has no provider credentials or direct execution tools.
 
-## Product Screenshots
+**Can the browser call Razorpay?**
+No. Financial provider credentials remain backend-only.
 
-*Final product screenshots will be added after the P26B UI/UX redesign and browser-verified capture.*
+**Can AI bypass policy?**
+No. Financial execution passes exclusively through PolicyEngine and RecoveryActionService.
 
-- [Dashboard](docs/screenshots/README.md)
-- [Cases List](docs/screenshots/README.md)
-- [Case Detail - Success](docs/screenshots/README.md)
-- [Case Detail - Escalation](docs/screenshots/README.md)
-- [Audit Timeline](docs/screenshots/README.md)
+**What happens when AI providers fail?**
+The configured fallback chain activates; deterministic fallback is explicitly identified as fallback provenance.
 
----
+**Can duplicate execution create two recoveries?**
+No. The action is atomically claimed before provider execution and concurrent attempts are mathematically guarded by the database.
 
-## Demo Quick Start
+**Can a mismatched webhook produce VERIFIED_SUCCESS?**
+No. Verification requires strict reference, amount, currency, and event-type consistency.
 
-The evaluation journey follows this path:
-`Dashboard → Cases → LIVE Case (deterministic demo data) → Evidence → Analyze Case (AI Suggests) → Policy → Execution → Verification → Audit`
+**What is synthetic?**
+Only the P25 benchmark data and the local seed/demo fixtures.
 
-To run RecoverAI locally on Windows:
-
-### Prerequisites
-- Python 3.11+
-- Node.js (v20+)
-- `uv` package manager
-
-### 1. Environment Setup
-```powershell
-# Root environment
-Copy-Item .env.example .env
-
-# Frontend environment
-Copy-Item frontend/.env.example frontend/.env
-```
-*Note: Update `.env` with a real `GEMINI_API_KEY` and Razorpay Test Mode credentials if executing live.*
-
-### 2. Startup
-We use a robust Windows startup script:
-```powershell
-.\scripts\start-all.ps1
-```
-*(This starts the FastAPI backend, React frontend, and n8n orchestration instance).*
-
-### 3. Health Check & Demo Seed
-Verify services and inject the 7 deterministic demo cases (which safely prove UNKNOWN, ESCALATION, SUCCESS, and FAILURE states):
-```powershell
-.\scripts\check-health.ps1
-uv run python scripts/seed_demo_data.py
-```
-
-### 4. Safe Reset
-To reset the environment to a clean state:
-```powershell
-uv run python scripts/seed_demo_data.py
-```
-*The seeding script is fully idempotent.*
-
----
+**Where is the audit trail?**
+The audit trail is available in the UI on Screen 07 and directly accessible via the backend audit endpoint.
 
 ## Repository Structure
 
-- `recoverai/api/`: FastAPI route handlers and dependency injection.
-- `recoverai/application/`: Service layer (e.g., `RecoveryActionService`).
-- `recoverai/domain/`: Core business entities and rules.
-- `recoverai/intelligence/`: AI orchestration and reasoning.
-- `recoverai/llm_gateway/`: Standardized provider adapters (Gemini).
-- `recoverai/policy/`: Deterministic financial safety rules.
-- `recoverai/integrations/`: External adapters (Razorpay).
-- `recoverai/verification/`: VerificationEngine (P09).
-- `frontend/`: React + TypeScript SPA.
-- `n8n/` & `workflows/`: Orchestration flows for human-in-the-loop and notifications.
-- `tests/`: Comprehensive unit and integration test suite.
-- `docs/`: Architecture diagrams, evaluations, and historical package reports.
+`	ext
+RecoverAI/
+├── recoverai/
+│   ├── api/
+│   ├── domain/
+│   ├── intelligence/
+│   ├── llm_gateway/
+│   ├── policy/
+│   ├── services/
+│   ├── ingestion/
+│   ├── integrations/
+│   ├── verification/
+│   ├── persistence/
+│   └── mcp/
+├── frontend/
+├── tests/
+├── docs/
+├── scripts/
+└── pyproject.toml
+`
 
----
+## Engineering Principles
 
-## Safety Guarantees
+* Backend authority over frontend assumptions
+* AI proposes; policy constrains
+* AI has no direct financial credentials
+* Verify before recording recovery
+* Append-only auditability
+* Idempotent execution
+* Atomic financial-action claim
+* Fail closed under ambiguity
+* Synthetic benchmarks isolated from operational analytics
+* Test Mode for external financial integration
 
-- **No AI Financial Fields:** AI has no authoritative financial fields.
-- **Policy Gates Execution:** Policy gates execution.
-- **Fail-Safe Provider State:** Provider uncertainty does not become success.
-- **Idempotent Verification:** Duplicate webhook events are handled idempotently.
-- **Single Source of Execution:** Razorpay mutations are restricted to the authorized execution path.
-- **Strict Verification:** Verification requires matching provider evidence.
+## Quick Start
 
----
+A complete demo walkthrough is available in [docs/DEMO.md](docs/DEMO.md).
 
-## Technical Decisions
+`powershell
+# 1. Environment Setup
+Copy-Item .env.example .env
+Copy-Item frontend/.env.example frontend/.env
 
-- **SQLite:** Used for zero-dependency local evaluation and portability during the Buildathon.
-- **Deterministic Policy:** LLMs are powerful but non-deterministic. We wrap them in strict Python policies to guarantee financial safety.
-- **JSON Plan Snapshots:** Approved intervention plans are serialized as versioned JSON and persisted with the recovery action so human-approval resumes can replay the exact original plan.
-- **n8n Orchestration:** Handles asynchronous notifications and complex multi-step human approvals without bloating the core backend. It is an orchestration layer, not a financial authorization authority.
-- **P09 Verification:** We decouple "Execution Attempt" from "Verified Success." Success is only achieved when the webhook validates the HMAC and exactly matches the expected amount and currency.
+# 2. Startup (runs FastAPI backend + React frontend)
+.\scripts\start-all.ps1
 
----
+# 3. Health Check & Demo Reset
+# Generates 7 idempotent fixture cases to safely prove all UI states
+uv run python scripts/seed_demo_data.py
+`
 
-## Limitations
+## Demo
 
-- **Competition Prototype:** This is a single-merchant evaluation build.
-- **Synthetic Metrics:** P25 reports synthetic tradeoff ratios, not real-world INR metrics.
-- **Test Mode Only:** Real execution was proven against Razorpay Test Mode, not a production merchant account.
-- **No Exchange Rates:** Multi-currency support exists via strict partitioning, but live exchange-rate calculations are not implemented.
+Please see [docs/DEMO.md](docs/DEMO.md) for the detailed step-by-step evaluation guide.
 
----
+The judge-facing demo highlights the complete end-to-end flow:
+Recovery Case → Analyze → AI recommendation → Policy → Execution → Razorpay Test Mode → Verification → Audit → Analytics
 
-## FAQ
+## Verification & Testing
 
-**Q: Can the AI move money on its own?**  
-A: No. The AI generates a qualitative recommendation. The deterministic Policy Engine evaluates that recommendation against financial bounds. If approved, the Application executes the movement.
+RecoverAI's engineering is verified by an extensive test suite:
 
-**Q: What happens if Gemini is down?**  
-A: RecoverAI falls back to a deterministic rule-based evaluation (`AnalysisType.RULE_BASED`), which we aggressively benchmarked in P25.
+`ash
+# Run the core backend test suite
+uv run python -m pytest tests/ -q
 
-**Q: Is n8n required for payment links?**  
-A: No. Razorpay execution happens natively in the Python backend. n8n is used strictly for orchestration (notifications, human-approval routing).
+# Execute the Real Test Mode E2E verification
+uv run python -m pytest tests/e2e/test_real_testmode.py -v
 
-**Q: Where can I find the historical package reports?**  
-A: All historical Buildathon forensic audits and package reports are preserved in `docs/reports/`.
+# Verify the frontend production build
+cd frontend
+npm run build
+`
+
+The core backend suite verifies internal invariants and concurrency constraints. The Test Mode E2E explicitly validates Razorpay external behavior, and the frontend build proves TSX correctness.
+
+## Status
+
+* P27 — Data Stability ✅
+* P28 — Authorization + AI Integrity ✅
+* P29 — Razorpay Test Mode E2E ✅
+* P30 — Hostile Hardening ✅
+
+**Submission status: Frozen / Ready for submission**
