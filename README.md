@@ -26,7 +26,7 @@ RecoverAI strictly follows an auditable lifecycle:
 
 - **Detect:** The system ingests failure signals (like webhooks) into a recovery case.
 - **Understand:** The intelligence layer evaluates contextual evidence (e.g., error codes).
-- **Recommend:** The intelligence layer outputs expected recovery probability and expected recovery value to propose an action.
+- **Recommend:** The intelligence layer contributes contextual signals and an intervention proposal; the analyzer derives the expected recovery probability and expected recovery value used for planning.
 - **Decide:** A deterministic policy engine evaluates the proposal and issues an `APPROVE`, `ESCALATE`, `DENY`, `SUPPRESS`, or `WAIT`.
 - **Recover:** Bounded execution triggers safe interventions (like generating a Payment Link) where allowed.
 - **Verify:** Independent provider evidence confirms success.
@@ -116,7 +116,7 @@ Across the 21 tested adversarial scenarios, RecoverAI recorded zero violations o
 
 ## What We Found and Fixed
 
-During live testing, the system exposed critical edge cases which were subsequently diagnosed, fixed, and locked with regression tests:
+During development and provider testing, the system exposed several critical edge cases which were subsequently diagnosed, fixed, and locked with regression tests:
 
 1. **Recovery-payment failure loop:** A failed recovery Payment Link generated a new `payment.failed` event, which erroneously spawned a recursive recovery case (discovered in A003). Fixed via exact provider correlation.
 2. **Missing live high-value threshold wiring:** The benchmark successfully evaluated a ₹40K threshold, but live dependency injection missed the configuration, causing a ₹50K case (A005) to be automatically approved rather than escalated. Fixed by wiring merchant-configurable thresholds.
