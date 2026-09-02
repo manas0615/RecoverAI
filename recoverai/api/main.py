@@ -571,9 +571,17 @@ async def analyze_case(case_id: str):
                 )
             )
 
-        # 4. Evaluate Policy
+        from recoverai.config import settings
+        from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
+        
+        threshold = None
+        if settings.high_value_threshold_inr is not None:
+            threshold = RevenueAmount(Money(settings.high_value_threshold_inr, CurrencyCode.INR))
+            
         policy_context = PolicyContext(
-            policy_version="1.0", current_time=datetime.now(UTC)
+            policy_version="1.0",
+            current_time=datetime.now(UTC),
+            high_value_threshold=threshold
         )
         with container.tm.transaction() as conn:
             action_history = RecoveryActionRepository(conn).get_by_case(case.case_id)

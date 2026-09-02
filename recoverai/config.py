@@ -59,6 +59,10 @@ class Settings(BaseSettings):
         default="development",
         description="Current environment (development, test, production)",
     )
+    high_value_threshold_inr: int | None = Field(
+        default=40000_00,
+        description="High-value escalation threshold in minor units (INR)",
+    )
 
 
 def get_settings() -> Settings:

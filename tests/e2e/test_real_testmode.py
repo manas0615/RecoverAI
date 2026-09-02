@@ -30,6 +30,10 @@ def seed_test_db():
 
 
 def test_real_razorpay_e2e_recovery(client):
+    import os
+    if os.environ.get("ALLOW_REAL_RAZORPAY") != "1":
+        pytest.skip("Skipping real Razorpay E2E test due to missing ALLOW_REAL_RAZORPAY=1 explicit opt-in")
+        
     if not (
         settings.razorpay_key_id
         and settings.razorpay_key_secret

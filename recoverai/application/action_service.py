@@ -53,8 +53,17 @@ class RecoveryActionService:
 
             from recoverai.policy.engine import PolicyContext
 
+            from recoverai.config import settings
+            from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
+            
+            threshold = None
+            if settings.high_value_threshold_inr is not None:
+                threshold = RevenueAmount(Money(settings.high_value_threshold_inr, CurrencyCode.INR))
+                
             policy_context = PolicyContext(
-                policy_version="1.0", current_time=datetime.now(UTC)
+                policy_version="1.0",
+                current_time=datetime.now(UTC),
+                high_value_threshold=threshold
             )
 
             from recoverai.domain.plan import InterventionPlan

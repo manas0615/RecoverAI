@@ -4,7 +4,7 @@ from recoverai.llm_gateway.config import GatewayConfig
 def test_config_from_env(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "gemini_secret")
     monkeypatch.setenv("GROQ_API_KEY", "groq_secret")
-    monkeypatch.setenv("HF_API_KEY", "hf_secret")
+    monkeypatch.setenv("HF_TOKEN", "hf_secret")
     monkeypatch.setenv("GEMINI_MODEL", "gemini-test")
     monkeypatch.setenv("GROQ_MODEL", "groq-test")
     monkeypatch.setenv("HF_MODEL", "hf-test")

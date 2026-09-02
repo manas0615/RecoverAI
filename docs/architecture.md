@@ -110,7 +110,16 @@ While n8n workflow files exist within the repository, **n8n is strictly an optio
 
 ---
 
-## 10. Current MVP Limitations
+## 10. Engineering & Hardening
+
+During development and evaluation against the live Razorpay Test Mode API, RecoverAI was actively hardened against critical edge cases:
+- **Recovery-Payment Loop Mitigation:** A naive implementation created a loop where a failed recovery payment link generated a new `payment.failed` event and thus a new recovery case. RecoverAI's `EventIngestionService` now implements strict correlation to update existing cases instead of duplicating them.
+- **Dependency Injection Safety:** A live configuration gap where the `PolicyContext` defaulted to a disabled high-value threshold (while the benchmark successfully used ₹40,000) was discovered via a real ₹50,000 case (A005). We secured the dependency injection pipeline to enforce the merchant-configurable `high_value_threshold_inr`.
+- **Test-Provider Isolation:** To ensure that the 236-test regression suite does not consume live provider quota, a strict HTTP interceptor demands explicit `ALLOW_REAL_RAZORPAY` opt-in.
+
+---
+
+## 11. Current MVP Limitations
 
 The current implementation represents an MVP constructed for the Razorpay AI Buildathon. Note the following boundaries of the existing codebase:
 * **Execution Environment**: Interactions are strictly limited to Razorpay Test Mode.
