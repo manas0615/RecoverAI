@@ -1,6 +1,4 @@
-# `docs/15_FAILURE_RECOVERY.md`
 
-````markdown
 # RecoverAI — Failure Recovery
 
 **Project:** RecoverAI  
