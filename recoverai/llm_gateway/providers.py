@@ -162,9 +162,7 @@ class HuggingFaceAdapter(ProviderAdapter):
         import urllib.request
 
         req = urllib.request.Request(
-            "https://api-inference.huggingface.co/models/"
-            + self.model
-            + "/v1/chat/completions",
+            "https://router.huggingface.co/v1/chat/completions",
             data=json.dumps(
                 {
                     "model": self.model,
@@ -179,14 +177,16 @@ class HuggingFaceAdapter(ProviderAdapter):
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:
                 result = json.loads(response.read().decode())
                 return result["choices"][0]["message"]["content"]
         except urllib.error.HTTPError as e:
+            error_body = e.read().decode()
+            logger.error(f"Hugging Face HTTPError body: {error_body}")
             if e.code in (401, 403):
                 raise ConfigurationError(
                     f"Hugging Face Authentication/Configuration failed: {e.code}"
                 ) from e
             raise ProviderError(f"Hugging Face API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError("Hugging Face API failed: Generic Error") from e
+            raise ProviderError(f"Hugging Face API failed: {type(e).__name__} - {e}") from e

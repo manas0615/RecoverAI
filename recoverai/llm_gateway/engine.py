@@ -42,11 +42,16 @@ class ConcreteLLMGateway(LLMGateway):
         if providers is not None:
             self.providers = providers
         else:
-            self.providers = [
+            all_providers = [
                 GeminiAdapter(config.gemini_api_key, config.gemini_model),
                 GroqAdapter(config.groq_api_key, config.groq_model),
                 HuggingFaceAdapter(config.hf_api_key, config.hf_model),
             ]
+            primary = next((p for p in all_providers if p.name == config.primary_provider), None)
+            if primary:
+                self.providers = [primary] + [p for p in all_providers if p != primary]
+            else:
+                self.providers = all_providers
 
     def _build_evidence_bundle(
         self,

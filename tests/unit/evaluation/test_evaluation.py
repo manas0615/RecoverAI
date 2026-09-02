@@ -1,6 +1,7 @@
 from decimal import Decimal
-from recoverai.evaluation.simulator import SyntheticScenarioGenerator
-from recoverai.evaluation.evaluator import Evaluator
+from recoverai.evaluation.simulator import SyntheticScenarioGenerator, ObservableCaseEvidence, HiddenOutcomeTruth, SyntheticScenario, EvaluationOracle
+from recoverai.domain.money import Money, CurrencyCode
+from recoverai.evaluation.evaluator import Evaluator, OutcomeSimulator
 from recoverai.evaluation.strategies import L0NoIntervention, L1NaiveRule, L2DeterministicRules, L3CurrentRecoverAI
 from recoverai.evaluation.metrics import EvaluationMetrics
 from recoverai.evaluation.benchmark import run_benchmark
@@ -52,17 +53,29 @@ def test_cross_strategy_fairness():
 
 def test_decision_outcome_separation():
     # A failed outcome does not automatically mean the decision is incorrect
-    generator = SyntheticScenarioGenerator(seed=55)
-    scenarios = generator.generate(10)
+    evidence = ObservableCaseEvidence(
+        scenario_id="mock", merchant_id="m1", customer_id="c1",
+        opportunity_amount=Money(100_00, CurrencyCode.INR),
+        failure_code="network_timeout", gateway_downtime_active=False,
+        historical_failure_count=0
+    )
+    truth = HiddenOutcomeTruth(
+        receptive_to_intervention=True,
+        expected_natural_recovery=False,
+        provider_error_on_execution=True  # Will fail
+    )
+    oracle = EvaluationOracle(expected_decision="CREATE_PAYMENT_LINK")
+    scenario = SyntheticScenario(evidence, truth, oracle)
     
-    # Find a scenario where oracle expected decision is CREATE_PAYMENT_LINK but it fails to succeed
-    found = False
-    for s in scenarios:
-        if s.oracle.expected_decision == "CREATE_PAYMENT_LINK" and (not s.truth.receptive_to_intervention or s.truth.provider_error_on_execution):
-            found = True
-            break
-            
-    assert found, "Test setup needs a specific random seed where this occurs. (Seed 55 works)"
+    evaluator = Evaluator()
+    l2 = L2DeterministicRules()
+    
+    metrics = evaluator.evaluate(l2, [scenario])
+    # Decision was CREATE_PAYMENT_LINK, matches Oracle (1 correct decision)
+    # But it failed intervention
+    assert metrics.correct_decisions == 1
+    assert metrics.failed_interventions == 1
+    assert metrics.successful_verified_recoveries == 0
 
 def test_safety_invariant():
     generator = SyntheticScenarioGenerator(seed=100)

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     )
 
     # AI Providers Configuration (Placeholders)
+    llm_provider: str = Field(default="gemini", description="Primary LLM Provider")
     gemini_api_key: str | None = Field(default=None, description="Gemini API Key")
     groq_api_key: str | None = Field(default=None, description="Groq API Key")
     hf_token: str | None = Field(default=None, description="Hugging Face Token")

@@ -52,16 +52,26 @@ class SyntheticScenarioGenerator:
         self.prob_provider_error = prob_provider_error
 
     def _determine_oracle_decision(
-        self, evidence: ObservableCaseEvidence
+        self, evidence: ObservableCaseEvidence, truth: HiddenOutcomeTruth
     ) -> str:
+        """
+        Independent oracle rules defining the benchmark's expected ideal decision.
+        It uses both observable evidence and hidden scenario truth to determine
+        what SHOULD happen, entirely independently of L2 or P-Engine.
+        """
         if evidence.failure_code == "fraud_suspected":
-            return "SUPPRESS"
+            return "DENY"
         if evidence.gateway_downtime_active:
             return "WAIT"
-        if evidence.historical_failure_count >= 3:
+        if truth.expected_natural_recovery:
+            # Wasteful to intervene if it recovers naturally
             return "SUPPRESS"
-        if evidence.opportunity_amount.amount_minor > 40000_00:
+        if not truth.receptive_to_intervention:
+            # Will fail anyway, don't waste execution limits
+            return "SUPPRESS"
+        if evidence.opportunity_amount.amount_minor >= 45000_00:
             return "ESCALATE"
+            
         return "CREATE_PAYMENT_LINK"
 
     def generate(self, count: int) -> list[SyntheticScenario]:
@@ -121,7 +131,7 @@ class SyntheticScenarioGenerator:
             )
             
             oracle = EvaluationOracle(
-                expected_decision=self._determine_oracle_decision(evidence)
+                expected_decision=self._determine_oracle_decision(evidence, truth)
             )
             
             scenarios.append(SyntheticScenario(evidence=evidence, truth=truth, oracle=oracle))
