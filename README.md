@@ -34,7 +34,7 @@ RecoverAI strictly follows an auditable lifecycle: **Detect → Understand → R
 | **Case detection** | Ingests payment failure events into structured recovery cases. |
 | **AI recommendation** | Interprets context (via Gemini/Groq) to suggest an optimal intervention. |
 | **Policy decision** | Deterministically evaluates the action against strict financial limits. |
-| **Human approval** | Escalates ambiguous or high-value cases to manual review via n8n. |
+| **Human approval** | Escalates ambiguous or high-value cases to manual review (supports optional n8n orchestration). |
 | **Financial execution** | Executes authorized actions strictly through a centralized backend service. |
 | **Webhook verification** | Authenticates webhook HMAC signatures from the provider. |
 | **Recovery outcome** | Asserts success only after verified matching provider evidence (amount/currency). |
@@ -56,8 +56,7 @@ RecoverAI demonstrates real functionality backed by real providers. Where stated
 ---
 
 ## Architecture
-
-`mermaid
+```mermaid
 graph TD
     Event[Razorpay Event] --> Ingest[Ingestion]
     Ingest --> Case[Recovery Case]
@@ -161,7 +160,7 @@ We evaluated RecoverAI's fallback behavior using a 1,500-scenario synthetic benc
 | **Database** | SQLite (for zero-dependency local evaluation) |
 | **Provider** | Razorpay Test Mode API |
 | **Frontend** | React, TypeScript, Vite |
-| **Orchestration** | n8n (via Docker compose) |
+| **Optional Orchestration** | n8n (via Docker compose) |
 
 ---
 
