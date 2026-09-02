@@ -1,6 +1,3 @@
-# `docs/17_SECURITY.md`
-
-````markdown
 # RecoverAI — Security
 
 **Project:** RecoverAI  
@@ -52,7 +49,7 @@ The architecture must remain secure even when:
 
 RecoverAI follows these principles:
 
-```text
+
 SEC-PRINCIPLE-001
 Least privilege.
 
@@ -88,7 +85,7 @@ Environment boundaries are explicit.
 
 SEC-PRINCIPLE-012
 Only the minimum required data is exposed to each component.
-````
+
 
 ---
 
