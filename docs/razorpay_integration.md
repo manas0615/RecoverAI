@@ -1,6 +1,4 @@
-# `docs/09_RAZORPAY_INTEGRATION.md`
 
-````markdown
 # RecoverAI — Razorpay Integration
 
 **Project:** RecoverAI  

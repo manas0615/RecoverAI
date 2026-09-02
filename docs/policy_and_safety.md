@@ -1,6 +1,3 @@
-## `docs/08_POLICY_AND_SAFETY.md`
-
-````markdown
 # RecoverAI — Policy & Safety
 
 **Project:** RecoverAI  
