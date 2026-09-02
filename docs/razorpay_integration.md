@@ -6,8 +6,6 @@
 **Project:** RecoverAI  
 **Track:** Razorpay AI Buildathon — Track 03: AI Revenue Recovery  
 **Document:** Razorpay API, Payment Links, Webhooks, Authentication & Integration Contract  
-**Status:** Architecture Foundation — Proposed for Freeze  
-**Version:** 1.0  
 **Last Updated:** 2026-08-26
 
 ---
@@ -2174,4 +2172,4 @@ All Razorpay integration components.
 The implementation package for this document must re-check the current official Razorpay API documentation before coding. Any discrepancy between this specification and the current API documentation must be resolved in favor of the current official documentation and recorded as an architecture/documentation change before implementation proceeds.
 
 ```
-```
+`

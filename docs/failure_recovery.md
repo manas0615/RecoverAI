@@ -6,8 +6,6 @@
 **Project:** RecoverAI  
 **Track:** Razorpay AI Buildathon — Track 03: AI Revenue Recovery  
 **Document:** Failure Engineering, Recovery, Reconciliation & Graceful Degradation  
-**Status:** Architecture Foundation — Proposed for Freeze  
-**Version:** 1.0  
 **Last Updated:** 2026-08-26
 
 ---
@@ -2763,4 +2761,4 @@ All failure-injection and recovery mechanisms.
 The implementation must never replace an explicit `UNKNOWN` state with an assumed success/failure merely to simplify the workflow. In a financial system, uncertainty must remain visible until authoritative state can be established or the case is safely escalated.
 
 ```
-```
+`

@@ -6,8 +6,6 @@
 **Project:** RecoverAI  
 **Track:** Razorpay AI Buildathon — Track 03: AI Revenue Recovery  
 **Document:** Deterministic Policy Engine, Financial Safety & Authorization Contract  
-**Status:** Architecture Foundation — Proposed for Freeze  
-**Version:** 1.0  
 **Last Updated:** 2026-08-26
 
 ---

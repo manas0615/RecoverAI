@@ -1,6 +1,0 @@
-# PRE-P25 FINAL RE-AUDIT — MASTER FINDINGS MATRIX
-
-| ID | Severity | Category | Exact Location | Finding | Evidence | Competition Impact | Recommendation | Confidence |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **P2-01** | P2 | N8N Orchestration | `recoverai/application/action_service.py#L175-190` | `_trigger_n8n` failures do not write `WORKFLOW_TRIGGER_FAILED` to audit repository. | `_trigger_n8n()` returns `None` and catches exceptions silently; caller unconditionally appends `WORKFLOW_STARTED`. | Low runtime impact on demo, but fails to represent orchestration failure state in the audit ledger. | Refactor `_trigger_n8n` to return a `bool` representing network execution success, and conditionally write `WORKFLOW_TRIGGER_FAILED` or `WORKFLOW_STARTED`. | High |
-| **P3-01** | P3 | Multi-merchant isolation | `recoverai/api/main.py` | Multi-tenant merchant scope modeled but lacks DB-level isolation. | Multiple merchant endpoints share the same global SQLite database file. | Negligible for prototype demonstration but does not model secure enterprise isolation in production. | Explicitly document as a single-merchant prototype with merchant_id modeling. | High |

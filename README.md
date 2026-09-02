@@ -202,11 +202,12 @@ RecoverAI/
 ## Documentation
 
 For deep technical insights, review the documentation:
-- [System Architecture](docs/system_architecture.md)
+- [System Architecture](docs/architecture.md)
 - [Policy & Safety](docs/policy_and_safety.md)
 - [Security](docs/security.md)
 - [Razorpay Integration](docs/razorpay_integration.md)
 - [Evaluation Strategy](docs/evaluation.md)
+- [Failure Recovery](docs/failure_recovery.md)
 
 ---
 
@@ -220,3 +221,4 @@ For deep technical insights, review the documentation:
 ---
 
 RecoverAI turns revenue recovery from a blind retry into an evidence-driven decision: AI proposes the intervention, policy constrains it, Razorpay executes it, verification proves it, and the audit trail records what actually happened.
+
