@@ -19,12 +19,19 @@ class ObservableCaseEvidence:
 class HiddenOutcomeTruth:
     receptive_to_intervention: bool
     expected_natural_recovery: bool
+    provider_error_on_execution: bool
+
+
+@dataclass
+class EvaluationOracle:
+    expected_decision: str
 
 
 @dataclass
 class SyntheticScenario:
     evidence: ObservableCaseEvidence
     truth: HiddenOutcomeTruth
+    oracle: EvaluationOracle
 
 
 class SyntheticScenarioGenerator:
@@ -34,6 +41,7 @@ class SyntheticScenarioGenerator:
         prob_systemic: float = 0.10,
         prob_receptive: float = 0.60,
         prob_natural_recovery: float = 0.15,
+        prob_provider_error: float = 0.05,
     ):
         self._seed = seed
         self._rng = random.Random(self._seed)
@@ -41,6 +49,20 @@ class SyntheticScenarioGenerator:
         self.prob_systemic = prob_systemic
         self.prob_receptive = prob_receptive
         self.prob_natural_recovery = prob_natural_recovery
+        self.prob_provider_error = prob_provider_error
+
+    def _determine_oracle_decision(
+        self, evidence: ObservableCaseEvidence
+    ) -> str:
+        if evidence.failure_code == "fraud_suspected":
+            return "SUPPRESS"
+        if evidence.gateway_downtime_active:
+            return "WAIT"
+        if evidence.historical_failure_count >= 3:
+            return "SUPPRESS"
+        if evidence.opportunity_amount.amount_minor > 40000_00:
+            return "ESCALATE"
+        return "CREATE_PAYMENT_LINK"
 
     def generate(self, count: int) -> list[SyntheticScenario]:
         scenarios = []
@@ -51,6 +73,7 @@ class SyntheticScenarioGenerator:
             is_receptive = self._rng.random() < self.prob_receptive
             is_high_value = self._rng.random() < 0.05
             is_repeated_failure = self._rng.random() < 0.20
+            is_provider_error = self._rng.random() < self.prob_provider_error
 
             if is_high_value:
                 amount_minor = self._rng.randint(10000_00, 50000_00)
@@ -90,9 +113,16 @@ class SyntheticScenarioGenerator:
                 gateway_downtime_active=is_degraded,
                 historical_failure_count=historical_count,
             )
+            
             truth = HiddenOutcomeTruth(
                 receptive_to_intervention=is_receptive,
                 expected_natural_recovery=expected_natural_recovery,
+                provider_error_on_execution=is_provider_error
             )
-            scenarios.append(SyntheticScenario(evidence=evidence, truth=truth))
+            
+            oracle = EvaluationOracle(
+                expected_decision=self._determine_oracle_decision(evidence)
+            )
+            
+            scenarios.append(SyntheticScenario(evidence=evidence, truth=truth, oracle=oracle))
         return scenarios

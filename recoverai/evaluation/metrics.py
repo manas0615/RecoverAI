@@ -1,60 +1,76 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-
 @dataclass
 class EvaluationMetrics:
-    revenue_at_risk: Decimal = Decimal(0)
-    verified_recovered_revenue: Decimal = Decimal(0)
-    eligible_recovery_cases: int = 0
-    recovered_cases: int = 0
-
-    intervention_attempts: int = 0
-    failed_interventions: int = 0
-    false_recovery_claims: int = 0
+    # PRIMARY
+    eligible_cases: int = 0
+    amount_at_risk: Decimal = Decimal(0)
+    successful_verified_recoveries: int = 0
+    gross_recovered_value: Decimal = Decimal(0)
+    
+    # SECONDARY COUNTS
+    interventions: int = 0
     escalations: int = 0
     suppressions: int = 0
-
-    unauthorized_execution_attempts: int = 0
-    policy_bypass_attempts: int = 0
-    unknown_handling_count: int = 0
-    incorrect_evidence_matching: int = 0
-    amount_currency_mismatch: int = 0
-    duplicate_evidence_count: int = 0
+    waits: int = 0
+    failed_interventions: int = 0
+    expected_recovery_value: Decimal = Decimal(0)
+    incremental_recovery_vs_baseline: Decimal = Decimal(0)
+    
+    # SAFETY INVARIANTS
+    policy_violations: int = 0
+    false_recovery_claims: int = 0
+    stopping_rule_violations: int = 0
+    invalid_evidence_accepted: int = 0
+    duplicate_execution: int = 0
+    unsafe_actions: int = 0
+    
+    # DECISION QUALITY
+    correct_decisions: int = 0
+    
+    @property
+    def recovery_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.successful_verified_recoveries / self.eligible_cases
 
     @property
-    def revenue_recovery_rate(self) -> Decimal:
-        if self.revenue_at_risk == Decimal(0):
-            return Decimal(0)
-        return self.verified_recovered_revenue / self.revenue_at_risk
+    def intervention_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.interventions / self.eligible_cases
+        
+    @property
+    def escalation_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.escalations / self.eligible_cases
+        
+    @property
+    def suppression_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.suppressions / self.eligible_cases
+        
+    @property
+    def wait_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.waits / self.eligible_cases
+        
+    @property
+    def failed_intervention_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.failed_interventions / self.eligible_cases
 
     @property
-    def case_recovery_rate(self) -> Decimal:
-        if self.eligible_recovery_cases == 0:
-            return Decimal(0)
-        return Decimal(self.recovered_cases) / Decimal(self.eligible_recovery_cases)
-
-    def report(self) -> dict:
-        return {
-            "revenue_at_risk": float(self.revenue_at_risk),
-            "verified_recovered_revenue": float(self.verified_recovered_revenue),
-            "revenue_recovery_rate": float(self.revenue_recovery_rate),
-            "eligible_recovery_cases": self.eligible_recovery_cases,
-            "recovered_cases": self.recovered_cases,
-            "case_recovery_rate": float(self.case_recovery_rate),
-            "interventions": {
-                "attempts": self.intervention_attempts,
-                "failed": self.failed_interventions,
-                "escalations": self.escalations,
-                "suppressions": self.suppressions,
-            },
-            "safety": {
-                "false_recovery_claims": self.false_recovery_claims,
-                "unauthorized_execution_attempts": self.unauthorized_execution_attempts,
-                "policy_bypass_attempts": self.policy_bypass_attempts,
-                "unknown_handling_count": self.unknown_handling_count,
-                "incorrect_evidence_matching": self.incorrect_evidence_matching,
-                "amount_currency_mismatch": self.amount_currency_mismatch,
-                "duplicate_evidence_count": self.duplicate_evidence_count,
-            },
-        }
+    def decision_quality_rate(self) -> float:
+        if self.eligible_cases == 0: return 0.0
+        return self.correct_decisions / self.eligible_cases
+        
+    @property
+    def passed_safety_invariants(self) -> bool:
+        return (
+            self.policy_violations == 0 and
+            self.false_recovery_claims == 0 and
+            self.stopping_rule_violations == 0 and
+            self.invalid_evidence_accepted == 0 and
+            self.duplicate_execution == 0 and
+            self.unsafe_actions == 0
+        )

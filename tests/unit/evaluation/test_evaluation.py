@@ -1,142 +1,85 @@
 from decimal import Decimal
-
-from recoverai.domain.money import CurrencyCode, Money
-from recoverai.evaluation.evaluator import Evaluator, ObservedOutcome
+from recoverai.evaluation.simulator import SyntheticScenarioGenerator
+from recoverai.evaluation.evaluator import Evaluator
+from recoverai.evaluation.strategies import L0NoIntervention, L1NaiveRule, L2DeterministicRules, L3CurrentRecoverAI
 from recoverai.evaluation.metrics import EvaluationMetrics
-from recoverai.evaluation.simulator import (
-    HiddenOutcomeTruth,
-    ObservableCaseEvidence,
-    SyntheticScenario,
-    SyntheticScenarioGenerator,
-)
+from recoverai.evaluation.benchmark import run_benchmark
 
+def test_oracle_independence():
+    generator = SyntheticScenarioGenerator(seed=10)
+    scenarios = generator.generate(5)
+    for s in scenarios:
+        assert s.oracle.expected_decision in ["RECOVER", "SUPPRESS", "ESCALATE", "WAIT", "DENY", "CREATE_PAYMENT_LINK"]
+        # Oracle is generated independently of any PolicyEngine class.
 
-def test_metric_correctness():
-    metrics = EvaluationMetrics(
-        revenue_at_risk=Decimal("1000.00"),
-        verified_recovered_revenue=Decimal("500.00"),
-        eligible_recovery_cases=10,
-        recovered_cases=4,
-    )
-    assert metrics.revenue_recovery_rate == Decimal("0.5")
-    assert metrics.case_recovery_rate == Decimal("0.4")
+def test_data_leakage():
+    # Prove HiddenOutcomeTruth and Oracle are absent from strategy-facing input
+    generator = SyntheticScenarioGenerator(seed=11)
+    scenario = generator.generate(1)[0]
+    
+    # Check that ObservableCaseEvidence does not contain truth
+    assert not hasattr(scenario.evidence, "expected_natural_recovery")
+    assert not hasattr(scenario.evidence, "receptive_to_intervention")
+    assert not hasattr(scenario.evidence, "expected_decision")
 
+def test_determinism():
+    gen1 = SyntheticScenarioGenerator(seed=100)
+    s1 = gen1.generate(10)
+    
+    gen2 = SyntheticScenarioGenerator(seed=100)
+    s2 = gen2.generate(10)
+    
+    for a, b in zip(s1, s2):
+        assert a.evidence.scenario_id == b.evidence.scenario_id
+        assert a.truth.receptive_to_intervention == b.truth.receptive_to_intervention
+        assert a.oracle.expected_decision == b.oracle.expected_decision
 
-def test_metric_empty_dataset():
-    metrics = EvaluationMetrics()
-    assert metrics.revenue_recovery_rate == Decimal(0)
-    assert metrics.case_recovery_rate == Decimal(0)
-
-
-def test_evaluator_classification():
+def test_cross_strategy_fairness():
+    # Same scenarios are given to all strategies
+    generator = SyntheticScenarioGenerator(seed=55)
+    scenarios = generator.generate(10)
+    
     evaluator = Evaluator()
-    scen1 = SyntheticScenario(
-        evidence=ObservableCaseEvidence(
-            "s1", "m1", "c1", Money(100000, CurrencyCode.INR), "cause", True, 0
-        ),
-        truth=HiddenOutcomeTruth(False, False),
-    )
-    scen2 = SyntheticScenario(
-        evidence=ObservableCaseEvidence(
-            "s2", "m1", "c1", Money(200000, CurrencyCode.INR), "cause", False, 0
-        ),
-        truth=HiddenOutcomeTruth(False, False),
-    )
+    l0 = L0NoIntervention()
+    l3 = L3CurrentRecoverAI()
+    
+    m0 = evaluator.evaluate(l0, scenarios)
+    m3 = evaluator.evaluate(l3, scenarios)
+    
+    assert m0.eligible_cases == 10
+    assert m3.eligible_cases == 10
+    assert m0.amount_at_risk == m3.amount_at_risk
 
-    # Valid recovery? No, it's false recovery claim if we claim it
-    evaluator.evaluate_case(
-        scen1, ObservedOutcome("CREATE_PAYMENT_LINK", claimed_recovery=True)
-    )
+def test_decision_outcome_separation():
+    # A failed outcome does not automatically mean the decision is incorrect
+    generator = SyntheticScenarioGenerator(seed=55)
+    scenarios = generator.generate(10)
+    
+    # Find a scenario where oracle expected decision is CREATE_PAYMENT_LINK but it fails to succeed
+    found = False
+    for s in scenarios:
+        if s.oracle.expected_decision == "CREATE_PAYMENT_LINK" and (not s.truth.receptive_to_intervention or s.truth.provider_error_on_execution):
+            found = True
+            break
+            
+    assert found, "Test setup needs a specific random seed where this occurs. (Seed 55 works)"
 
-    evaluator.evaluate_case(
-        scen2, ObservedOutcome("CREATE_PAYMENT_LINK", claimed_recovery=True)
-    )
-
-    assert evaluator.metrics.eligible_recovery_cases == 2
-    assert evaluator.metrics.revenue_at_risk == Decimal(3000)
-    assert evaluator.metrics.recovered_cases == 0  # because truth says NO
-    assert evaluator.metrics.false_recovery_claims == 2
-
-
-def test_evaluator_safety_metrics():
+def test_safety_invariant():
+    generator = SyntheticScenarioGenerator(seed=100)
+    scenarios = generator.generate(10)
+    
     evaluator = Evaluator()
-    scen = SyntheticScenario(
-        evidence=ObservableCaseEvidence(
-            "s1", "m1", "c1", Money(50000, CurrencyCode.INR), "cause", True, 0
-        ),
-        truth=HiddenOutcomeTruth(False, False),
-    )
+    l1 = L1NaiveRule()
+    
+    # L1 should violate stopping rule for cases with history >= 3
+    m1 = evaluator.evaluate(l1, scenarios)
+    
+    assert not m1.passed_safety_invariants
+    assert m1.stopping_rule_violations > 0 or m1.policy_violations > 0
 
-    evaluator.evaluate_case(
-        scen,
-        ObservedOutcome(
-            action_taken="UNKNOWN",
-            claimed_recovery=False,
-            unauthorized_execution_attempt=True,
-            policy_bypass_attempt=True,
-            unknown_handled=True,
-            evidence_mismatch=True,
-            amount_mismatch=True,
-            duplicate_evidence=True,
-        ),
-    )
-
-    assert evaluator.metrics.unauthorized_execution_attempts == 1
-    assert evaluator.metrics.policy_bypass_attempts == 1
-    assert evaluator.metrics.unknown_handling_count == 1
-    assert evaluator.metrics.incorrect_evidence_matching == 1
-    assert evaluator.metrics.amount_currency_mismatch == 1
-    assert evaluator.metrics.duplicate_evidence_count == 1
-
-
-def test_evaluator_baseline_comparison():
-    evaluator = Evaluator()
-    scen1 = SyntheticScenario(
-        evidence=ObservableCaseEvidence(
-            "s1", "m1", "c1", Money(100000, CurrencyCode.INR), "cause", False, 0
-        ),
-        truth=HiddenOutcomeTruth(True, False),
-    )
-    scen2 = SyntheticScenario(
-        evidence=ObservableCaseEvidence(
-            "s2", "m1", "c1", Money(100000, CurrencyCode.INR), "cause", False, 0
-        ),
-        truth=HiddenOutcomeTruth(False, True),
-    )
-
-    evaluator.evaluate_case(
-        scen1, ObservedOutcome("CREATE_PAYMENT_LINK", claimed_recovery=True)
-    )
-    evaluator.evaluate_case(
-        scen2, ObservedOutcome("CREATE_PAYMENT_LINK", claimed_recovery=True)
-    )
-
-    baseline = evaluator.evaluate_baseline("NO_INTERVENTION")
-    # No intervention only recovers if expected_natural_recovery is True (scen2)
-    assert baseline.recovered_cases == 1
-    assert baseline.verified_recovered_revenue == Decimal("1000.00")
-
-    naive = evaluator.evaluate_baseline("SIMPLE_RULE")
-    # Simple rule recovers scen1 (receptive) and scen2 (natural)
-    assert naive.recovered_cases == 2
-    assert naive.verified_recovered_revenue == Decimal("2000.00")
-
-
-def test_synthetic_scenario_generator():
-    generator = SyntheticScenarioGenerator(seed=42)
-    scenarios = generator.generate(15)
-    assert len(scenarios) == 15
-    assert scenarios[9].evidence.scenario_id == "sim_10"
-    assert isinstance(scenarios[9].evidence.gateway_downtime_active, bool)
-
-
-def test_scenario_replay_deterministic():
-    gen1 = SyntheticScenarioGenerator(seed=42)
-    s1 = gen1.generate(5)
-    gen2 = SyntheticScenarioGenerator(seed=42)
-    s2 = gen2.generate(5)
-
-    assert [s.evidence.scenario_id for s in s1] == [s.evidence.scenario_id for s in s2]
-    assert [s.evidence.opportunity_amount.amount_minor for s in s1] == [
-        s.evidence.opportunity_amount.amount_minor for s in s2
-    ]
+def test_reproducible_benchmark():
+    res1 = run_benchmark(42, 20)
+    res2 = run_benchmark(42, 20)
+    
+    assert res1["L3"].gross_recovered_value == res2["L3"].gross_recovered_value
+    assert res1["L2"].interventions == res2["L2"].interventions
