@@ -375,7 +375,7 @@ function SelectedExecutionPanel({ caseId, onClose, onRefresh }: { caseId: string
 
           <button 
             onClick={handleAbort}
-            disabled={aborting || isExecuting || isCompleted || !['PROPOSED', 'AUTHORIZED'].includes(c.action_status || '')}
+            disabled={aborting || isExecuting || isCompleted || !['PROPOSED', 'AUTHORIZED', 'ESCALATED'].includes(c.action_status || '')}
             className={`w-full px-4 py-2 text-xs font-medium rounded transition-colors focus:outline-none disabled:opacity-50 ${
               isExecuting || isCompleted 
                 ? 'bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text-muted)]' 

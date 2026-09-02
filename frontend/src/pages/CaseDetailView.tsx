@@ -357,12 +357,18 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
               </div>
 
               <div className="flex items-center gap-3 mt-6 lg:ml-8 flex-wrap">
+
                 <button 
-                  className="px-4 py-2 text-sm font-medium border border-[var(--color-border-subtle)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-surface-secondary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                >
-                  Review Case
-                </button>
-                <button 
+                  onClick={async () => {
+                    if (confirm("Are you sure you want to reject this recovery action?")) {
+                      try {
+                        await apiClient.abortExecution(caseData.case_id);
+                        window.location.reload();
+                      } catch(e) {
+                        alert("Failed to reject action.");
+                      }
+                    }
+                  }}
                   className="px-4 py-2 text-sm font-medium border border-[var(--color-border-subtle)] rounded hover:bg-[var(--color-surface-secondary)] text-[var(--color-warning)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-warning)]"
                 >
                   Reject

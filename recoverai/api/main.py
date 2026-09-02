@@ -286,8 +286,8 @@ def get_case(case_id: str):
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        if case.status.value == "CLOSED":
-            raise HTTPException(status_code=400, detail="INVALID_STATE: Case is closed")
+
+
 
         events = [event_repo.get(eid) for eid in case.source_event_ids]
 
@@ -467,9 +467,11 @@ async def analyze_case(case_id: str):
             raise HTTPException(status_code=400, detail="Invalid case ID")
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
-
         if case.status.value == "CLOSED":
             raise HTTPException(status_code=400, detail="INVALID_STATE: Case is closed")
+
+
+
 
         events = [event_repo.get(eid) for eid in case.source_event_ids]
 
@@ -1009,6 +1011,11 @@ def get_analytics():
     dependencies=[Depends(require_frontend_key)],
 )
 def approve_action(case_id: str, action_id: str):
+    with container.tm.transaction() as conn:
+        from recoverai.persistence.repositories.case import RecoveryCaseRepository
+        case = RecoveryCaseRepository(conn).get(RecoveryCaseId(case_id))
+        if case and case.status.value == "CLOSED":
+            raise HTTPException(status_code=400, detail="INVALID_STATE: Case is closed")
     try:
         result = container.mcp_registry.execute(
             "resume_recovery_action", {"case_id": case_id, "action_id": action_id}
@@ -1029,16 +1036,29 @@ def abort_execution(case_id: str):
         from recoverai.persistence.repositories.action import RecoveryActionRepository
 
         action_repo = RecoveryActionRepository(conn)
-        actions = action_repo.get_by_case(case_id)  # type: ignore
+        actions = action_repo.get_by_case(RecoveryCaseId(case_id))
         if not actions:
             raise HTTPException(status_code=404, detail="No action found to abort")
 
         latest_action = max(actions, key=lambda x: x.requested_at)
 
-        if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED]:
+        if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED, ActionStatus.ESCALATED]:
             latest_action.status = ActionStatus.CANCELLED
             action_repo.update(latest_action)  # type: ignore
-            conn.commit()
+            
+            from recoverai.persistence.repositories.audit import AuditRepository
+            from recoverai.domain.audit import AuditEvent, AuditEventType, AuditActor, AuditActorType
+            
+            audit_repo = AuditRepository(conn)
+            audit_repo.append(
+                AuditEvent(
+                    event_type=AuditEventType.ACTION_CANCELLED,
+                    actor=AuditActor(type=AuditActorType.HUMAN, id="operator"),
+                    case_id=latest_action.case_id,
+                    action_id=latest_action.action_id,
+                    metadata={"reason": "User aborted execution"}
+                )
+            )
             return {"status": "success", "message": "Execution aborted"}
         else:
             raise HTTPException(

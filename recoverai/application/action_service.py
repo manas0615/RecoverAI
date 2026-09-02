@@ -82,9 +82,13 @@ class RecoveryActionService:
                 and decision.decision == PolicyDecisionValue.ESCALATE
             ):
                 # Human has approved the escalation, override the policy engine's ESCALATE decision
-                decision.decision = PolicyDecisionValue.APPROVE  # type: ignore
-                decision.matched_rules.append("HUMAN_APPROVAL_OVERRIDE")
-                decision.reason_codes.append("HUMAN_APPROVAL_OVERRIDE")
+                from dataclasses import replace
+                decision = replace(
+                    decision,
+                    decision=PolicyDecisionValue.APPROVE,
+                    matched_rules=decision.matched_rules + ["HUMAN_APPROVAL_OVERRIDE"],
+                    reason_codes=decision.reason_codes + ["HUMAN_APPROVAL_OVERRIDE"]
+                )
                 audit_repo.append(
                     AuditEvent(
                         event_type=AuditEventType.POLICY_DECISION_CREATED,

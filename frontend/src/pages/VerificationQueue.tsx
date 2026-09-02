@@ -428,9 +428,6 @@ function SelectedVerificationPanel({ caseId }: { caseId: string }) {
 
       {/* Actions */}
       <div className="p-4 bg-[var(--color-bg)] flex gap-3">
-        <button className="flex-1 px-4 py-2 text-xs font-medium bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded hover:bg-[var(--color-surface-secondary)] transition-colors focus:outline-none">
-          View Raw API
-        </button>
         <button 
           disabled={!isVerified}
           className={`flex-1 px-4 py-2 text-xs font-medium rounded transition-colors focus:outline-none disabled:opacity-50 ${

@@ -409,7 +409,7 @@ def seed_data():
             action_id=RecoveryActionId("act_ESCALATION"),
             case_id=case_e.case_id,
             action_type=ActionType.CREATE_PAYMENT_LINK,
-            status=ActionStatus.PROPOSED,
+            status=ActionStatus.ESCALATED,
             requested_at=t_e,
         )
 
