@@ -210,7 +210,7 @@ class RecoveryActionService:
             if fetched_action:
                 action = fetched_action
 
-            if result.result_type == RazorpayExecutionResultType.SUCCESSFUL_REQUEST:
+            if result.result_type in (RazorpayExecutionResultType.SUCCESSFUL_REQUEST, RazorpayExecutionResultType.PROVIDER_REJECTED):
                 audit_repo.append(
                     AuditEvent(
                         event_type=AuditEventType.RAZORPAY_REQUEST_COMPLETED,
