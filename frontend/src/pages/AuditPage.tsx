@@ -325,7 +325,7 @@ function SelectedEventPanel({ event, allEvents }: { event: any, allEvents: any[]
         <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-4">LIFECYCLE TRACE</h3>
         
         <div className="space-y-4 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[var(--color-border-subtle)]">
-          {allEvents.filter(e => e.case_id === event.case_id).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map((e, i) => (
+          {allEvents.filter(e => e.case_id === event.case_id).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map((e) => (
             <div key={e.audit_event_id} className="flex items-center gap-3 relative z-10">
               <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${e.audit_event_id === event.audit_event_id ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}`}>
                 {e.audit_event_id === event.audit_event_id && <div className="w-1.5 h-1.5 bg-[var(--color-bg)] rounded-full"></div>}

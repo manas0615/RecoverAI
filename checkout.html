@@ -1,0 +1,38 @@
+<!DOCTYPE html><html><head>
+    <title>Razorpay Test</title>
+<script src="https://cdn.razorpay.com/static/cx/razorpay-risk-detection/bundle.js" async=""></script><meta id="__rzp-meta" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><meta id="__rzp-meta" name="theme-color" content="#3399cc"></head>
+<body style="overflow: hidden; contain: initial;">
+    <button id="rzp-button1">Pay</button>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script><div class="razorpay-container" style="z-index: 2147483647; position: fixed; top: 0px; display: block; left: 0px; height: 100%; width: 100%; max-height: 100dvh; backface-visibility: hidden; overflow-y: visible;"><style>@keyframes rzp-rot{to{transform: rotate(360deg);}}@-webkit-keyframes rzp-rot{to{-webkit-transform: rotate(360deg);}} .razorpay-container > iframe {min-height: 100%!important;} .razorpay-checkout-frame.razorpay-mobile-layout{max-width:450px !important;height:90vh !important;min-height:0 !important;max-height:900px !important;position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;border-radius:16px !important;overflow:hidden !important;}@media(max-width:450px){.razorpay-checkout-frame.razorpay-mobile-layout{max-width:100% !important;width:100% !important;height:100% !important;max-height:100% !important;top:0 !important;left:0 !important;transform:none !important;border-radius:0 !important;}}</style><div class="razorpay-backdrop" style="min-height: 100%; transition: 0.3s ease-out; position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6);"><span style="text-decoration: none; background: rgb(214, 68, 68); border: 1px dashed white; padding: 3px; opacity: 1; transform: rotate(45deg); transition: opacity 0.3s ease-in; font-family: lato, ubuntu, helvetica, sans-serif; color: white; position: absolute; width: 200px; text-align: center; right: -50px; top: 50px;">Test Mode</span></div><iframe allowtransparency="true" frameborder="0" width="100%" height="100%" src="https://api.razorpay.com/v1/checkout/public?traffic_env=production&amp;build=0810d7c839f14fa3f81788e400c207f92b63af42&amp;build_v1=755bf4b2e2419bf0ffc2bac7c1fd6e126753d61d&amp;checkout_v2=1&amp;new_session=1&amp;unified_session_id=TXCnoOGMj2v5vB" class="razorpay-checkout-frame" allow="otp-credentials; payment; clipboard-write; publickey-credentials-get https://api.razorpay.com; publickey-credentials-create 'self' https://api.razorpay.com; web-share; camera *; local-network-access 'none'; loopback-network 'none';" style="opacity: 1; height: 100%; position: relative; background: none; display: block; border: 0px transparent; margin: 0px; padding: 0px; z-index: 2; width: 100%;"></iframe></div>
+    <script>
+        var options = {
+            "key": "rzp_test_TURMnQDelKdhAj",
+            "amount": "50000",
+            "currency": "INR",
+            "name": "Acme Corp",
+            "description": "Test Transaction",
+            "order_id": "order_TXCkP9hvs8qqfk",
+            "handler": function (response){
+                console.log(response);
+            },
+            "prefill": {
+                "name": "Gaurav Kumar",
+                "email": "gaurav.kumar@example.com",
+                "contact": "9000090000"
+            },
+            "theme": {
+                "color": "#3399cc"
+            }
+        };
+        var rzp1 = new Razorpay(options);
+        rzp1.on('payment.failed', function (response){
+                console.log("Failed", response);
+        });
+        document.getElementById('rzp-button1').onclick = function(e){
+            rzp1.open();
+            e.preventDefault();
+        }
+    </script>
+
+
+</body></html>

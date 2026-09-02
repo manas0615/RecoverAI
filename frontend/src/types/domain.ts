@@ -24,6 +24,7 @@ export interface Case {
   action_status?: string;
   provider?: string;
   external_reference?: string;
+  workflow_execution_reference?: string;
   verification_state?: string;
   verification_source?: string;
   verification_checked_at?: string;

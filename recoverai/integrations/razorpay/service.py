@@ -34,6 +34,8 @@ class RazorpayExecutionService:
         # 3. Update the action with the result
         if result.provider_reference:
             action.external_reference = result.provider_reference
+        if result.short_url:
+            action.workflow_execution_reference = result.short_url
 
         now = datetime.now(UTC)
 
