@@ -1,6 +1,3 @@
-# `docs/14_EVALUATION.md`
-
-````markdown
 # RecoverAI — Evaluation
 
 **Project:** RecoverAI  
