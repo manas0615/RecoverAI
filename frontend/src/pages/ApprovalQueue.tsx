@@ -290,7 +290,7 @@ function SelectedApprovalPanel({ caseId, onClose, onApproved }: { caseId: string
             </div>
             {c.confidence && (
               <span className="text-[10px] font-bold bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-2 py-0.5 rounded">
-                {Math.round(c.confidence * 100)}% CONFIDENCE
+                {Math.round(c.confidence * 100)}% EXPECTED RECOVERY PROBABILITY
               </span>
             )}
           </div>

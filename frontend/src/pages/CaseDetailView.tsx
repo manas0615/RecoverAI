@@ -209,19 +209,28 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
               <>
                 <div className="flex justify-between items-end mb-4">
                   <div>
+                    <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">EXPECTED RECOVERY PROBABILITY</div>
+                    <div className="font-bold text-[var(--color-success)] text-xl">
+                      {caseData.confidence ? `${Math.round(caseData.confidence * 100)}%` : 'N/A'}
+                    </div>
+                  </div>
+                  {caseData.confidence && (
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">EXPECTED RECOVERY VALUE</div>
+                      <div className="font-bold text-[var(--color-success)] text-xl flex items-center justify-end">
+                        <MoneyValue amountMinor={Math.round(caseData.amount_minor * caseData.confidence)} currency={caseData.currency} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-end mb-4">
+                  <div>
                     <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">RECOMMENDED ACTION</div>
                     <div className="font-mono text-[var(--color-primary)] text-lg">
                       {caseData.recommendation || 'N/A'}
                     </div>
                   </div>
-                  {caseData.confidence && (
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-2">CONFIDENCE</div>
-                      <div className="font-bold text-[var(--color-success)] text-xl">
-                        {Math.round(caseData.confidence * 100)}%
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="bg-[var(--color-bg)] p-4 rounded-lg border border-[var(--color-border-subtle)] mb-4">
@@ -392,43 +401,6 @@ export function CaseDetailView({ caseData, timeline, onAnalyze, isAnalyzing, ana
           <section className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
             <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)] mb-6">Recovery Case Timeline</h2>
             <RecoveryJourney currentState={caseData.workflow_state || ''} timeline={caseData.timeline || []} />
-          </section>
-
-          {/* System Context */}
-          <section className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-            <h2 className="text-sm font-bold font-display uppercase tracking-wider text-[var(--color-text-primary)] mb-6">SYSTEM CONTEXT</h2>
-            <div className="space-y-4 text-sm">
-              <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">
-                <span className="text-[var(--color-text-secondary)]">Gemini LLM</span>
-                <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Configured
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">
-                <span className="text-[var(--color-text-secondary)]">Policy Engine</span>
-                <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Operational
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">
-                <span className="text-[var(--color-text-secondary)]">n8n Workflow</span>
-                <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Connected
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-[var(--color-border-subtle)] pb-2">
-                <span className="text-[var(--color-text-secondary)]">Razorpay Test</span>
-                <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Connected
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[var(--color-text-secondary)]">Verification</span>
-                <span className="flex items-center gap-1.5 text-[var(--color-success)] text-xs font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></div> Operational
-                </span>
-              </div>
-            </div>
           </section>
 
           {/* Recent Activity */}

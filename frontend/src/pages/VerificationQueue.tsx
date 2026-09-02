@@ -322,7 +322,7 @@ function SelectedVerificationPanel({ caseId }: { caseId: string }) {
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-1.5">
             <Shield className={`w-4 h-4 ${isVerified ? 'text-[var(--color-success)]' : isFailed ? 'text-red-400' : 'text-[var(--color-text-muted)]'}`} />
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">VERIFICATIONENGINE (P09)</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">INDEPENDENT VERIFICATION</h3>
           </div>
           {isVerified && <span className="text-[10px] font-bold text-[var(--color-success)] tracking-wider">100% MATCH</span>}
         </div>
@@ -330,23 +330,23 @@ function SelectedVerificationPanel({ caseId }: { caseId: string }) {
         <div className="space-y-2 text-xs mb-4">
           <div className="flex items-center gap-2">
             {refMatch ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)]" /> : isPending ? <RefreshCw className="w-3.5 h-3.5 text-[var(--color-warning)] animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-            <span className={refMatch ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}>Provider Reference Match</span>
+            <span className={refMatch ? 'text-[var(--color-text-primary)] font-bold' : 'text-[var(--color-text-muted)]'}>Provider Reference Match</span>
           </div>
           <div className="flex items-center gap-2">
             {isVerified ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)]" /> : isPending ? <RefreshCw className="w-3.5 h-3.5 text-[var(--color-warning)] animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-            <span className={isVerified ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}>Status 'SUCCESS' Confirmed</span>
+            <span className={isVerified ? 'text-[var(--color-text-primary)] font-bold' : 'text-[var(--color-text-muted)]'}>Status Confirmed</span>
           </div>
           <div className="flex items-center gap-2">
             {amountMatch ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)]" /> : isPending ? <RefreshCw className="w-3.5 h-3.5 text-[var(--color-warning)] animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-            <span className={amountMatch ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}>Amount Exact Match ({(expectedAmount||0)/100})</span>
+            <span className={amountMatch ? 'text-[var(--color-text-primary)] font-bold' : 'text-[var(--color-text-muted)]'}>Amount Match</span>
           </div>
           <div className="flex items-center gap-2">
             {currencyMatch ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)]" /> : isPending ? <RefreshCw className="w-3.5 h-3.5 text-[var(--color-warning)] animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-            <span className={currencyMatch ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}>Currency Match ({expectedCurrency})</span>
+            <span className={currencyMatch ? 'text-[var(--color-text-primary)] font-bold' : 'text-[var(--color-text-muted)]'}>Currency Match</span>
           </div>
           <div className="flex items-center gap-2">
             {isVerified ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)]" /> : isPending ? <RefreshCw className="w-3.5 h-3.5 text-[var(--color-warning)] animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-            <span className={isVerified ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}>Event Type Validated</span>
+            <span className={isVerified ? 'text-[var(--color-text-primary)] font-bold' : 'text-[var(--color-text-muted)]'}>Event Type Valid</span>
           </div>
         </div>
 

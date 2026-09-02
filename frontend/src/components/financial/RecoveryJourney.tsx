@@ -13,18 +13,18 @@ export function RecoveryJourney({ timeline }: RecoveryJourneyProps) {
 
   const formatEventName = (type: string) => {
     const mapping: Record<string, string> = {
-      'CASE_CREATED': 'Case Detected',
-      'WEBHOOK_RECEIVED': 'Evidence Collected',
-      'ANALYSIS_STARTED': 'Analysis Started',
+      'CASE_CREATED': 'Detected',
+      'WEBHOOK_RECEIVED': 'Provider Evidence',
+      'ANALYSIS_STARTED': 'Analyzed',
       'LLM_RECOMMENDATION_CREATED': 'Recommendation Generated',
-      'POLICY_DECISION_CREATED': 'Policy Check',
-      'ACTION_AUTHORIZED': 'Human Approval',
-      'ACTION_EXECUTING': 'Execution Queued',
+      'POLICY_DECISION_CREATED': 'Policy Decision',
+      'ACTION_AUTHORIZED': 'Authorized',
+      'ACTION_EXECUTING': 'Executed',
       'RAZORPAY_REQUEST_COMPLETED': 'Provider Response',
-      'VERIFICATION_COMPLETED': 'Recovery Outcome',
+      'VERIFICATION_COMPLETED': 'Independently Verified',
       'VERIFICATION_STARTED': 'Verification Started',
-      'CASE_ESCALATED': 'Escalation Recorded',
-      'RECOVERY_CONFIRMED': 'Recovery Confirmed'
+      'CASE_ESCALATED': 'Escalated',
+      'RECOVERY_CONFIRMED': 'Closed'
     };
     return mapping[type] || type.replace(/_/g, ' ').toLowerCase();
   };

@@ -58,7 +58,7 @@ export function Dashboard() {
   const priorityCase = useMemo(() => {
     if (!data) return null;
     // Prefer cases needing approval, then any open case
-    return data.cases.find(c => c.workflow_state === 'APPROVAL_REQUIRED') || data.cases.find(c => c.status === 'OPEN') || data.cases[0];
+    return data.cases.find(c => c.workflow_state === 'WAITING_APPROVAL') || data.cases.find(c => c.status === 'OPEN') || data.cases[0];
   }, [data]);
 
   const { data: priorityCaseData, refetch: refetchPriority } = useCaseDetails(priorityCase?.case_id);
@@ -91,25 +91,26 @@ export function Dashboard() {
     const recEvent = timeline.slice().reverse().find(e => e.event_type === 'ACTION_PROPOSED');
     let recommendation = "N/A";
     let reasoning = "No AI analysis available.";
-    let confidence = 0;
+    let confidence = caseData.confidence || 0;
     
     if (recEvent && recEvent.metadata) {
       recommendation = recEvent.metadata.recommended_action || "UNKNOWN";
       reasoning = recEvent.metadata.reasoning || reasoning;
-      confidence = 87; // Mocked or derived if available
     }
 
-    const needsApproval = caseData.workflow_state === 'APPROVAL_REQUIRED' || caseData.workflow_state === 'POLICY_REVIEW';
+    const needsApproval = caseData.workflow_state === 'WAITING_APPROVAL';
     
     return {
-      id: caseData.case_id.substring(0,8).toUpperCase(),
+      id: caseData.case_id,
+      shortId: `RC-${caseData.case_id.substring(0,4)}`,
       amount: caseData.amount_minor,
       currency: caseData.currency,
       needsApproval,
       recommendation,
       reasoning,
       confidence,
-      workflow_state: caseData.workflow_state
+      workflow_state: caseData.workflow_state,
+      failure_code: caseData.failure_code
     };
   };
 
@@ -160,11 +161,14 @@ export function Dashboard() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-[var(--color-text-secondary)] font-mono">Case ID #{pd.id}</div>
+                  <div className="text-sm text-[var(--color-text-secondary)] font-mono">Case ID #{pd.shortId}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--color-text-secondary)] bg-[var(--color-neutral-bg)] px-2 py-0.5 rounded-full">{pd.failure_code || 'UNKNOWN'}</span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-[var(--color-text-secondary)]">Amount at Risk</div>
-                  <div className="text-xl font-bold font-mono text-[var(--color-text-primary)]">
+                  <div className="text-2xl font-bold font-display text-[var(--color-text-primary)]">
                     <MoneyValue amountMinor={pd.amount} currency={pd.currency} /> <span className="text-sm text-[var(--color-text-muted)] ml-1">{pd.currency}</span>
                   </div>
                 </div>
@@ -249,26 +253,6 @@ export function Dashboard() {
             )}
           </div>
 
-          <div className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
-            <h2 className="text-lg font-bold font-display text-[var(--color-text-primary)] mb-4">System Health</h2>
-            <div className="space-y-3">
-              {[
-                { name: 'Gemini LLM', status: 'Available', color: 'text-[var(--color-success)]' },
-                { name: 'Policy Engine', status: 'Operational', color: 'text-[var(--color-success)]' },
-                { name: 'n8n Workflow', status: 'Connected', color: 'text-[var(--color-success)]' },
-                { name: 'Razorpay (Test)', status: 'Connected', color: 'text-[var(--color-success)]' },
-                { name: 'Verification', status: 'Operational', color: 'text-[var(--color-success)]' }
-              ].map(sys => (
-                <div key={sys.name} className="flex justify-between items-center py-2 border-b border-[var(--color-border-subtle)] last:border-0">
-                  <span className="text-sm text-[var(--color-text-secondary)]">{sys.name}</span>
-                  <span className={`text-xs font-mono ${sys.color} flex items-center gap-1.5`}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                    {sys.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

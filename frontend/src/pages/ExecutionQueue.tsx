@@ -27,14 +27,14 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function formatExecutionStatus(status?: string) {
+function formatExecutionStatus(status?: string, failureReason?: string | null) {
   if (!status) return 'Not Executed';
   switch (status) {
-    case 'AUTHORIZED': return 'Ready';
+    case 'AUTHORIZED': return 'Authorized';
     case 'EXECUTING': return 'Executing';
-    case 'VERIFICATION_PENDING': return 'Verification Pending';
+    case 'VERIFICATION_PENDING': return 'Recovery Action Executed - Verification Pending';
     case 'VERIFIED_SUCCESS': return 'Completed';
-    case 'VERIFIED_FAILURE': return 'Failed';
+    case 'VERIFIED_FAILURE': return failureReason ? 'Provider Rejected' : 'Failed';
     case 'CANCELLED': return 'Cancelled';
     case 'ESCALATED': return 'Escalated';
     case 'PROPOSED': return 'Not Executed';
@@ -181,7 +181,7 @@ export function ExecutionQueue() {
                             'text-[var(--color-text-primary)]'
                           }`}>
                             {c.action_status === 'EXECUTING' && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                            {formatExecutionStatus(c.action_status)}
+                            {formatExecutionStatus(c.action_status, c.failure_reason)}
                           </div>
                         </td>
                       </tr>
@@ -269,7 +269,7 @@ function SelectedExecutionPanel({ caseId, onClose, onRefresh }: { caseId: string
             {isExecuting && <div className="w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />}
             <h2 className="font-mono font-bold text-[var(--color-text-primary)] text-lg">{shortId}</h2>
             <div className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
-              {isExecuting ? 'EXECUTING' : formatExecutionStatus(c.action_status)}
+              {isExecuting ? 'EXECUTING' : formatExecutionStatus(c.action_status, c.failure_reason)}
             </div>
           </div>
           <div className="grid grid-cols-[80px_1fr] gap-y-2 text-sm">
