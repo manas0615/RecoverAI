@@ -68,7 +68,7 @@ graph TD
     WH --> Verify[Independent Verification]
     Verify --> Audit[Audit & Analytics]
     Policy -->|ESCALATE| n8n[n8n Orchestration]
-`
+```
 
 ---
 
@@ -167,27 +167,27 @@ We evaluated RecoverAI's fallback behavior using a 1,500-scenario synthetic benc
 ## Quick Start
 
 ### 1. Configure Environment
-`ash
+```bash
 cp .env.example .env
 cp frontend/.env.example frontend/.env
-`
+```
 *(Add your Gemini API key and Razorpay Test Mode credentials. Never commit .env)*
 
 ### 2. Startup
-`powershell
+```powershell
 .\scripts\start-all.ps1
-`
+```
 
 ### 3. Reset Demo Data
-`powershell
+```powershell
 uv run python scripts/seed_demo_data.py
-`
+```
 
 ---
 
 ## Repository Structure
 
-`	ext
+```text
 RecoverAI/
 ├── recoverai/       # Core backend domain, services, and intelligence
 ├── frontend/        # React operator console
@@ -195,7 +195,7 @@ RecoverAI/
 ├── n8n/             # Docker compose for orchestration
 ├── docs/            # Deeper technical documentation
 └── scripts/         # Startup and seeding utilities
-`
+```
 
 ---
 
