@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # 🚀 RecoverAI
 
@@ -249,7 +249,7 @@ uv run python scripts/seed_demo_data.py
 - [**Engineering Design**](DESIGN.md)
 - [**Architecture Topology**](docs/ARCHITECTURE.md)
 - [**Closed-Loop Recovery**](docs/CLOSED_LOOP.md)
-- [**Security & Trust Boundary**](docs/SECURITY.md)
+- [**Security & Trust Boundary**](docs/security.md)
 - [**Failure Recovery Mechanisms**](docs/FAILURE_RECOVERY.md)
 - [**Razorpay Integration**](docs/RAZORPAY_INTEGRATION.md)
 - [**Evaluation Methodology**](docs/EVALUATION.md)
