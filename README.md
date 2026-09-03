@@ -1,4 +1,4 @@
-﻿# RecoverAI
+# RecoverAI
 
 ### AI Revenue Recovery Agent — Razorpay Buildathon 2026 · Track 03
 
@@ -80,23 +80,27 @@ When configured LLM providers fail, RecoverAI falls back to a complete determini
 ## Architecture
 
 ```mermaid
-flowchart LR
-    RZ["Razorpay Webhook"] --> ING["Ingestion + HMAC Verification"]
-    ING --> CASE["Recovery Case"]
+flowchart TB
+    RZ["Razorpay Webhook"]
+    ING["Ingestion + HMAC Verification"]
+    CASE["Recovery Case"]
+
+    RZ --> ING --> CASE
+
     CASE --> AI["Gemini Intelligence<br/>Diagnose + Propose"]
     AI --> PLAN["Intervention Proposal"]
-    PLAN --> POLICY["Deterministic PolicyEngine"]
+    PLAN --> POLICY["Deterministic Policy Engine"]
 
     POLICY -->|APPROVE| EXEC["RecoveryActionService"]
     POLICY -->|ESCALATE| HUMAN["Human / n8n Approval"]
     POLICY -->|DENY / SUPPRESS / WAIT| HALT["Safe Halt"]
 
-    EXEC -->|Payment Link| RZAPI["Razorpay Test Mode API"]
-    RZAPI -->|payment_link.paid| WH["Provider Webhook"]
+    EXEC --> RZAPI["Razorpay Test Mode API"]
+    RZAPI --> WH["payment_link.paid"]
     WH --> VERIFY["Independent Verification"]
 
-    VERIFY -->|Match| SUCCESS["Verified Recovery"]
-    VERIFY -->|Mismatch / Missing Evidence| UNKNOWN["UNKNOWN State"]
+    VERIFY -->|Verified| SUCCESS["Verified Recovery"]
+    VERIFY -->|Mismatch / Missing Evidence| UNKNOWN["UNKNOWN"]
 
     SUCCESS --> AUDIT["Immutable Audit Trail"]
     UNKNOWN --> AUDIT

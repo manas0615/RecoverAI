@@ -144,12 +144,12 @@ async def lifespan(app: FastAPI):
 
 
 class RateLimiter:
-    def __init__(self, calls: int, period: int):
-        self.calls = calls
+    def __init__(self, period: int):
         self.period = timedelta(seconds=period)
         self.history = {}
 
     def __call__(self, request: Request):
+        from recoverai.config import settings
         client_ip = request.client.host if request.client else "127.0.0.1"
         now = datetime.now(UTC)
         
@@ -158,7 +158,7 @@ class RateLimiter:
         else:
             self.history[client_ip] = []
             
-        if len(self.history[client_ip]) >= self.calls:
+        if len(self.history[client_ip]) >= settings.rate_limit_calls:
             raise HTTPException(
                 status_code=429, 
                 detail="Too Many Requests",
@@ -171,7 +171,7 @@ app = FastAPI(title="RecoverAI", lifespan=lifespan)
 
 from recoverai.config import settings
 
-rate_limiter = RateLimiter(calls=settings.rate_limit_calls, period=settings.rate_limit_period_seconds)
+rate_limiter = RateLimiter(period=settings.rate_limit_period_seconds)
 
 app.add_middleware(
     CORSMiddleware,
