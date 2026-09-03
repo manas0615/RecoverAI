@@ -1,14 +1,25 @@
-# RecoverAI Design System
+# RecoverAI Engineering Design
 
-## Overview
-Generated via Stitch MCP for the "RecoverAI Dashboard" project.
+RecoverAI is architected around a strict separation of concerns between AI-driven intelligence and deterministic financial execution.
 
-## Aesthetics
-- **Theme**: Industrial Minimalism & Glassmorphism.
-- **Palette**: Deep Navy (`#0F172A`), Dark Slate (`#1E293B`), Primary Blue (`#007AFF`).
-- **Typography**: `Inter` (sans) and `JetBrains Mono` (financials/code).
-- **Geometry**: 4px `rounded-sm` border radii for technical precision.
+## Trust Boundary
 
-## Page Structures
-1. **Dashboard Overview**: Data grid prioritizing active cases and revenue-at-risk.
-2. **Case Detail (Tri-Fold)**: Three distinct columns separating Intelligence, Policy, and Execution boundaries to avoid conflating AI insight with authorization.
+**"AI proposes. Deterministic policy constrains. Provider evidence proves."**
+
+The system deliberately does **NOT** let Gemini:
+- Directly execute financial operations.
+- Declare a payment recovered.
+- Override safety policies.
+- Decide stopping conditions or retry limits.
+
+## Architecture Pipeline
+
+1. **Frontend**: React SPA for case management and operator visibility.
+2. **FastAPI Layer**: Exposes protected REST/MCP endpoints.
+3. **Case Manager**: Ingests Razorpay webhooks, correlates them to cases, and triggers background analysis.
+4. **Intelligence / LLM Gateway**: Gemini extracts features, generates a likely cause, and proposes candidate interventions.
+5. **PolicyEngine**: The central deterministic authority. Re-evaluates proposals against limits, thresholds, and systemic conditions.
+6. **RecoveryActionService**: The execution wrapper. Verifies the policy decision before interacting with the provider.
+7. **RazorpayAdapter**: Mutates state at the financial boundary via Test Mode APIs.
+8. **VerificationEngine**: Cryptographically verifies incoming provider webhooks and confirms exact amount/currency matching before declaring success.
+9. **Persistence / Audit**: SQLite database maintaining an immutable ledger of all decisions and state transitions.
