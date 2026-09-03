@@ -1,6 +1,6 @@
 ﻿<div align="center">
 
-# 🚀 RecoverAI
+#  RecoverAI
 
 ### AI Revenue Recovery Agent
 
