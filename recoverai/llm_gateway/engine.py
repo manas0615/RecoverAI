@@ -47,7 +47,9 @@ class ConcreteLLMGateway(LLMGateway):
                 GroqAdapter(config.groq_api_key, config.groq_model),
                 HuggingFaceAdapter(config.hf_api_key, config.hf_model),
             ]
-            primary = next((p for p in all_providers if p.name == config.primary_provider), None)
+            primary = next(
+                (p for p in all_providers if p.name == config.primary_provider), None
+            )
             if primary:
                 self.providers = [primary] + [p for p in all_providers if p != primary]
             else:

@@ -189,4 +189,6 @@ class HuggingFaceAdapter(ProviderAdapter):
                 ) from e
             raise ProviderError(f"Hugging Face API failed: {e.code}") from e
         except Exception as e:
-            raise ProviderError(f"Hugging Face API failed: {type(e).__name__} - {e}") from e
+            raise ProviderError(
+                f"Hugging Face API failed: {type(e).__name__} - {e}"
+            ) from e

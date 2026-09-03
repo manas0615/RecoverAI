@@ -8,13 +8,17 @@ from fastapi.testclient import TestClient
 
 from recoverai.api.main import app, container
 from recoverai.config import settings
-from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
+from recoverai.domain.event import (
+    EventSource,
+    EventSourceType,
+    RevenueEvent,
+    RevenueEventType,
+)
+from recoverai.domain.identifiers import MerchantId, RecoveryCaseId, RevenueEventId
 from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
-from recoverai.domain.case import RecoveryCase, RevenueSource
-from recoverai.domain.event import EventSource, EventSourceType, RevenueEvent, RevenueEventType
-from recoverai.domain.identifiers import RevenueEventId
 
 client = TestClient(app)
+
 
 @pytest.fixture(autouse=True)
 def setup_db():
@@ -27,6 +31,7 @@ def setup_db():
         conn.execute(
             "INSERT OR IGNORE INTO merchants (merchant_id, display_name, default_currency, status, created_at, updated_at) VALUES ('merch_1', 'Demo Merchant', 'INR', 'ACTIVE', '2023-01-01', '2023-01-01')"
         )
+
 
 def _setup_case(amount_minor: int) -> RecoveryCaseId:
     payment_id = f"pay_{uuid.uuid4().hex[:8]}"
@@ -45,14 +50,24 @@ def _setup_case(amount_minor: int) -> RecoveryCaseId:
         RevenueEventRepository(conn).save(event)
     return container.case_manager.create_or_update_from_event(event).case_id
 
+
 def test_high_value_escalates_and_does_not_execute(monkeypatch):
     monkeypatch.setattr(settings, "high_value_threshold_inr", 40000_00)
     case_id = _setup_case(50000_00)
-    
-    from recoverai.domain.assessment import RiskAssessment, CauseAssessment, Probability, AnalysisType
+
     from recoverai.domain.action import ActionType
-    from recoverai.domain.plan import InterventionPlan, InterventionCandidate, CandidateStatus
-    
+    from recoverai.domain.assessment import (
+        AnalysisType,
+        CauseAssessment,
+        Probability,
+        RiskAssessment,
+    )
+    from recoverai.domain.plan import (
+        CandidateStatus,
+        InterventionCandidate,
+        InterventionPlan,
+    )
+
     with mock.patch.object(container.intelligence, "analyze") as mock_analyze:
         mock_risk = RiskAssessment(
             assessment_id="risk_1",
@@ -91,33 +106,49 @@ def test_high_value_escalates_and_does_not_execute(monkeypatch):
             created_at=datetime.now(UTC),
         )
         mock_analyze.return_value = (mock_risk, mock_cause, mock_plan)
-        
-        with mock.patch.object(container.rzp_adapter, "execute_payment_link") as mock_exec:
+
+        with mock.patch.object(
+            container.rzp_adapter, "execute_payment_link"
+        ) as mock_exec:
             with mock.patch("urllib.request.urlopen"):
                 response = client.post(
                     f"/recovery-cases/{case_id.value}/analyze",
                     headers={"X-API-Key": "test_frontend_key_default"},
                 )
-            
+
             assert response.status_code == 200
             mock_exec.assert_not_called()
-            
+
             with container.tm.transaction() as conn:
-                from recoverai.persistence.repositories.action import RecoveryActionRepository
+                from recoverai.persistence.repositories.action import (
+                    RecoveryActionRepository,
+                )
+
                 action_repo = RecoveryActionRepository(conn)
                 actions = action_repo.get_by_case(case_id)
                 assert len(actions) == 1
                 from recoverai.domain.action import ActionStatus
+
                 assert actions[0].status == ActionStatus.ESCALATED
+
 
 def test_below_threshold_approves_and_executes(monkeypatch):
     monkeypatch.setattr(settings, "high_value_threshold_inr", 40000_00)
     case_id = _setup_case(10000_00)
-    
-    from recoverai.domain.assessment import RiskAssessment, CauseAssessment, Probability, AnalysisType
+
     from recoverai.domain.action import ActionType
-    from recoverai.domain.plan import InterventionPlan, InterventionCandidate, CandidateStatus
-    
+    from recoverai.domain.assessment import (
+        AnalysisType,
+        CauseAssessment,
+        Probability,
+        RiskAssessment,
+    )
+    from recoverai.domain.plan import (
+        CandidateStatus,
+        InterventionCandidate,
+        InterventionPlan,
+    )
+
     with mock.patch.object(container.intelligence, "analyze") as mock_analyze:
         mock_risk = RiskAssessment(
             assessment_id="risk_1",
@@ -156,26 +187,36 @@ def test_below_threshold_approves_and_executes(monkeypatch):
             created_at=datetime.now(UTC),
         )
         mock_analyze.return_value = (mock_risk, mock_cause, mock_plan)
-        
-        from recoverai.integrations.razorpay.adapter import RazorpayExecutionResult, RazorpayExecutionResultType
-        with mock.patch.object(container.rzp_adapter, "execute_payment_link") as mock_exec:
+
+        from recoverai.integrations.razorpay.adapter import (
+            RazorpayExecutionResult,
+            RazorpayExecutionResultType,
+        )
+
+        with mock.patch.object(
+            container.rzp_adapter, "execute_payment_link"
+        ) as mock_exec:
             mock_exec.return_value = RazorpayExecutionResult(
                 result_type=RazorpayExecutionResultType.SUCCESSFUL_REQUEST,
                 provider_reference="plink_mock",
-                short_url="http://mock"
+                short_url="http://mock",
             )
             response = client.post(
                 f"/recovery-cases/{case_id.value}/analyze",
                 headers={"X-API-Key": "test_frontend_key_default"},
             )
-            
+
             assert response.status_code == 200
             mock_exec.assert_called_once()
-            
+
             with container.tm.transaction() as conn:
-                from recoverai.persistence.repositories.action import RecoveryActionRepository
+                from recoverai.persistence.repositories.action import (
+                    RecoveryActionRepository,
+                )
+
                 action_repo = RecoveryActionRepository(conn)
                 actions = action_repo.get_by_case(case_id)
                 assert len(actions) == 1
                 from recoverai.domain.action import ActionStatus
+
                 assert actions[0].status == ActionStatus.VERIFICATION_PENDING

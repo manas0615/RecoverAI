@@ -125,10 +125,17 @@ class RazorpayAdapter:
         try:
             import os
             import unittest.mock
+
             is_mocked = isinstance(urllib.request.urlopen, unittest.mock.MagicMock)
-            if not is_mocked and os.environ.get("ENVIRONMENT") == "test" and os.environ.get("ALLOW_REAL_RAZORPAY") != "1":
-                raise RuntimeError("Real Razorpay provider access is disabled during automated tests. Use the explicit live-provider test path.")
-                
+            if (
+                not is_mocked
+                and os.environ.get("ENVIRONMENT") == "test"
+                and os.environ.get("ALLOW_REAL_RAZORPAY") != "1"
+            ):
+                raise RuntimeError(
+                    "Real Razorpay provider access is disabled during automated tests. Use the explicit live-provider test path."
+                )
+
             with urllib.request.urlopen(
                 req, timeout=self.config.timeout_seconds
             ) as response:

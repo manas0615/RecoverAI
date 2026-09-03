@@ -110,11 +110,20 @@ def test_analyze_case_plan_none():
         assert data["recovery_probability"] == 0.5
         assert data["cause_category"] == "INSUFFICIENT_FUNDS"
 
+
 def test_closed_case_mutate():
-    from recoverai.domain.case import RecoveryCase, RecoveryCaseId, RevenueSource, RecoveryCaseStatus, CaseWorkflowState, RecoveryOutcomeValue
+    from datetime import UTC, datetime
+
+    from recoverai.domain.case import (
+        CaseWorkflowState,
+        RecoveryCase,
+        RecoveryCaseId,
+        RecoveryCaseStatus,
+        RecoveryOutcomeValue,
+        RevenueSource,
+    )
     from recoverai.domain.identifiers import CustomerId, MerchantId, RevenueEventId
     from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
-    from datetime import UTC, datetime
 
     case = RecoveryCase(
         case_id=RecoveryCaseId("test_case_closed"),
@@ -126,15 +135,20 @@ def test_closed_case_mutate():
         source_event_ids={RevenueEventId("evt_1")},
         status=RecoveryCaseStatus.CLOSED,
         workflow_state=CaseWorkflowState.CLOSED,
-        outcome_type=RecoveryOutcomeValue.RECOVERED
+        outcome_type=RecoveryOutcomeValue.RECOVERED,
     )
 
     with pytest.MonkeyPatch.context() as m:
+
         class MockCaseRepo:
-            def __init__(self, conn): pass
-            def get(self, cid): return case
+            def __init__(self, conn):
+                pass
+
+            def get(self, cid):
+                return case
 
         from recoverai.api import main
+
         m.setattr(main, "RecoveryCaseRepository", MockCaseRepo)
 
         response = client.post(
@@ -143,5 +157,3 @@ def test_closed_case_mutate():
         )
         assert response.status_code == 400
         assert "Case is closed" in response.json()["detail"]
-
-

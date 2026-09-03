@@ -7,6 +7,7 @@ if "--development-demo-reset-confirm" not in sys.argv:
     sys.exit(1)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 if os.environ.get("ENVIRONMENT", "").lower() == "production":
@@ -15,10 +16,11 @@ if os.environ.get("ENVIRONMENT", "").lower() == "production":
 
 from recoverai.persistence.connection import TransactionManager
 
+
 def reset_db():
     print("Starting clean demo reset...")
     tm = TransactionManager()
-    
+
     tables_to_clear = [
         "audit_events",
         "verification_records",
@@ -33,15 +35,16 @@ def reset_db():
         "revenue_events",
         "recovery_cases",
     ]
-    
+
     with tm.transaction() as conn:
         conn.execute("PRAGMA foreign_keys = OFF;")
         for table in tables_to_clear:
             conn.execute(f"DELETE FROM {table};")
             print(f"Cleared table: {table}")
         conn.execute("PRAGMA foreign_keys = ON;")
-            
+
     print("Database reset successful.")
+
 
 if __name__ == "__main__":
     reset_db()

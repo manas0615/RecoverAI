@@ -146,26 +146,30 @@ async def lifespan(app: FastAPI):
 class RateLimiter:
     def __init__(self, period: int):
         self.period = timedelta(seconds=period)
-        self.history = {}
+        self.history: dict[str, list] = {}
 
     def __call__(self, request: Request):
         from recoverai.config import settings
+
         client_ip = request.client.host if request.client else "127.0.0.1"
         now = datetime.now(UTC)
-        
+
         if client_ip in self.history:
-            self.history[client_ip] = [t for t in self.history[client_ip] if now - t < self.period]
+            self.history[client_ip] = [
+                t for t in self.history[client_ip] if now - t < self.period
+            ]
         else:
             self.history[client_ip] = []
-            
+
         if len(self.history[client_ip]) >= settings.rate_limit_calls:
             raise HTTPException(
-                status_code=429, 
+                status_code=429,
                 detail="Too Many Requests",
-                headers={"Retry-After": str(int(self.period.total_seconds()))}
+                headers={"Retry-After": str(int(self.period.total_seconds()))},
             )
-            
+
         self.history[client_ip].append(now)
+
 
 app = FastAPI(title="RecoverAI", lifespan=lifespan)
 
@@ -192,7 +196,9 @@ class MCPExecuteRequest(BaseModel):
     args: dict[str, Any]
 
 
-@app.post("/mcp/execute", dependencies=[Depends(rate_limiter), Depends(require_n8n_key)])
+@app.post(
+    "/mcp/execute", dependencies=[Depends(rate_limiter), Depends(require_n8n_key)]
+)
 def execute_mcp_tool(req: MCPExecuteRequest):
     result = container.mcp_registry.execute(req.tool, req.args)
     if "error" in result and result.get("code") == "UNKNOWN_TOOL":
@@ -280,8 +286,12 @@ def list_cases():
                     d["action_status"] = latest_action.status.value
                     d["action_id"] = latest_action.action_id.value
                     d["provider"] = getattr(latest_action, "provider", None)
-                    d["external_reference"] = getattr(latest_action, "external_reference", None)
-                    d["workflow_execution_reference"] = getattr(latest_action, "workflow_execution_reference", None)
+                    d["external_reference"] = getattr(
+                        latest_action, "external_reference", None
+                    )
+                    d["workflow_execution_reference"] = getattr(
+                        latest_action, "workflow_execution_reference", None
+                    )
                 else:
                     d["action_type"] = None
                     d["action_status"] = None
@@ -311,9 +321,6 @@ def get_case(case_id: str):
             raise HTTPException(status_code=400, detail="Invalid case ID")
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
-
-
-
 
         events = [event_repo.get(eid) for eid in case.source_event_ids]
 
@@ -397,8 +404,12 @@ def get_case(case_id: str):
                 result["action_status"] = latest_action.status.value
                 result["action_id"] = latest_action.action_id.value
                 result["provider"] = getattr(latest_action, "provider", None)
-                result["external_reference"] = getattr(latest_action, "external_reference", None)
-                result["workflow_execution_reference"] = getattr(latest_action, "workflow_execution_reference", None)
+                result["external_reference"] = getattr(
+                    latest_action, "external_reference", None
+                )
+                result["workflow_execution_reference"] = getattr(
+                    latest_action, "workflow_execution_reference", None
+                )
                 result["action_requested_at"] = (
                     latest_action.requested_at.isoformat()
                     if latest_action.requested_at
@@ -480,7 +491,8 @@ def get_case_timeline(case_id: str):
 
 
 @app.post(
-    "/recovery-cases/{case_id}/analyze", dependencies=[Depends(rate_limiter), Depends(require_frontend_key)]
+    "/recovery-cases/{case_id}/analyze",
+    dependencies=[Depends(rate_limiter), Depends(require_frontend_key)],
 )
 async def analyze_case(case_id: str):
     with container.tm.transaction() as conn:
@@ -494,9 +506,6 @@ async def analyze_case(case_id: str):
             raise HTTPException(status_code=404, detail="Case not found")
         if case.status.value == "CLOSED":
             raise HTTPException(status_code=400, detail="INVALID_STATE: Case is closed")
-
-
-
 
         events = [event_repo.get(eid) for eid in case.source_event_ids]
 
@@ -527,10 +536,13 @@ async def analyze_case(case_id: str):
 
         # 2. Run Intelligence (Outside transaction so frontend can poll)
         with container.tm.transaction() as conn:
-            from recoverai.persistence.repositories.action import RecoveryActionRepository
+            from recoverai.persistence.repositories.action import (
+                RecoveryActionRepository,
+            )
+
             prior_actions_db = RecoveryActionRepository(conn).get_by_case(case.case_id)
             prior_actions = [a.action_type.value for a in prior_actions_db]
-            
+
         risk, cause, plan = container.intelligence.analyze(
             case, events, context={"prior_recovery_actions": prior_actions}
         )
@@ -605,16 +617,18 @@ async def analyze_case(case_id: str):
             )
 
         from recoverai.config import settings
-        from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
-        
+        from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
+
         threshold = None
         if settings.high_value_threshold_inr is not None:
-            threshold = RevenueAmount(Money(settings.high_value_threshold_inr, CurrencyCode.INR))
-            
+            threshold = RevenueAmount(
+                Money(settings.high_value_threshold_inr, CurrencyCode.INR)
+            )
+
         policy_context = PolicyContext(
             policy_version="1.0",
             current_time=datetime.now(UTC),
-            high_value_threshold=threshold
+            high_value_threshold=threshold,
         )
         with container.tm.transaction() as conn:
             action_history = RecoveryActionRepository(conn).get_by_case(case.case_id)
@@ -640,55 +654,76 @@ async def analyze_case(case_id: str):
                 )
             )
 
-        
         # 6. Auto-execute based on policy decision
-        from recoverai.domain.action import ActionStatus, ActionType, RecoveryAction, RecoveryActionId
-        from recoverai.domain.policy import PolicyDecisionValue
         import uuid
-        
-        if decision.decision in [PolicyDecisionValue.APPROVE, PolicyDecisionValue.ESCALATE]:
+
+        from recoverai.domain.action import (
+            ActionStatus,
+            ActionType,
+            RecoveryAction,
+            RecoveryActionId,
+        )
+        from recoverai.domain.policy import PolicyDecisionValue
+
+        if decision.decision in [
+            PolicyDecisionValue.APPROVE,
+            PolicyDecisionValue.ESCALATE,
+        ]:
             with container.tm.transaction() as conn:
                 action_repo = RecoveryActionRepository(conn)
-                
-                action_type = plan.selected_action_type if plan and plan.selected_action_type else ActionType.CREATE_PAYMENT_LINK
-                attempt_num = sum(1 for a in action_history if a.action_type == action_type) + 1
-                
+
+                action_type = (
+                    plan.selected_action_type
+                    if plan and plan.selected_action_type
+                    else ActionType.CREATE_PAYMENT_LINK
+                )
+                attempt_num = (
+                    sum(1 for a in action_history if a.action_type == action_type) + 1
+                )
+
                 action = RecoveryAction(
                     action_id=RecoveryActionId(f"act_{uuid.uuid4().hex[:12]}"),
                     case_id=case.case_id,
                     action_type=action_type,
                     requested_at=datetime.now(UTC),
                     status=ActionStatus.PROPOSED,
-                    attempt_number=attempt_num
+                    attempt_number=attempt_num,
                 )
-                
+
                 # Since action_service evaluates policy again and requires these:
-                setattr(action, "_real_plan", plan)
-                setattr(action, "_real_cause", cause)
+                action._real_plan = plan
+                action._real_cause = cause
                 import json
+
                 if plan:
                     action.plan_snapshot = json.dumps(plan.to_dict())
-                
+
                 action_repo.save(action)
-            
-            setattr(action, "_real_plan", plan)
-            setattr(action, "_real_cause", cause)
+
+            action._real_plan = plan
+            action._real_cause = cause
             container.action_service.execute_action(action)
         else:
             # Policy is DENY, SUPPRESS, or WAIT
             with container.tm.transaction() as conn:
-                from recoverai.domain.case import RecoveryOutcomeValue, CaseWorkflowState
+                from recoverai.domain.case import (
+                    CaseWorkflowState,
+                    RecoveryOutcomeValue,
+                )
+
                 case_repo = RecoveryCaseRepository(conn)
                 c = case_repo.get(case.case_id)
                 if c:
-                    if decision.decision in [PolicyDecisionValue.SUPPRESS, PolicyDecisionValue.DENY]:
+                    if decision.decision in [
+                        PolicyDecisionValue.SUPPRESS,
+                        PolicyDecisionValue.DENY,
+                    ]:
                         c.close(RecoveryOutcomeValue.SUPPRESSED, datetime.now(UTC))
                     else:
                         # WAIT or other
                         c.advance_workflow(CaseWorkflowState.UNKNOWN, datetime.now(UTC))
                     case_repo.save(c)
         return {
-
             "status": "success",
             "recommendation": plan.selected_action_type.value
             if plan and plan.selected_action_type
@@ -726,8 +761,11 @@ async def analyze_case(case_id: str):
 
 from fastapi import BackgroundTasks
 
+
 @app.post("/webhooks/razorpay/{merchant_id}")
-async def razorpay_webhook(merchant_id: str, request: Request, background_tasks: BackgroundTasks):
+async def razorpay_webhook(
+    merchant_id: str, request: Request, background_tasks: BackgroundTasks
+):
     raw_body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
     event_id = request.headers.get("X-Razorpay-Event-Id")
@@ -759,7 +797,11 @@ async def razorpay_webhook(merchant_id: str, request: Request, background_tasks:
         if event.event_type == RevenueEventType.PAYMENT_FAILED:
             case = container.case_manager.create_or_update_from_event(event)
             container.global_conn.commit()
-            if case and settings.enable_closed_loop_recovery and case.workflow_state.value == "PLANNING":
+            if (
+                case
+                and settings.enable_closed_loop_recovery
+                and case.workflow_state.value == "PLANNING"
+            ):
                 background_tasks.add_task(analyze_case, str(case.case_id.value))
         elif event.event_type == RevenueEventType.PAYMENT_LINK_PAID:
             with container.tm.transaction() as conn:
@@ -1104,6 +1146,7 @@ def get_analytics():
 def approve_action(case_id: str, action_id: str):
     with container.tm.transaction() as conn:
         from recoverai.persistence.repositories.case import RecoveryCaseRepository
+
         case = RecoveryCaseRepository(conn).get(RecoveryCaseId(case_id))
         if case and case.status.value == "CLOSED":
             raise HTTPException(status_code=400, detail="INVALID_STATE: Case is closed")
@@ -1119,7 +1162,8 @@ def approve_action(case_id: str, action_id: str):
 
 
 @app.post(
-    "/recovery-cases/{case_id}/abort", dependencies=[Depends(rate_limiter), Depends(require_frontend_key)]
+    "/recovery-cases/{case_id}/abort",
+    dependencies=[Depends(rate_limiter), Depends(require_frontend_key)],
 )
 def abort_execution(case_id: str):
     with container.tm.transaction() as conn:
@@ -1133,13 +1177,22 @@ def abort_execution(case_id: str):
 
         latest_action = max(actions, key=lambda x: x.requested_at)
 
-        if latest_action.status in [ActionStatus.PROPOSED, ActionStatus.AUTHORIZED, ActionStatus.ESCALATED]:
+        if latest_action.status in [
+            ActionStatus.PROPOSED,
+            ActionStatus.AUTHORIZED,
+            ActionStatus.ESCALATED,
+        ]:
             latest_action.status = ActionStatus.CANCELLED
             action_repo.update(latest_action)  # type: ignore
-            
+
+            from recoverai.domain.audit import (
+                AuditActor,
+                AuditActorType,
+                AuditEvent,
+                AuditEventType,
+            )
             from recoverai.persistence.repositories.audit import AuditRepository
-            from recoverai.domain.audit import AuditEvent, AuditEventType, AuditActor, AuditActorType
-            
+
             audit_repo = AuditRepository(conn)
             audit_repo.append(
                 AuditEvent(
@@ -1147,7 +1200,7 @@ def abort_execution(case_id: str):
                     actor=AuditActor(type=AuditActorType.HUMAN, id="operator"),
                     case_id=latest_action.case_id,
                     action_id=latest_action.action_id,
-                    metadata={"reason": "User aborted execution"}
+                    metadata={"reason": "User aborted execution"},
                 )
             )
             return {"status": "success", "message": "Execution aborted"}

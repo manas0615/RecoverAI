@@ -191,7 +191,7 @@ def test_populated_data_contracts():
     )
     from recoverai.domain.case import RecoveryCase, RevenueSource
     from recoverai.domain.identifiers import MerchantId, RecoveryCaseId, RevenueEventId
-    from recoverai.domain.money import CurrencyCode, RevenueAmount, Money
+    from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
 
     now = datetime.now(UTC)
 
@@ -295,6 +295,3 @@ def test_populated_data_contracts():
     assert data["recommendation_source"]["Gemini"] == 1
 
     clear_db()
-
-
-

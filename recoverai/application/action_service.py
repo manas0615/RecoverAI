@@ -51,19 +51,20 @@ class RecoveryActionService:
             if not case:
                 raise ValueError(f"Case {action.case_id} not found")
 
+            from recoverai.config import settings
+            from recoverai.domain.money import CurrencyCode, Money, RevenueAmount
             from recoverai.policy.engine import PolicyContext
 
-            from recoverai.config import settings
-            from recoverai.domain.money import RevenueAmount, Money, CurrencyCode
-            
             threshold = None
             if settings.high_value_threshold_inr is not None:
-                threshold = RevenueAmount(Money(settings.high_value_threshold_inr, CurrencyCode.INR))
-                
+                threshold = RevenueAmount(
+                    Money(settings.high_value_threshold_inr, CurrencyCode.INR)
+                )
+
             policy_context = PolicyContext(
                 policy_version="1.0",
                 current_time=datetime.now(UTC),
-                high_value_threshold=threshold
+                high_value_threshold=threshold,
             )
 
             from recoverai.domain.plan import InterventionPlan
@@ -92,11 +93,12 @@ class RecoveryActionService:
             ):
                 # Human has approved the escalation, override the policy engine's ESCALATE decision
                 from dataclasses import replace
+
                 decision = replace(
                     decision,
                     decision=PolicyDecisionValue.APPROVE,
                     matched_rules=decision.matched_rules + ["HUMAN_APPROVAL_OVERRIDE"],
-                    reason_codes=decision.reason_codes + ["HUMAN_APPROVAL_OVERRIDE"]
+                    reason_codes=decision.reason_codes + ["HUMAN_APPROVAL_OVERRIDE"],
                 )
                 audit_repo.append(
                     AuditEvent(
@@ -219,7 +221,10 @@ class RecoveryActionService:
             if fetched_action:
                 action = fetched_action
 
-            if result.result_type in (RazorpayExecutionResultType.SUCCESSFUL_REQUEST, RazorpayExecutionResultType.PROVIDER_REJECTED):
+            if result.result_type in (
+                RazorpayExecutionResultType.SUCCESSFUL_REQUEST,
+                RazorpayExecutionResultType.PROVIDER_REJECTED,
+            ):
                 audit_repo.append(
                     AuditEvent(
                         event_type=AuditEventType.RAZORPAY_REQUEST_COMPLETED,

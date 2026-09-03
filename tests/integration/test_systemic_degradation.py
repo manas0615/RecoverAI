@@ -210,12 +210,19 @@ def test_non_systemic_regression(base_case):
     case_id = base_case
 
     # Mock intelligence to return NORMAL cause
-    with mock.patch.object(container.intelligence, "analyze") as mock_analyze, mock.patch.object(container.rzp_adapter, "execute_payment_link") as mock_exec:
-        from recoverai.integrations.razorpay.adapter import RazorpayExecutionResult, RazorpayExecutionResultType
+    with (
+        mock.patch.object(container.intelligence, "analyze") as mock_analyze,
+        mock.patch.object(container.rzp_adapter, "execute_payment_link") as mock_exec,
+    ):
+        from recoverai.integrations.razorpay.adapter import (
+            RazorpayExecutionResult,
+            RazorpayExecutionResultType,
+        )
+
         mock_exec.return_value = RazorpayExecutionResult(
             result_type=RazorpayExecutionResultType.SUCCESSFUL_REQUEST,
             provider_reference="plink_mocked_sys",
-            short_url="https://rzp.io/i/sysmock"
+            short_url="https://rzp.io/i/sysmock",
         )
         mock_risk = RiskAssessment(
             assessment_id="risk_1",

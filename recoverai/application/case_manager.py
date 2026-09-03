@@ -31,50 +31,67 @@ class RecoveryCaseManager:
 
             # Check if this is a failure on a recovery payment link (prevent loop)
             from recoverai.domain.event import RevenueEventType
+
             if event.event_type == RevenueEventType.PAYMENT_FAILED:
                 metadata = event.metadata or {}
-                payment_entity = metadata.get("payload", {}).get("payment", {}).get("entity", {})
+                payment_entity = (
+                    metadata.get("payload", {}).get("payment", {}).get("entity", {})
+                )
                 description = payment_entity.get("description") or ""
-                
+
                 action_id_val = None
                 if description.startswith("Recovery Action "):
                     action_id_val = description.replace("Recovery Action ", "")
-                    
+
                 if action_id_val:
-                    from recoverai.persistence.repositories.action import RecoveryActionRepository
+                    from recoverai.persistence.repositories.action import (
+                        RecoveryActionRepository,
+                    )
+
                     action_repo = RecoveryActionRepository(conn)
                     from recoverai.domain.action import RecoveryActionId
+
                     act = action_repo.get(RecoveryActionId(action_id_val))
                     actions = [act] if act else []
                     if actions:
                         from recoverai.domain.action import ActionStatus
                         from recoverai.domain.case import CaseWorkflowState
-                        
+
                         found_case = None
                         for action in actions:
                             if action.status != ActionStatus.VERIFIED_FAILURE:
-                                action.record_verification(ActionStatus.VERIFIED_FAILURE, event.occurred_at)
+                                action.record_verification(
+                                    ActionStatus.VERIFIED_FAILURE, event.occurred_at
+                                )
                                 action_repo.save(action)
-                                
+
                                 audit_repo.append(
                                     AuditEvent(
                                         event_type=AuditEventType.VERIFICATION_COMPLETED,
-                                        actor=AuditActor(type=AuditActorType.SYSTEM, id="case_manager"),
+                                        actor=AuditActor(
+                                            type=AuditActorType.SYSTEM,
+                                            id="case_manager",
+                                        ),
                                         case_id=action.case_id,
                                         action_id=action.action_id,
                                         timestamp=datetime.now(UTC),
-                                        metadata={"verified_state": "FAILURE", "reason": "recovery_payment_failed"}
+                                        metadata={
+                                            "verified_state": "FAILURE",
+                                            "reason": "recovery_payment_failed",
+                                        },
                                     )
                                 )
-                            
+
                             case = case_repo.get(action.case_id)
                             if case:
                                 if case.workflow_state == CaseWorkflowState.VERIFYING:
-                                    case.advance_workflow(CaseWorkflowState.PLANNING, event.occurred_at)
+                                    case.advance_workflow(
+                                        CaseWorkflowState.PLANNING, event.occurred_at
+                                    )
                                 case.add_source_event(event.event_id, event.occurred_at)
                                 case_repo.save(case)
                                 found_case = case
-                        
+
                         # We return the original case and do NOT create a new one
                         if found_case:
                             return found_case

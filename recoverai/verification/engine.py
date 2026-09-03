@@ -198,7 +198,7 @@ class VerificationEngine:
                     observed_at=matching_event.occurred_at,
                 ),
             )
-            
+
         if matching_event.amount.currency != case.amount_at_risk.currency:
             # Currency mismatch - safe failure / escalate
             return VerificationRecord(

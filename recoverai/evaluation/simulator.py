@@ -71,7 +71,7 @@ class SyntheticScenarioGenerator:
             return "SUPPRESS"
         if evidence.opportunity_amount.amount_minor >= 45000_00:
             return "ESCALATE"
-            
+
         return "CREATE_PAYMENT_LINK"
 
     def generate(self, count: int) -> list[SyntheticScenario]:
@@ -123,16 +123,18 @@ class SyntheticScenarioGenerator:
                 gateway_downtime_active=is_degraded,
                 historical_failure_count=historical_count,
             )
-            
+
             truth = HiddenOutcomeTruth(
                 receptive_to_intervention=is_receptive,
                 expected_natural_recovery=expected_natural_recovery,
-                provider_error_on_execution=is_provider_error
+                provider_error_on_execution=is_provider_error,
             )
-            
+
             oracle = EvaluationOracle(
                 expected_decision=self._determine_oracle_decision(evidence, truth)
             )
-            
-            scenarios.append(SyntheticScenario(evidence=evidence, truth=truth, oracle=oracle))
+
+            scenarios.append(
+                SyntheticScenario(evidence=evidence, truth=truth, oracle=oracle)
+            )
         return scenarios

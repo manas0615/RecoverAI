@@ -1,9 +1,10 @@
-﻿import sys
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from recoverai.api.main import container
+
 
 def clean_db():
     print("Connecting to database via container...")
@@ -21,8 +22,9 @@ def clean_db():
         conn.execute("DELETE FROM recovery_cases")
         conn.execute("DELETE FROM revenue_events")
         conn.execute("DELETE FROM audit_events")
-        
+
     print("Database is now clean and ready for REAL Razorpay Test Mode events.")
+
 
 if __name__ == "__main__":
     clean_db()
