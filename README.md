@@ -91,13 +91,13 @@ flowchart TD
     COR --> CM
     VE -->|UNKNOWN| ESC[Escalate]
     
-    subgraph Trust Boundary
+    subgraph TrustBoundary [Trust Boundary]
     PE
     RAS
     VE
     end
     
-    IP -.->|Untrusted Proposal| Trust Boundary
+    IP -.->|Untrusted Proposal| TrustBoundary
 ```
 
 ---
