@@ -330,7 +330,7 @@ RecoverAI/
 - Buildathon prototype with single-merchant scope; not a production platform.
 - Razorpay integration is restricted to Test Mode.
 - Quantitative benchmark results are synthetic, not live merchant performance.
-- The 48.5% benchmark uplift is **not AI-attributable**.
+- The 48.5% benchmark uplift is **not AI-attributable** (the frozen L3 run used no LLM).
 - LLM confidence is a relative ranking signal, not a calibrated recovery probability.
 - Automatic closed-loop AI re-planning after failed interventions is not currently implemented.
 - Multi-currency support uses strict currency partitioning; live FX conversion is out of scope.
