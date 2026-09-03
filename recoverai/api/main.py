@@ -1,7 +1,7 @@
 import os
 import uuid
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -143,9 +143,35 @@ async def lifespan(app: FastAPI):
     container.close()
 
 
+class RateLimiter:
+    def __init__(self, calls: int, period: int):
+        self.calls = calls
+        self.period = timedelta(seconds=period)
+        self.history = {}
+
+    def __call__(self, request: Request):
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        now = datetime.now(UTC)
+        
+        if client_ip in self.history:
+            self.history[client_ip] = [t for t in self.history[client_ip] if now - t < self.period]
+        else:
+            self.history[client_ip] = []
+            
+        if len(self.history[client_ip]) >= self.calls:
+            raise HTTPException(
+                status_code=429, 
+                detail="Too Many Requests",
+                headers={"Retry-After": str(int(self.period.total_seconds()))}
+            )
+            
+        self.history[client_ip].append(now)
+
 app = FastAPI(title="RecoverAI", lifespan=lifespan)
 
 from recoverai.config import settings
+
+rate_limiter = RateLimiter(calls=settings.rate_limit_calls, period=settings.rate_limit_period_seconds)
 
 app.add_middleware(
     CORSMiddleware,
@@ -166,7 +192,7 @@ class MCPExecuteRequest(BaseModel):
     args: dict[str, Any]
 
 
-@app.post("/mcp/execute", dependencies=[Depends(require_n8n_key)])
+@app.post("/mcp/execute", dependencies=[Depends(rate_limiter), Depends(require_n8n_key)])
 def execute_mcp_tool(req: MCPExecuteRequest):
     result = container.mcp_registry.execute(req.tool, req.args)
     if "error" in result and result.get("code") == "UNKNOWN_TOOL":
@@ -454,7 +480,7 @@ def get_case_timeline(case_id: str):
 
 
 @app.post(
-    "/recovery-cases/{case_id}/analyze", dependencies=[Depends(require_frontend_key)]
+    "/recovery-cases/{case_id}/analyze", dependencies=[Depends(rate_limiter), Depends(require_frontend_key)]
 )
 async def analyze_case(case_id: str):
     with container.tm.transaction() as conn:
@@ -500,7 +526,14 @@ async def analyze_case(case_id: str):
             )
 
         # 2. Run Intelligence (Outside transaction so frontend can poll)
-        risk, cause, plan = container.intelligence.analyze(case, events)
+        with container.tm.transaction() as conn:
+            from recoverai.persistence.repositories.action import RecoveryActionRepository
+            prior_actions_db = RecoveryActionRepository(conn).get_by_case(case.case_id)
+            prior_actions = [a.action_type.value for a in prior_actions_db]
+            
+        risk, cause, plan = container.intelligence.analyze(
+            case, events, context={"prior_recovery_actions": prior_actions}
+        )
 
         # 3. Commit LLM Recommendation
         with container.tm.transaction() as conn:
@@ -617,12 +650,16 @@ async def analyze_case(case_id: str):
             with container.tm.transaction() as conn:
                 action_repo = RecoveryActionRepository(conn)
                 
+                action_type = plan.selected_action_type if plan and plan.selected_action_type else ActionType.CREATE_PAYMENT_LINK
+                attempt_num = sum(1 for a in action_history if a.action_type == action_type) + 1
+                
                 action = RecoveryAction(
                     action_id=RecoveryActionId(f"act_{uuid.uuid4().hex[:12]}"),
                     case_id=case.case_id,
-                    action_type=plan.selected_action_type if plan and plan.selected_action_type else ActionType.CREATE_PAYMENT_LINK,
+                    action_type=action_type,
                     requested_at=datetime.now(UTC),
-                    status=ActionStatus.PROPOSED
+                    status=ActionStatus.PROPOSED,
+                    attempt_number=attempt_num
                 )
                 
                 # Since action_service evaluates policy again and requires these:
@@ -632,17 +669,24 @@ async def analyze_case(case_id: str):
                 if plan:
                     action.plan_snapshot = json.dumps(plan.to_dict())
                 
-                # Action repo doesn't persist _real_plan, so we execute immediately if APPROVE or ESCALATE
-                # But wait, action MUST be in DB for action_service to claim_for_execution!
-                # Let's save it to DB first.
                 action_repo.save(action)
             
-            # execute_action handles the policy check and status transitions!
-            # We must set real_plan again because we just saved it and execute_action will need it
             setattr(action, "_real_plan", plan)
             setattr(action, "_real_cause", cause)
-        
             container.action_service.execute_action(action)
+        else:
+            # Policy is DENY, SUPPRESS, or WAIT
+            with container.tm.transaction() as conn:
+                from recoverai.domain.case import RecoveryOutcomeValue, CaseWorkflowState
+                case_repo = RecoveryCaseRepository(conn)
+                c = case_repo.get(case.case_id)
+                if c:
+                    if decision.decision in [PolicyDecisionValue.SUPPRESS, PolicyDecisionValue.DENY]:
+                        c.close(RecoveryOutcomeValue.SUPPRESSED, datetime.now(UTC))
+                    else:
+                        # WAIT or other
+                        c.advance_workflow(CaseWorkflowState.UNKNOWN, datetime.now(UTC))
+                    case_repo.save(c)
         return {
 
             "status": "success",
@@ -680,8 +724,10 @@ async def analyze_case(case_id: str):
         raise HTTPException(status_code=500, detail="Analysis unavailable")
 
 
+from fastapi import BackgroundTasks
+
 @app.post("/webhooks/razorpay/{merchant_id}")
-async def razorpay_webhook(merchant_id: str, request: Request):
+async def razorpay_webhook(merchant_id: str, request: Request, background_tasks: BackgroundTasks):
     raw_body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
     event_id = request.headers.get("X-Razorpay-Event-Id")
@@ -711,8 +757,10 @@ async def razorpay_webhook(merchant_id: str, request: Request):
         from recoverai.domain.event import RevenueEventType
 
         if event.event_type == RevenueEventType.PAYMENT_FAILED:
-            container.case_manager.create_or_update_from_event(event)
+            case = container.case_manager.create_or_update_from_event(event)
             container.global_conn.commit()
+            if case and settings.enable_closed_loop_recovery and case.workflow_state.value == "PLANNING":
+                background_tasks.add_task(analyze_case, str(case.case_id.value))
         elif event.event_type == RevenueEventType.PAYMENT_LINK_PAID:
             with container.tm.transaction() as conn:
                 from recoverai.persistence.repositories.action import (
@@ -1051,7 +1099,7 @@ def get_analytics():
 
 @app.post(
     "/recovery-cases/{case_id}/actions/{action_id}/approve",
-    dependencies=[Depends(require_frontend_key)],
+    dependencies=[Depends(rate_limiter), Depends(require_frontend_key)],
 )
 def approve_action(case_id: str, action_id: str):
     with container.tm.transaction() as conn:
@@ -1071,7 +1119,7 @@ def approve_action(case_id: str, action_id: str):
 
 
 @app.post(
-    "/recovery-cases/{case_id}/abort", dependencies=[Depends(require_frontend_key)]
+    "/recovery-cases/{case_id}/abort", dependencies=[Depends(rate_limiter), Depends(require_frontend_key)]
 )
 def abort_execution(case_id: str):
     with container.tm.transaction() as conn:

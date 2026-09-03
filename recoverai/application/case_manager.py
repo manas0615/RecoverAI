@@ -69,7 +69,8 @@ class RecoveryCaseManager:
                             if case:
                                 if case.workflow_state == CaseWorkflowState.VERIFYING:
                                     case.advance_workflow(CaseWorkflowState.PLANNING, event.occurred_at)
-                                    case_repo.save(case)
+                                case.add_source_event(event.event_id, event.occurred_at)
+                                case_repo.save(case)
                                 found_case = case
                         
                         # We return the original case and do NOT create a new one

@@ -63,6 +63,18 @@ class Settings(BaseSettings):
         default=40000_00,
         description="High-value escalation threshold in minor units (INR)",
     )
+    rate_limit_calls: int = Field(
+        default=5,
+        description="Number of allowed calls per rate limit window",
+    )
+    rate_limit_period_seconds: int = Field(
+        default=60,
+        description="Rate limit window size in seconds",
+    )
+    enable_closed_loop_recovery: bool = Field(
+        default=True,
+        description="Automatically trigger AI replanning on recovery failure",
+    )
 
 
 def get_settings() -> Settings:

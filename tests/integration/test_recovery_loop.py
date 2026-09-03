@@ -156,9 +156,8 @@ def test_recovery_payment_failure_idempotent(tm, cm):
     res1 = cm.create_or_update_from_event(event)
     assert res1.case_id == case_id
     
-    with tm.transaction() as conn:
-        conn.execute("INSERT INTO case_source_events (case_id, event_id) VALUES (?, ?)", (res1.case_id.value, event.event_id.value))
-        
+    # Event is already linked by cm.create_or_update_from_event
+    # Test idempotency (should just be a no-op update and return same case)
     res2 = cm.create_or_update_from_event(event)
     assert res2.case_id == case_id
 

@@ -30,6 +30,9 @@ def set_test_environment(monkeypatch: pytest.MonkeyPatch):
     
     # Disable high_value_threshold by default for backward compatibility with existing tests
     monkeypatch.setattr("recoverai.config.settings.high_value_threshold_inr", None)
+    
+    # Disable rate limits globally for the test suite
+    monkeypatch.setattr("recoverai.config.settings.rate_limit_calls", 10000)
 
 @pytest.fixture
 def fake_razorpay(monkeypatch: pytest.MonkeyPatch):
