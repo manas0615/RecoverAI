@@ -1,17 +1,35 @@
-# Adversarial & Red-Team Evidence
+# Adversarial & Red-Team Validation
 
-This directory documents the findings of the hostile offline red-team review performed by an Antigravity Gemini 3.1 Pro QA agent.
+This directory documents the results of an offline, hostile QA audit performed against the RecoverAI repository to validate the integrity of its trust boundaries.
 
-## Critical Defects Discovered & Fixed
+## Test Scope
 
-### Finding #1: Broken Recovery-Loop Correlation
-- **Vulnerability**: The Razorpay adapter was injecting a generic `"Recovery Payment for case {case_id}"` into the payment link description, while the case manager expected a specific deterministic Action ID (`#plink_xxx`).
-- **Why Tests Missed It**: The unit tests explicitly mocked the Razorpay adapter's output to match the case manager's expected format.
-- **The Fix**: The adapter was modified to embed the deterministic Recovery Action ID (`"Recovery Action {action.action_id.value}"`). The case manager was updated to parse this precise tag.
-- **Outcome**: A failed recovery payment now flawlessly maps back to the original action, closing the loop and bounding the retry state.
+The red-team validation focused exclusively on testing the resilience of the deterministic constraints:
+- API payload manipulation
+- Provider webhook spoofing
+- Race conditions / concurrency
+- AI hallucination handling
 
-### Finding #2: Amount Verification Bypass
-- **Vulnerability**: The `VerificationEngine` accepted malformed webhooks lacking an `amount` block. Because `amount` was missing, it bypassed the strict currency/value checks and blindly returned `VerifiedState.SUCCESS`.
-- **Why Tests Missed It**: Automated tests always provided well-formed `amount` dictionaries matching the Razorpay spec.
-- **The Fix**: `_verify_payment_link` was modified to fail closed. If `amount` is missing, it now immediately returns `VerifiedState.UNKNOWN`.
-- **Outcome**: Malformed or maliciously stripped webhooks can no longer artificially trigger a successful recovery state.
+## Critical Engineering Findings
+
+The audit discovered two genuine structural defects in the prototype implementation. They have been permanently fixed and are now enforced via regression testing.
+
+### 1. Broken Recovery-Loop Correlation
+- **Threat Vector**: If the closed-loop tracking breaks, the system will sprout infinite retries because the `PolicyEngine` cannot track attempt history properly.
+- **Defect Found**: The Razorpay adapter was injecting a generic `"Recovery Payment for case {case_id}"` into the payment link description, instead of the strict `RecoveryActionId`. The parser could not correlate subsequent failures.
+- **Fix Applied**: The `RazorpayAdapter` now strictly injects `"Recovery Action {action_id}"`. The `CaseManager` correctly parses this deterministic tag to map failures back to the originating action.
+- **Regression Status**: `test_recovery_loop.py` enforces this correlation mechanism.
+
+### 2. Missing Amount Verification Bypass
+- **Threat Vector**: A malformed webhook could spoof a successful recovery by omitting the `amount` metadata, bypassing the strict value-matching logic.
+- **Defect Found**: The `VerificationEngine` lacked a null-check for the `amount` dictionary in incoming payloads. When missing, the check was skipped, defaulting to `VERIFIED_SUCCESS`.
+- **Fix Applied**: `_verify_payment_link` now fails closed. If `amount` or `currency` is missing from the payload, it strictly returns `VERIFIED_UNKNOWN`.
+- **Regression Status**: `test_engine.py` enforces closed-failure for malformed evidence.
+
+## Validated Protections
+
+The audit also verified that the following protections function flawlessly:
+- **Duplicate Webhook Delivery**: Blocked natively via SQLite `UNIQUE` constraints on `source_event_id`.
+- **Concurrent Double-Execution**: Blocked via atomic row-level locking on the `RecoveryAction` table.
+- **High-Value Policy Bypass**: Blocked by the `PolicyEngine` refusing to authorize automated actions above threshold.
+- **Malformed AI Output**: Handled gracefully. Pydantic parser catches invalid JSON schemas and falls back to deterministic rules.

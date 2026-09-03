@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# RecoverAI Frontend Console
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The `frontend` directory contains the React SPA (Single Page Application) that serves as the operator console for RecoverAI. It provides visibility into the recovery pipeline, AI reasoning, and execution state.
 
-Currently, two official plugins are available:
+## Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Framework**: React 18
+- **Language**: TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS / custom components
+- **Routing**: React Router
 
-## React Compiler
+## Key Capabilities
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Dashboard Overview**: Aggregated analytics on recovery throughput, systemic degradation status, and policy intervention metrics.
+2. **Case Management**: Real-time queue of `payment.failed` cases requiring analysis.
+3. **Recovery Journey Timeline**: A visual audit trail for a specific case, displaying every `Event` from initial ingestion to final verification.
+4. **Analysis & Execution**: Interface to trigger the `RevenueIntelligenceAnalyzer` and review the LLM's `InterventionPlan` before the `PolicyEngine` authorizes execution.
+5. **Human Approval Queue**: High-value cases (`> ₹40k`) routed by the policy engine to `ESCALATE` appear here for manual override.
 
-## Expanding the Oxlint configuration
+## API Integration
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+The frontend communicates with the FastAPI backend over REST. 
+- Base URL is determined by the `.env` configuration (default: `http://localhost:8000/api`).
+- API requests require passing the `x-api-key` header to penetrate the prototype backend security perimeter.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+*Note: Ensure the backend is running and the database is seeded for local development.*

@@ -1,56 +1,67 @@
-﻿# RecoverAI - End-to-End Razorpay Test Mode Demo
+# RecoverAI Demo Runbook
 
-This guide provides instructions to run a complete, end-to-end revenue recovery demonstration using the **Razorpay Test Mode** integration locally.
+This runbook provides instructions for demonstrating RecoverAI locally.
 
 ## Prerequisites
-Ensure the .env file contains the correct Razorpay credentials and the mode is set to test:
-`env
+
+1. **Python 3.11+** (managed via `uv`)
+2. **Node.js 20+**
+3. **Razorpay Test Mode Credentials**
+4. **Gemini API Key**
+
+```bash
+# Clone and configure
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+
+Populate the `.env` file with:
+```env
 RAZORPAY_MODE=test
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
-`
+RAZORPAY_KEY_ID=rzp_test_YOUR_KEY
+RAZORPAY_KEY_SECRET=YOUR_SECRET
+RAZORPAY_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET
+GEMINI_API_KEY=YOUR_GEMINI_KEY
+```
 
-## Running the Automated End-to-End Test
+## Running the Services
 
-The full pipeline—webhook ingestion, intelligent analysis, policy evaluation, external execution (creating a payment link in Razorpay), and asynchronous verification (simulating customer payment)—can be executed automatically.
+**1. Start the Backend API**
+```powershell
+uv run uvicorn recoverai.api.main:app --reload --port 8000
+```
 
-1. Ensure your virtual environment is active.
-2. Run the E2E pytest suite:
+**2. Start the Frontend Console**
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
-`ash
-pytest tests/e2e/test_real_testmode.py -s -v
-`
+**3. Seed the Database**
+In a new terminal:
+```powershell
+uv run python scripts/reset_demo_db.py
+uv run python scripts/seed_demo_data.py
+```
 
-This test:
-1. Emulates Razorpay sending a payment.failed webhook signed with HMAC.
-2. Asserts the case appears in the system queue.
-3. Requests AI intervention analysis.
-4. Uses MCP /mcp/execute to simulate n8n applying the create_payment_link tool, which generates a real Razorpay test payment link.
-5. Simulates a customer paying the link by forging a signed payment_link.paid webhook.
-6. Verifies the system successfully marks the recovery as VERIFIED_SUCCESS.
+## Demonstration Steps
 
-## Running a Manual Demo
+1. **Navigate to Console:** Open `http://localhost:5173/` in your browser.
+2. **View Cases:** Click on "Recovery Cases" to view the seeded failed payment scenarios.
+3. **Trigger Ingestion:** Send a mock `payment.failed` webhook via Postman or `curl` to `http://localhost:8000/api/webhooks/razorpay`. *(Ensure the HMAC signature matches).*
+4. **Analyze Case:** Open a case detail view and click **Analyze Case**. The system will query Gemini (or gracefully fallback if the API free tier rate-limits you).
+5. **Observe Policy Gating:** Notice the AI's `InterventionPlan` is evaluated by the `PolicyEngine`.
+6. **Execute:** If the action is `AUTHORIZED`, click **Execute**. This triggers the backend to call the live Razorpay Test Mode API.
+7. **Verify Link:** Razorpay returns an external reference (e.g., `plink_xxx`).
+8. **Simulate Customer Payment:** Simulate a `payment_link.paid` webhook to the backend containing the exact amount and the `plink_xxx` reference.
+9. **Verify Recovery:** Observe the case transition to `VERIFIED_SUCCESS` and gracefully close.
 
-To visually verify the system works through the UI:
+## Running Automated End-to-End Tests
+To verify the entire loop automatically without the UI:
 
-1. Start the backend:
-   `ash
-   uv run uvicorn recoverai.api.main:app --reload --port 8000
-   `
-2. Start the frontend:
-   `ash
-   cd frontend
-   npm run dev
-   `
-3. Open http://localhost:5173/.
-4. Trigger a simulated webhook using a cURL command or Postman matching the HMAC logic in 	est_real_testmode.py.
-5. Observe the new case in **Recovery Cases**.
-6. Open the Case Detail, click **Analyze Case**.
-7. The system will provide an AI recommendation (or Fallback if quota exhausted).
-8. The policy engine will auto-approve it.
-9. Execution creates a real plink_xxx via Razorpay Test mode.
-10. Trigger the second payment_link.paid webhook.
-11. Observe the case close as **VERIFIED_SUCCESS**.
+```powershell
+uv run pytest tests/e2e/test_real_testmode.py -s -v
+```
 
-> **Note**: Test mode credentials are provided. Ensure you **never** use real production credentials for demo purposes.
+> **WARNING:** Never use production Razorpay credentials. The system is designed to mutate financial state. Always enforce `RAZORPAY_MODE=test`.

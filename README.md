@@ -32,7 +32,7 @@ It is a zero-trust financial agent: the AI is highly capable, but it has no auth
 | Capability | Implementation | Measured / Engineering Guarantee |
 |:---|:---|:---|
 | **Revenue-at-Risk Detection** | Cryptographic ingestion of Razorpay `payment.failed` webhooks | 100% HMAC verification enforcement |
-| **Gemini Recovery Reasoning** | Contextual feature extraction and failure diagnosis | Evaluated across 10 complex reasoning scenarios |
+| **Gemini Recovery Reasoning** | Contextual feature extraction and failure diagnosis | Evaluates context and proposes bounded actions |
 | **Deterministic Policy** | Strict `PolicyEngine` gating all AI proposals | Zero unauthorized executions in 1,500-case benchmark |
 | **Closed-Loop Recovery** | Correlates subsequent failures back to original recovery actions | Infinite loops blocked by deterministic bounds |
 | **Bounded Attempts** | Hard-coded `max_attempts_per_case` threshold | 100% halt on limit exhaustion |
@@ -113,13 +113,13 @@ sequenceDiagram
     
     Razorpay->>RecoverAI: payment.failed (Webhook)
     RecoverAI->>Gemini: Analyze Failure Context
-    Gemini-->>RecoverAI: Propose Intervention (e.g. SEND_PAYMENT_LINK)
+    Gemini-->>RecoverAI: Propose Intervention (e.g. CREATE_PAYMENT_LINK)
     RecoverAI->>PolicyEngine: Authorize Intervention?
     PolicyEngine-->>RecoverAI: Approved
     RecoverAI->>Razorpay: Execute Payment Link Creation
     Razorpay-->>RecoverAI: Link Created
     Note over RecoverAI: Wait for Customer Action...
-    Razorpay->>RecoverAI: payment.captured (Webhook)
+    Razorpay->>RecoverAI: payment_link.paid (Webhook)
     RecoverAI->>RecoverAI: VerificationEngine: Exact Amount Match?
     RecoverAI->>RecoverAI: Close Case (Recovered)
 ```
@@ -164,25 +164,13 @@ RecoverAI executes real financial operations against the Razorpay Test Mode API.
 
 | Case | Amount | Outcome | Engineering Significance |
 |:---|:---|:---|:---|
-| **A001** | ₹1,100 | Verified Recovery | Baseline successful end-to-end recovery loop. |
-| **A002** | ₹1,450 | Verified Recovery | Repeat baseline across a different value. |
-| **A003** | ₹1,750 | **Failed Recovery** | Real failed recovery that exposed a critical closed-loop correlation defect. It drove the fix to the adapter description format. |
-| **A004** | ₹11,000| Verified Recovery | Successful recovery proving the A003 loop fix was effective. |
-| **A005** | ₹150,000| Policy Gap Found | Historical high-value wiring gap; no false recovery was claimed, and the threshold wiring was subsequently fixed. |
+| **A001** | ₹100 | Verified Recovery | Baseline successful end-to-end recovery loop. |
+| **A002** | ₹450 | Verified Recovery | Repeat baseline across a different value. |
+| **A003** | ₹750 | **Failed Recovery** | Real failed recovery that exposed a critical closed-loop correlation defect. It drove the fix to the adapter description format. |
+| **A004** | ₹1,000| Verified Recovery | Successful recovery proving the A003 loop fix was effective. |
+| **A005** | ₹50,000| Policy Gap Found | Historical high-value wiring gap; no false recovery was claimed, and the threshold wiring was subsequently fixed. |
 
 Detailed provider evidence is available in the [Razorpay Evidence Pack](evidence/razorpay/README.md).
-
----
-
-## Verification & Reproducibility
-
-RecoverAI is fully reproducible locally. 
-
-**Run the Full Regression Suite**
-```powershell
-uv run pytest tests/
-```
-*Expected: 244 passed, 1 skipped (test mode secret)*
 
 ---
 
@@ -199,25 +187,7 @@ The architectural capabilities of the `PolicyEngine` and closed-loop orchestrati
 | **L2** | Safe Deterministic | 32.0% | ₹1,825,326.26 | PASS |
 | **L3** | **RecoverAI (Bounded)**| **47.5%** | **₹2,709,921.81** | **PASS** |
 
-*(Methodology Note: The large-scale benchmark isolates reproducible system behavior and structural policy efficacy using `llm_gateway=None`. Live Gemini judgment is evaluated separately below.)*
-
----
-
-## AI Judgment Evaluation
-
-To evaluate the qualitative reasoning capabilities of the Gemini integration independently from live API quota exhaustion, we executed a curated, predeclared evaluation of 10 complex failure scenarios.
-
-| Metric | Result |
-|:---|:---|
-| **Scenario Count** | 10 |
-| **Gemini Preferred-Action Agreement** | 10/10 |
-| **Deterministic Baseline Agreement** | 4/10 |
-| **Unsafe Gemini Proposals** | 0 |
-| **Policy Violations After Gating** | 0 |
-
-**Contextual Value:** In complex edge cases—such as transient gateway failures where the customer possesses alternate payment methods, or systemic degradation events—Gemini correctly proposes nuanced interventions (like `SEND_PAYMENT_LINK` or `SUPPRESS`). The deterministic baseline aggressively and incorrectly defaults to naive retries in these same contexts. 
-
-See the full [AI Evaluation Results](evidence/ai-evaluation/results.md).
+*(Methodology Note: The large-scale benchmark isolates reproducible system behavior and structural policy efficacy using `llm_gateway=None`. Live Gemini judgment is evaluated separately via a hybrid smoke-test due to quota limitations.)*
 
 ---
 
@@ -236,19 +206,6 @@ The system architecture was heavily audited by an offline hostile QA subagent. B
 | **Malformed AI output** | 🛡️ Blocked | Fallback to deterministic `GEMINI_FAILED_FALLBACK` |
 | **Rate limit abuse** | 🛡️ Blocked | Lightweight memory limits on `/analyze` |
 | **Unknown provider state** | 🛡️ Blocked | `EXECUTION_UNKNOWN` quarantined |
-
----
-
-## Safety / Trust
-
-RecoverAI treats security as a core capability, not a limitation:
-- **HMAC Verification:** All webhooks must pass Razorpay cryptographic signature checks.
-- **Exact Reference Matching:** Webhook payloads must explicitly match internal `RecoveryAction` IDs.
-- **Exact Amount/Currency Matching:** A payment is only "recovered" if the currency and minor-unit amounts match perfectly.
-- **Atomic Execution Claim:** Concurrency locks prevent duplicate processing.
-- **Bounded Retry:** Strict execution attempt counters prevent runaway AI loops.
-- **High-Value Escalation:** High-risk actions bypass automation for explicit manual human review.
-- **EXECUTION_UNKNOWN Quarantine:** Actions left in an ambiguous state due to network drops are safely quarantined.
 
 ---
 
@@ -290,13 +247,14 @@ uv run python scripts/seed_demo_data.py
 ## Documentation Index
 
 - [**Engineering Design**](DESIGN.md)
-- [**Closed-Loop Architecture**](docs/CLOSED_LOOP.md)
-- [**Security & Trust Architecture**](docs/SECURITY.md)
-- [**1,500-Case Benchmark Evidence**](evidence/benchmark/README.md)
-- [**AI Evaluation Results**](evidence/ai-evaluation/results.md)
-- [**Adversarial / Red-Team Evidence**](evidence/adversarial/README.md)
-- [**Real Razorpay Provider Evidence**](evidence/razorpay/README.md)
-- [**Historical Reports**](docs/reports/)
+- [**Architecture Topology**](docs/ARCHITECTURE.md)
+- [**Closed-Loop Recovery**](docs/CLOSED_LOOP.md)
+- [**Security & Trust Boundary**](docs/SECURITY.md)
+- [**Failure Recovery Mechanisms**](docs/FAILURE_RECOVERY.md)
+- [**Razorpay Integration**](docs/RAZORPAY_INTEGRATION.md)
+- [**Evaluation Methodology**](docs/EVALUATION.md)
+- [**Evidence Root**](evidence/README.md)
+- [**Historical Reports**](docs/reports/README.md)
 
 ---
 

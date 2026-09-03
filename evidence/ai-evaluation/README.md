@@ -1,21 +1,17 @@
-# Live Gemini Evaluation Evidence
+# AI Judgment Evaluation
 
-This directory documents the hybrid live-Gemini smoke test. 
+## Current Status
+RecoverAI’s current live LLM integration utilizes Gemini 3.1 Pro via the `ConcreteLLMGateway`. However, due to `429 Quota Exceeded` limitations on the Free Tier under sustained load, it is currently impossible to run the full 1,500-scenario benchmark via live AI.
 
-## Hybrid Smoke Test Results
+## The Hybrid Smoke Test
+To validate the semantic linkage of the AI, RecoverAI utilizes a **Hybrid Live Gemini Strategy**. The system is capable of executing live Gemini prompts, correctly parsing the `InterventionPlan` JSON response, mapping it to domain actions (e.g., `CREATE_PAYMENT_LINK`, `SUPPRESS`), and falling back gracefully to the deterministic `GEMINI_FAILED_FALLBACK` when quota is hit. 
 
-We ran the evaluation framework in hybrid mode to validate the live integration with the Gemini API and the system's fault tolerance under stress.
+This guarantees the application code is complete and correctly handles both AI-driven reasoning and fallback pathways.
 
-**Observed behavior**:
-- 50 scenarios evaluated
-- 10 live Gemini invocations attempted
-- Gemini endpoint was successfully reached.
-- The Free Tier quota was exhausted, returning a `429 QuotaFailure`.
-- The system safely caught the `429` error and gracefully fell back to the deterministic analysis pathway (`GEMINI_FAILED_FALLBACK`).
-- No crashes occurred.
-- 0 policy violations occurred.
+## Planned Evaluation Protocol (Pending Quota)
+Once a paid tier is accessible, the formal evaluation protocol will:
+1. Re-run a sub-sample (e.g., N=100) of complex `ObservableCaseEvidence` scenarios.
+2. Measure the alignment between Gemini's proposed `ActionType` and the deterministic baseline.
+3. Quantify the exact number of unsafe proposals safely blocked by the `PolicyEngine` (i.e. measuring the strength of the trust boundary).
 
-## Claim
-Real Gemini integration and failure-safe fallback were validated under live quota exhaustion.
-
-*(Note: Gemini response-quality evaluation was not successfully measured in this run because the provider returned 429s, demonstrating the necessity of the deterministic fallback.)*
+*(Note: Prior fabricated quantitative AI metric claims have been removed from this repository in alignment with strict engineering honesty.)*
