@@ -1,16 +1,16 @@
-﻿<div align="center">
+<div align="center">
 
-# ðŸš€ RecoverAI
+# 🚀 RecoverAI
 
 ### AI Revenue Recovery Agent
 
-**Razorpay AI Buildathon 2026 Â· Track 03**
+**Razorpay AI Buildathon 2026 · Track 03**
 
 > **AI diagnoses. Deterministic policy decides. Provider evidence proves.**
 
 ![Tests](https://img.shields.io/badge/tests-244%20passed-brightgreen)
 ![Benchmark](https://img.shields.io/badge/benchmark-1500%20cases-blue)
-![Gross Recovery](https://img.shields.io/badge/simulated%20gross%20recovery-â‚¹2.71M-success)
+![Gross Recovery](https://img.shields.io/badge/simulated%20gross%20recovery-₹2.71M-success)
 ![Razorpay Test Mode](https://img.shields.io/badge/provider-Razorpay%20Test%20Mode-blue)
 ![Gemini Intelligence](https://img.shields.io/badge/AI-Gemini-orange)
 ![Closed-Loop Recovery](https://img.shields.io/badge/architecture-Closed--Loop-blueviolet)
@@ -36,7 +36,7 @@ It is a zero-trust financial agent: the AI is highly capable, but it has no auth
 | **Deterministic Policy** | Strict `PolicyEngine` gating all AI proposals | Zero unauthorized executions in 1,500-case benchmark |
 | **Closed-Loop Recovery** | Correlates subsequent failures back to original recovery actions | Infinite loops blocked by deterministic bounds |
 | **Bounded Attempts** | Hard-coded `max_attempts_per_case` threshold | 100% halt on limit exhaustion |
-| **High-Value Escalation** | Diverts high-value cases to manual human review via n8n | Zero auto-executions > â‚¹40,000 threshold |
+| **High-Value Escalation** | Diverts high-value cases to manual human review via n8n | Zero auto-executions > ₹40,000 threshold |
 | **Idempotent Execution** | Atomic DB locks and unique webhook indexing | Zero duplicate webhook/execution processing |
 | **Provider Verification** | `VerificationEngine` requires exact Razorpay payloads | Missing amount/currency fails closed to `UNKNOWN` |
 | **Systemic Degradation** | Dynamic halt during mass failure events | Automated actions suspended during gateway outages |
@@ -51,7 +51,7 @@ Not all failures require the same treatment. Treating every failure with a gener
 |:---|:---|:---|
 | **Transient network timeout** | Blind immediate retry fails if gateway is still down | Evaluates context; proposes alternate method |
 | **Repeated recovery failure** | Aggressive, runaway retry loops leading to blocks | Detects attempt history; deterministically halts |
-| **High-value failure (>â‚¹40k)** | Auto-charging massive amounts triggers fraud flags | Safely suppresses automation and escalates to human |
+| **High-value failure (>₹40k)** | Auto-charging massive amounts triggers fraud flags | Safely suppresses automation and escalates to human |
 | **Systemic gateway degradation**| Massive spike in automated retries overwhelms API | Suspends aggressive automation system-wide |
 | **Malformed provider evidence** | System falsely believes payment was recovered | Verification fails closed to `UNKNOWN` |
 | **Duplicate Razorpay webhook** | Double-executing a recovery payment link | Idempotent indexing drops duplicate events |
@@ -61,7 +61,7 @@ Not all failures require the same treatment. Treating every failure with a gener
 
 ## Core Invariant
 
-> **Payment Link creation â‰  revenue recovered.**
+> **Payment Link creation ≠ revenue recovered.**
 
 Creating a Payment Link means RecoverAI initiated an intervention. Recovery is counted *only* after independent provider evidence is validated (authentic webhook, exact amount, exact currency). Missing or malformed evidence always fails closed.
 
@@ -91,13 +91,13 @@ flowchart TD
     COR --> CM
     VE -->|UNKNOWN| ESC[Escalate]
     
-    subgraph TrustBoundary [Trust Boundary]
+    subgraph Trust Boundary
     PE
     RAS
     VE
     end
     
-    IP -.->|Untrusted Proposal| TrustBoundary
+    IP -.->|Untrusted Proposal| Trust Boundary
 ```
 
 ---
@@ -132,15 +132,15 @@ The system maintains a zero-trust model between the intelligence layer and the f
 
 | Operation | Gemini Intelligence | Deterministic RecoverAI |
 |:---|:---:|:---:|
-| Understand failure context | âœ… | âŒ |
-| Diagnose root cause | âœ… | âŒ |
-| Propose recovery action | âœ… | âŒ |
-| Rank candidate interventions | âœ… | âŒ |
-| Authorize money movement | âŒ | âœ… |
-| Enforce retry limits | âŒ | âœ… |
-| Execute Razorpay action | âŒ | âœ… |
-| Verify recovery success | âŒ | âœ… |
-| Stop runaway retries | âŒ | âœ… |
+| Understand failure context | ✅ | ❌ |
+| Diagnose root cause | ✅ | ❌ |
+| Propose recovery action | ✅ | ❌ |
+| Rank candidate interventions | ✅ | ❌ |
+| Authorize money movement | ❌ | ✅ |
+| Enforce retry limits | ❌ | ✅ |
+| Execute Razorpay action | ❌ | ✅ |
+| Verify recovery success | ❌ | ✅ |
+| Stop runaway retries | ❌ | ✅ |
 
 ---
 
@@ -148,7 +148,7 @@ The system maintains a zero-trust model between the intelligence layer and the f
 
 RecoverAI operates a fully closed-loop architecture. When a recovery action (like a sent payment link) fails, the system safely replans:
 
-**Detect â†’ Diagnose â†’ Propose â†’ Constrain â†’ Execute â†’ Verify â†’ Replan â†’ Stop**
+**Detect → Diagnose → Propose → Constrain → Execute → Verify → Replan → Stop**
 
 1. **Failure**: A recovery `payment.failed` webhook arrives.
 2. **Correlation**: The system parses the deterministic `Action ID` to map the failure back to the original action.
@@ -164,11 +164,11 @@ RecoverAI executes real financial operations against the Razorpay Test Mode API.
 
 | Case | Amount | Outcome | Engineering Significance |
 |:---|:---|:---|:---|
-| **A001** | â‚¹100 | Verified Recovery | Baseline successful end-to-end recovery loop. |
-| **A002** | â‚¹450 | Verified Recovery | Repeat baseline across a different value. |
-| **A003** | â‚¹750 | **Failed Recovery** | Real failed recovery that exposed a critical closed-loop correlation defect. It drove the fix to the adapter description format. |
-| **A004** | â‚¹1,000| Verified Recovery | Successful recovery proving the A003 loop fix was effective. |
-| **A005** | â‚¹50,000| Policy Gap Found | Historical high-value wiring gap; no false recovery was claimed, and the threshold wiring was subsequently fixed. |
+| **A001** | ₹100 | Verified Recovery | Baseline successful end-to-end recovery loop. |
+| **A002** | ₹450 | Verified Recovery | Repeat baseline across a different value. |
+| **A003** | ₹750 | **Failed Recovery** | Real failed recovery that exposed a critical closed-loop correlation defect. It drove the fix to the adapter description format. |
+| **A004** | ₹1,000| Verified Recovery | Successful recovery proving the A003 loop fix was effective. |
+| **A005** | ₹50,000| Policy Gap Found | Historical high-value wiring gap; no false recovery was claimed, and the threshold wiring was subsequently fixed. |
 
 Detailed provider evidence is available in the [Razorpay Evidence Pack](evidence/razorpay/README.md).
 
@@ -182,10 +182,10 @@ The architectural capabilities of the `PolicyEngine` and closed-loop orchestrati
 
 | Level | Intervention Strategy | Recovery Rate | Gross Simulated Recovery | Safety |
 |:---|:---|---:|---:|:---|
-| **L0** | No Intervention | 8.2% | â‚¹569,697.22 | PASS |
-| **L1** | Naive (Retry Everything) | 54.5% | â‚¹3,232,371.94 | **FAIL** (519 policy violations, 218 stopping violations) |
-| **L2** | Safe Deterministic | 32.0% | â‚¹1,825,326.26 | PASS |
-| **L3** | **RecoverAI (Bounded)**| **47.5%** | **â‚¹2,709,921.81** | **PASS** |
+| **L0** | No Intervention | 8.2% | ₹569,697.22 | PASS |
+| **L1** | Naive (Retry Everything) | 54.5% | ₹3,232,371.94 | **FAIL** (519 policy violations, 218 stopping violations) |
+| **L2** | Safe Deterministic | 32.0% | ₹1,825,326.26 | PASS |
+| **L3** | **RecoverAI (Bounded)**| **47.5%** | **₹2,709,921.81** | **PASS** |
 
 *(Methodology Note: The large-scale benchmark isolates reproducible system behavior and structural policy efficacy using `llm_gateway=None`. Live Gemini judgment is evaluated separately via a hybrid smoke-test due to quota limitations.)*
 
@@ -197,15 +197,15 @@ The system architecture was heavily audited by an offline hostile QA subagent. B
 
 | Threat / Test Case | Result | Engineering Status |
 |:---|:---|:---|
-| **Broken recovery-loop correlation** | ðŸ› Defect Found | **FIXED** (Adapter now injects strict `Action ID`) |
-| **Missing amount verification bypass** | ðŸ› Defect Found | **FIXED** (Verification fails closed to `UNKNOWN`) |
-| **Duplicate webhook replay** | ðŸ›¡ï¸ Blocked | Handled by idempotent `source_event_id` indexing |
-| **Duplicate execution** | ðŸ›¡ï¸ Blocked | Handled by atomic database row-level locking |
-| **High-value policy bypass** | ðŸ›¡ï¸ Blocked | Gated by `PolicyEngine` threshold rules |
-| **Repeated recovery failure loop** | ðŸ›¡ï¸ Blocked | Halted by `max_attempts_per_case` |
-| **Malformed AI output** | ðŸ›¡ï¸ Blocked | Fallback to deterministic `GEMINI_FAILED_FALLBACK` |
-| **Rate limit abuse** | ðŸ›¡ï¸ Blocked | Lightweight memory limits on `/analyze` |
-| **Unknown provider state** | ðŸ›¡ï¸ Blocked | `EXECUTION_UNKNOWN` quarantined |
+| **Broken recovery-loop correlation** | 🐛 Defect Found | **FIXED** (Adapter now injects strict `Action ID`) |
+| **Missing amount verification bypass** | 🐛 Defect Found | **FIXED** (Verification fails closed to `UNKNOWN`) |
+| **Duplicate webhook replay** | 🛡️ Blocked | Handled by idempotent `source_event_id` indexing |
+| **Duplicate execution** | 🛡️ Blocked | Handled by atomic database row-level locking |
+| **High-value policy bypass** | 🛡️ Blocked | Gated by `PolicyEngine` threshold rules |
+| **Repeated recovery failure loop** | 🛡️ Blocked | Halted by `max_attempts_per_case` |
+| **Malformed AI output** | 🛡️ Blocked | Fallback to deterministic `GEMINI_FAILED_FALLBACK` |
+| **Rate limit abuse** | 🛡️ Blocked | Lightweight memory limits on `/analyze` |
+| **Unknown provider state** | 🛡️ Blocked | `EXECUTION_UNKNOWN` quarantined |
 
 ---
 
