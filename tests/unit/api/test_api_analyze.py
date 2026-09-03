@@ -43,6 +43,9 @@ def test_analyze_case_plan_none():
             def get(self, cid):
                 return case
 
+            def save(self, case):
+                pass
+
         from recoverai.api import main
 
         m.setattr(main, "RecoveryCaseRepository", MockCaseRepo)
@@ -59,7 +62,7 @@ def test_analyze_case_plan_none():
 
         case_id_val = "test_case_analyze_1"
 
-        def mock_analyze(c, events):
+        def mock_analyze(c, events, **kwargs):
             risk = RiskAssessment(
                 assessment_id="risk_1",
                 case_id=c.case_id,

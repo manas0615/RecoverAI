@@ -183,39 +183,54 @@ class VerificationEngine:
             return None
 
         # 3. We found a PAYMENT_LINK_PAID event. Now verify amount and currency.
-        if matching_event.amount:
-            if matching_event.amount.currency != case.amount_at_risk.currency:
-                # Currency mismatch - safe failure / escalate
-                return VerificationRecord(
-                    verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),
-                    action_id=action.action_id,
-                    case_id=case.case_id,
-                    verification_source=VerificationSource.PAYMENT_LINK_WEBHOOK,
-                    verified_state=VerifiedState.UNKNOWN,  # Wait, escalation requires ActionStatus.ESCALATED. We can return UNKNOWN or ESCALATED?
-                    checked_at=current_time,
-                    external_reference=matching_event.external_reference,
-                    evidence_reference=EvidenceReference(
-                        source_type=EvidenceSourceType.RAZORPAY_EVENT,
-                        source_id=matching_event.event_id.value,
-                        observed_at=matching_event.occurred_at,
-                    ),
-                )
-            if matching_event.amount.amount_minor != case.amount_at_risk.amount_minor:
-                # Amount mismatch - safe failure / escalate
-                return VerificationRecord(
-                    verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),
-                    action_id=action.action_id,
-                    case_id=case.case_id,
-                    verification_source=VerificationSource.PAYMENT_LINK_WEBHOOK,
-                    verified_state=VerifiedState.UNKNOWN,
-                    checked_at=current_time,
-                    external_reference=matching_event.external_reference,
-                    evidence_reference=EvidenceReference(
-                        source_type=EvidenceSourceType.RAZORPAY_EVENT,
-                        source_id=matching_event.event_id.value,
-                        observed_at=matching_event.occurred_at,
-                    ),
-                )
+        if not matching_event.amount:
+            return VerificationRecord(
+                verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),
+                action_id=action.action_id,
+                case_id=case.case_id,
+                verification_source=VerificationSource.PAYMENT_LINK_WEBHOOK,
+                verified_state=VerifiedState.UNKNOWN,
+                checked_at=current_time,
+                external_reference=matching_event.external_reference,
+                evidence_reference=EvidenceReference(
+                    source_type=EvidenceSourceType.RAZORPAY_EVENT,
+                    source_id=matching_event.event_id.value,
+                    observed_at=matching_event.occurred_at,
+                ),
+            )
+            
+        if matching_event.amount.currency != case.amount_at_risk.currency:
+            # Currency mismatch - safe failure / escalate
+            return VerificationRecord(
+                verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),
+                action_id=action.action_id,
+                case_id=case.case_id,
+                verification_source=VerificationSource.PAYMENT_LINK_WEBHOOK,
+                verified_state=VerifiedState.UNKNOWN,
+                checked_at=current_time,
+                external_reference=matching_event.external_reference,
+                evidence_reference=EvidenceReference(
+                    source_type=EvidenceSourceType.RAZORPAY_EVENT,
+                    source_id=matching_event.event_id.value,
+                    observed_at=matching_event.occurred_at,
+                ),
+            )
+        if matching_event.amount.amount_minor != case.amount_at_risk.amount_minor:
+            # Amount mismatch - safe failure / escalate
+            return VerificationRecord(
+                verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),
+                action_id=action.action_id,
+                case_id=case.case_id,
+                verification_source=VerificationSource.PAYMENT_LINK_WEBHOOK,
+                verified_state=VerifiedState.UNKNOWN,
+                checked_at=current_time,
+                external_reference=matching_event.external_reference,
+                evidence_reference=EvidenceReference(
+                    source_type=EvidenceSourceType.RAZORPAY_EVENT,
+                    source_id=matching_event.event_id.value,
+                    observed_at=matching_event.occurred_at,
+                ),
+            )
 
         return VerificationRecord(
             verification_id=VerificationRecordId(f"vr_{uuid.uuid4().hex}"),

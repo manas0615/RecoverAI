@@ -69,7 +69,7 @@ def test_recovery_payment_failure_loop(tm, cm):
         amount=Money(75000, CurrencyCode.INR),
         occurred_at=datetime.now(UTC),
         received_at=datetime.now(UTC),
-        metadata={"payload": {"payment": {"entity": {"description": f"#{plink_id.replace('plink_', '')}"}}}}
+        metadata={"payload": {"payment": {"entity": {"description": f"Recovery Action {action.action_id.value}"}}}}
     )
     
     with tm.transaction() as conn: RevenueEventRepository(conn).save(event)
@@ -149,7 +149,7 @@ def test_recovery_payment_failure_idempotent(tm, cm):
         amount=Money(75000, CurrencyCode.INR),
         occurred_at=datetime.now(UTC),
         received_at=datetime.now(UTC),
-        metadata={"payload": {"payment": {"entity": {"description": f"#{plink_id.replace('plink_', '')}"}}}}
+        metadata={"payload": {"payment": {"entity": {"description": f"Recovery Action {action.action_id.value}"}}}}
     )
     
     with tm.transaction() as conn: RevenueEventRepository(conn).save(event)
@@ -205,7 +205,7 @@ def test_cross_case_safety(tm, cm):
         amount=Money(75000, CurrencyCode.INR),
         occurred_at=datetime.now(UTC),
         received_at=datetime.now(UTC),
-        metadata={"payload": {"payment": {"entity": {"description": "#DIFFERENTLINK"}}}}
+        metadata={"payload": {"payment": {"entity": {"description": "Recovery Action DIFFERENTACT"}}}}
     )
     
     with tm.transaction() as conn: RevenueEventRepository(conn).save(event)

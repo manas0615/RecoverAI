@@ -94,7 +94,7 @@ class RazorpayAdapter:
             "amount": case.amount_at_risk.amount_minor,
             "currency": case.amount_at_risk.currency.value,
             "reference_id": reference_id,
-            "description": f"Recovery Payment for case {case.case_id.value}",
+            "description": f"Recovery Action {action.action_id.value}",
         }
 
         url = "https://api.razorpay.com/v1/payment_links"

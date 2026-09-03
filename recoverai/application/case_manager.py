@@ -36,14 +36,16 @@ class RecoveryCaseManager:
                 payment_entity = metadata.get("payload", {}).get("payment", {}).get("entity", {})
                 description = payment_entity.get("description") or ""
                 
-                plink_ref = None
-                if description.startswith("#"):
-                    plink_ref = f"plink_{description[1:]}"
+                action_id_val = None
+                if description.startswith("Recovery Action "):
+                    action_id_val = description.replace("Recovery Action ", "")
                     
-                if plink_ref:
+                if action_id_val:
                     from recoverai.persistence.repositories.action import RecoveryActionRepository
                     action_repo = RecoveryActionRepository(conn)
-                    actions = action_repo.get_by_external_reference(plink_ref)
+                    from recoverai.domain.action import RecoveryActionId
+                    act = action_repo.get(RecoveryActionId(action_id_val))
+                    actions = [act] if act else []
                     if actions:
                         from recoverai.domain.action import ActionStatus
                         from recoverai.domain.case import CaseWorkflowState

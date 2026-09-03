@@ -98,15 +98,15 @@ def test_closed_loop_recovery_trigger():
         
         # Advance state simulating Razorpay mock
         action = actions[0]
-        # We simulate that this action created a payment link (e.g. plink_mocked)
-        action.external_reference = "plink_mocked"
+        # The action ID is what we match against now, so let's get it
+        action_id = action.action_id.value
         action.status = ActionStatus.VERIFICATION_PENDING
         action_repo.save(action)
-        
+
         c = case_repo.get(case.case_id)
         c.workflow_state = CaseWorkflowState.VERIFYING
         case_repo.save(c)
-        
+
     # 3. Simulate recovery payment failure webhook
     failure_event = RevenueEvent(
         event_id=RevenueEventId("evt_closed_loop_2"),
@@ -114,7 +114,7 @@ def test_closed_loop_recovery_trigger():
         event_type=RevenueEventType.PAYMENT_FAILED,
         source=EventSource(EventSourceType.RAZORPAY_WEBHOOK, "pay_2"),
         amount=Money(10000, CurrencyCode.INR),
-        metadata={"payload": {"payment": {"entity": {"description": "#mocked"}}}}, # matching plink_mocked
+        metadata={"payload": {"payment": {"entity": {"description": f"Recovery Action {action_id}"}}}}, 
         occurred_at=datetime.now(UTC),
         received_at=datetime.now(UTC)
     )
