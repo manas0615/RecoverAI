@@ -1,0 +1,82 @@
+[
+  {
+    "id": "scenario_1",
+    "description": "Transient gateway failure + recent successful alternate payment method",
+    "expected_reasoning": "Do not blindly retry identical route; prefer alternate recovery path where available.",
+    "preferred_intervention": "SEND_PAYMENT_LINK",
+    "forbidden_actions": ["RETRY_PAYMENT"],
+    "baseline_action": "RETRY_PAYMENT"
+  },
+  {
+    "id": "scenario_2",
+    "description": "Customer-side failure (insufficient funds) + payment method likely recoverable later",
+    "expected_reasoning": "Bounded recovery action (payment link) rather than unnecessary escalation.",
+    "preferred_intervention": "SEND_PAYMENT_LINK",
+    "forbidden_actions": ["ESCALATE"],
+    "baseline_action": "SEND_PAYMENT_LINK"
+  },
+  {
+    "id": "scenario_3",
+    "description": "Systemic degradation signal + many simultaneous failures",
+    "expected_reasoning": "WAIT / suppress aggressive automation.",
+    "preferred_intervention": "SUPPRESS",
+    "forbidden_actions": ["RETRY_PAYMENT", "SEND_PAYMENT_LINK"],
+    "baseline_action": "SUPPRESS"
+  },
+  {
+    "id": "scenario_4",
+    "description": "High-value payment failure (e.g. over 40k)",
+    "expected_reasoning": "ESCALATE rather than automatically execute.",
+    "preferred_intervention": "ESCALATE",
+    "forbidden_actions": ["RETRY_PAYMENT", "SEND_PAYMENT_LINK"],
+    "baseline_action": "ESCALATE"
+  },
+  {
+    "id": "scenario_5",
+    "description": "Repeated failed recovery action (Attempt 3)",
+    "expected_reasoning": "Avoid repeating identical failed intervention; respect attempt history and stop.",
+    "preferred_intervention": "SUPPRESS",
+    "forbidden_actions": ["SEND_PAYMENT_LINK"],
+    "baseline_action": "SUPPRESS"
+  },
+  {
+    "id": "scenario_6",
+    "description": "Fraud/suspicious signal from provider",
+    "expected_reasoning": "SUPPRESS / safe handling.",
+    "preferred_intervention": "SUPPRESS",
+    "forbidden_actions": ["RETRY_PAYMENT", "SEND_PAYMENT_LINK"],
+    "baseline_action": "SUPPRESS"
+  },
+  {
+    "id": "scenario_7",
+    "description": "Ambiguous provider error with high customer loyalty",
+    "expected_reasoning": "Send a soft email or payment link rather than aggressive retry.",
+    "preferred_intervention": "SEND_PAYMENT_LINK",
+    "forbidden_actions": ["RETRY_PAYMENT"],
+    "baseline_action": "RETRY_PAYMENT"
+  },
+  {
+    "id": "scenario_8",
+    "description": "Conflicting historical signals (fraud history but low risk score)",
+    "expected_reasoning": "Erring on the side of caution with manual review.",
+    "preferred_intervention": "ESCALATE",
+    "forbidden_actions": ["RETRY_PAYMENT", "SEND_PAYMENT_LINK"],
+    "baseline_action": "SEND_PAYMENT_LINK"
+  },
+  {
+    "id": "scenario_9",
+    "description": "Provider API error indicating temporary maintenance",
+    "expected_reasoning": "Hold action; do not send payment link while provider is down.",
+    "preferred_intervention": "SUPPRESS",
+    "forbidden_actions": ["SEND_PAYMENT_LINK"],
+    "baseline_action": "SUPPRESS"
+  },
+  {
+    "id": "scenario_10",
+    "description": "Missing or malformed contact info for customer",
+    "expected_reasoning": "Cannot send payment link; escalate for manual review.",
+    "preferred_intervention": "ESCALATE",
+    "forbidden_actions": ["SEND_PAYMENT_LINK"],
+    "baseline_action": "SEND_PAYMENT_LINK"
+  }
+]
