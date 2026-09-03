@@ -64,7 +64,6 @@ def test_hf_authentication_failure(mock_urlopen):
 def test_hf_timeout(mock_urlopen):
     adapter = HuggingFaceAdapter(api_key="token", model="model")
 
-
     mock_urlopen.side_effect = TimeoutError("timeout")
 
     with pytest.raises(

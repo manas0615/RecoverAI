@@ -45,7 +45,6 @@ def test_hybrid_evaluation_counts(monkeypatch):
                 ],
             )
 
-
     monkeypatch.setattr(
         "scripts.run_evaluation.ConcreteLLMGateway", lambda x: MockGateway()
     )
