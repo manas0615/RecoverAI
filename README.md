@@ -1,6 +1,6 @@
- # RecoverAI
+# RecoverAI
 
-### AI Revenue Recovery Agent â€” Razorpay Buildathon 2026 Â· Track 03
+### AI Revenue Recovery Agent — Razorpay Buildathon 2026 · Track 03
 
 > **AI proposes. Deterministic policy constrains. Provider evidence proves.**
 
@@ -122,15 +122,15 @@ flowchart TB
 
 The architecture deliberately separates three authorities:
 
-**Gemini** â†’ contextual reasoning and proposal  
-**PolicyEngine** â†’ deterministic financial authorization  
-**Razorpay + VerificationEngine** â†’ provider evidence and recovery truth
+**Gemini** → contextual reasoning and proposal  
+**PolicyEngine** → deterministic financial authorization  
+**Razorpay + VerificationEngine** → provider evidence and recovery truth
 
 ---
 
 ## Agent Lifecycle
 
-**Detect â†’ Understand â†’ Recommend â†’ Decide â†’ Recover â†’ Verify â†’ Measure**
+**Detect → Understand → Recommend → Decide → Recover → Verify → Measure**
 
 | Stage | What happens | Authority |
 |---|---|---|
@@ -166,11 +166,11 @@ RecoverAI has been exercised against the **Razorpay Test Mode API** with real pr
 
 | Case | Amount | Result | What it demonstrated |
 |---|---:|---|---|
-| **A001** | â‚¹100 | âœ… Verified Recovery | End-to-end failure â†’ AI analysis â†’ Payment Link â†’ payment â†’ verified recovery |
-| **A002** | â‚¹450 | âœ… Verified Recovery | Repeat provider-backed recovery across a different amount |
-| **A003** | â‚¹750 | âŒ Failed Recovery | A recovery-payment failure exposed a recursive recovery-loop bug; the issue was diagnosed and fixed |
-| **A004** | â‚¹1,000 | âœ… Verified Recovery | Successful Test Mode recovery after the A003 loop fix |
-| **A005** | â‚¹50,000 | âš ï¸ Policy Gap Found | Pre-fix live high-value wiring allowed link creation; it was never paid and **no recovery was claimed**; threshold wiring was then fixed and regression-tested |
+| **A001** | ₹100 | ✅ Verified Recovery | End-to-end failure → AI analysis → Payment Link → payment → verified recovery |
+| **A002** | ₹450 | ✅ Verified Recovery | Repeat provider-backed recovery across a different amount |
+| **A003** | ₹750 | ❌ Failed Recovery | A recovery-payment failure exposed a recursive recovery-loop bug; the issue was diagnosed and fixed |
+| **A004** | ₹1,000 | ✅ Verified Recovery | Successful Test Mode recovery after the A003 loop fix |
+| **A005** | ₹50,000 | ⚠️ Policy Gap Found | Pre-fix live high-value wiring allowed link creation; it was never paid and **no recovery was claimed**; threshold wiring was then fixed and regression-tested |
 
 A003 and A005 are deliberately retained as evidence of real provider testing: both exposed implementation issues that required diagnosis, fixes, and regression coverage.
 
@@ -180,7 +180,7 @@ A003 and A005 are deliberately retained as evidence of real provider testing: bo
 
 ## Recovery Verification
 
-> **Payment Link creation â‰  recovery.**
+> **Payment Link creation ≠ recovery.**
 
 A recovery is counted only after the `VerificationEngine` independently validates the expected provider evidence. It checks:
 
@@ -196,16 +196,16 @@ If the evidence is ambiguous or does not match, RecoverAI fails closed to `UNKNO
 
 ## Safety Engineering
 
-- **Deterministic policy gate** â€” every proposed action is evaluated before execution.
-- **High-value escalation** â€” cases above the configurable â‚¹40K default threshold are diverted from automatic execution.
-- **Attempt limits** â€” recovery attempts are bounded deterministically.
-- **Duplicate prevention** â€” atomic database claims and idempotency protect the execution boundary.
-- **Webhook authentication** â€” incoming Razorpay events require valid HMAC verification.
-- **Systemic safeguards** â€” systemic degradation can override aggressive recovery proposals.
-- **Deterministic fallback** â€” the core analysis path continues when LLM providers fail.
-- **UNKNOWN / fail-closed behavior** â€” uncertain provider evidence is not treated as success.
-- **Independent verification** â€” AI output never determines whether revenue was recovered.
-- **Test isolation** â€” `ALLOW_REAL_RAZORPAY` explicitly fences real-provider access from normal automated tests.
+- **Deterministic policy gate** — every proposed action is evaluated before execution.
+- **High-value escalation** — cases above the configurable ₹40K default threshold are diverted from automatic execution.
+- **Attempt limits** — recovery attempts are bounded deterministically.
+- **Duplicate prevention** — atomic database claims and idempotency protect the execution boundary.
+- **Webhook authentication** — incoming Razorpay events require valid HMAC verification.
+- **Systemic safeguards** — systemic degradation can override aggressive recovery proposals.
+- **Deterministic fallback** — the core analysis path continues when LLM providers fail.
+- **UNKNOWN / fail-closed behavior** — uncertain provider evidence is not treated as success.
+- **Independent verification** — AI output never determines whether revenue was recovered.
+- **Test isolation** — `ALLOW_REAL_RAZORPAY` explicitly fences real-provider access from normal automated tests.
 
 ---
 
@@ -213,14 +213,14 @@ If the evidence is ambiguous or does not match, RecoverAI fails closed to `UNKNO
 
 ### Frozen Synthetic Benchmark
 
-**1,500 scenarios Â· Seed 42 Â· deterministic and reproducible**
+**1,500 scenarios · Seed 42 · deterministic and reproducible**
 
 | Strategy | Recovery Rate | Gross Simulated Recovery | Safety |
 |---|---:|---:|---|
-| L0 (No intervention) | 8.2% | â‚¹569,697.22 | PASS |
-| L1 (Naive â€” retry everything) | 54.5% | â‚¹3,232,371.94 | **FAIL** â€” 519 policy / 218 stopping violations |
-| L2 (Deterministic rules) | 32.0% | â‚¹1,825,326.26 | PASS |
-| **L3 (RecoverAI)** | **47.5%** | **â‚¹2,709,921.81** | **PASS** |
+| L0 (No intervention) | 8.2% | ₹569,697.22 | PASS |
+| L1 (Naive — retry everything) | 54.5% | ₹3,232,371.94 | **FAIL** — 519 policy / 218 stopping violations |
+| L2 (Deterministic rules) | 32.0% | ₹1,825,326.26 | PASS |
+| **L3 (RecoverAI)** | **47.5%** | **₹2,709,921.81** | **PASS** |
 
 In the frozen synthetic benchmark, the RecoverAI L3 pipeline produced a **48.5% relative increase in simulated gross recovered value over L2**.
 
@@ -249,11 +249,11 @@ Across **21 adversarial scenarios**, RecoverAI recorded zero tested violations o
 
 Real provider testing found issues that synthetic evaluation alone could not expose:
 
-**A003 â€” Recovery-payment failure loop**  
+**A003 — Recovery-payment failure loop**  
 A failed recovery Payment Link generated another `payment.failed` event and initially caused the system to treat its own recovery as a new recovery case. Exact provider/action correlation was added and regression-tested.
 
-**A005 â€” High-value threshold wiring**  
-The â‚¹40K high-value rule existed, but live dependency wiring did not populate the policy context. A â‚¹50K Test Mode case exposed the gap. Threshold injection was fixed and regression-tested.
+**A005 — High-value threshold wiring**  
+The ₹40K high-value rule existed, but live dependency wiring did not populate the policy context. A ₹50K Test Mode case exposed the gap. Threshold injection was fixed and regression-tested.
 
 **Test-provider isolation**  
 Automated tests could reach the real Razorpay boundary when credentials were present. An explicit `ALLOW_REAL_RAZORPAY` fence and narrow mocks were added so normal test runs cannot accidentally execute real provider actions.
@@ -290,11 +290,11 @@ uv run python scripts/seed_demo_data.py
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Python 3.11 Â· FastAPI Â· Pydantic |
-| **Intelligence** | Gemini primary Â· provider abstraction Â· deterministic fallback |
+| **Backend** | Python 3.11 · FastAPI · Pydantic |
+| **Intelligence** | Gemini primary · provider abstraction · deterministic fallback |
 | **Database** | SQLite |
 | **Provider** | Razorpay Test Mode API |
-| **Frontend** | React Â· TypeScript Â· Vite |
+| **Frontend** | React · TypeScript · Vite |
 | **Optional orchestration** | n8n for human-approval routing |
 
 ---
@@ -303,11 +303,11 @@ uv run python scripts/seed_demo_data.py
 
 ```text
 RecoverAI/
-â”œâ”€â”€ recoverai/      # Core backend, intelligence, policy, verification
-â”œâ”€â”€ frontend/       # React operator console
-â”œâ”€â”€ tests/          # Unit, integration, contract, E2E, adversarial
-â”œâ”€â”€ docs/           # Architecture and technical documentation
-â””â”€â”€ scripts/        # Startup and seeding utilities
+├── recoverai/      # Core backend, intelligence, policy, verification
+├── frontend/       # React operator console
+├── tests/          # Unit, integration, contract, E2E, adversarial
+├── docs/           # Architecture and technical documentation
+└── scripts/        # Startup and seeding utilities
 ```
 
 ---
@@ -324,7 +324,7 @@ RecoverAI/
 | [Failure Recovery](docs/failure_recovery.md) | A003/A005 fixes and regression testing |
 | [Synthetic Benchmark](docs/reports/benchmark_1500_seed42.md) | Frozen 1,500-case Phase 4 results |
 | [Evidence Pack](docs/reports/FINAL_EVIDENCE_PACK.md) | Consolidated Test Mode evidence |
-| [Razorpay Evidence](docs/reports/REAL_RAZORPAY_EVIDENCE.md) | Detailed A001â€“A005 provider evidence |
+| [Razorpay Evidence](docs/reports/REAL_RAZORPAY_EVIDENCE.md) | Detailed A001–A005 provider evidence |
 | [Competitive Positioning](docs/reports/COMPETITIVE_POSITIONING.md) | Competitive comparison and positioning |
 
 ---
