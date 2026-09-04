@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from recoverai.api.security import require_frontend_key, require_n8n_key
 from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
+from recoverai.domain.event import RevenueEventType
 from recoverai.ingestion.exceptions import DuplicateWebhookEvent, EventIngestionError
 from recoverai.ingestion.razorpay.normalizer import RazorpayNormalizer
 from recoverai.ingestion.razorpay.service import WebhookIngestionService
@@ -454,7 +455,7 @@ def get_case(case_id: str):
                     elif getattr(latest_action, "idempotency_key", None):
                         events = event_repo.get_by_merchant_and_type(  # type: ignore
                             case.merchant_id,
-                            "PAYMENT_LINK_PAID",  # type: ignore
+                            RevenueEventType.PAYMENT_LINK_PAID,
                         )
                         for ev in events:
                             # Mock extract ref
