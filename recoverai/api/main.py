@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from recoverai.api.security import require_frontend_key, require_n8n_key
-from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
 from recoverai.domain.event import RevenueEventType
+from recoverai.domain.identifiers import MerchantId, RecoveryCaseId
 from recoverai.ingestion.exceptions import DuplicateWebhookEvent, EventIngestionError
 from recoverai.ingestion.razorpay.normalizer import RazorpayNormalizer
 from recoverai.ingestion.razorpay.service import WebhookIngestionService
